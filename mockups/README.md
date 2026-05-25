@@ -11,31 +11,42 @@ These are **not** the app. They are the visual contract that the real Next.js im
 
 ## Sharing the preview from this AWS workspace
 
-The mockups live on the workspace VM. To preview from your laptop, either tunnel over SSH (no AWS console needed) or expose the port on the public IP.
+The canonical path: serve from the workspace VM on port `8042`, bound to all interfaces, behind an AWS Security Group rule that allows the user's laptop IP. SSH local-forward is the laptop-side alternative when the user doesn't want to touch the SG.
 
-**Option A — SSH local-forward.** On your laptop:
+### For agents (canonical setup — run on the VM)
+
+The full recipe is in [`serve.sh`](./serve.sh). Run it any time:
+
+```bash
+bash /home/ubuntu/workspace/Yuna/mockups/serve.sh
+```
+
+It is idempotent: kills any prior server on 8042, restarts bound to `0.0.0.0`, fetches the EC2 public IPv4 via IMDSv2, self-tests reachability, and prints the URL. Sample output:
+
+```
+SERVER  http://127.0.0.1:8042/  (PID 12345)
+PUBLIC  35.87.188.87
+SELF-TEST  HTTP 200 in 0.002s  →  SG is open
+URL     http://35.87.188.87:8042/settings.html
+```
+
+**Interpreting the self-test:**
+- `HTTP 200` → ready. Hand the URL to the user.
+- `000` / timeout → the AWS Security Group is blocking port 8042. The agent cannot fix this from inside the VM. Ask the user:
+  > EC2 console → this instance → Security tab → Edit inbound rules → add `TCP 8042`, source = your laptop's IP (don't use `0.0.0.0/0`, the mockups have no auth). Then re-run `serve.sh`.
+
+**EC2 public IPs change** when the instance is stopped and started, so always re-run `serve.sh` after a restart rather than caching the IP.
+
+### Laptop-side alternative — SSH local-forward (no AWS console needed)
+
+From the user's laptop:
 
 ```bash
 ssh -L 8042:127.0.0.1:8042 ubuntu@<workspace-public-ip>
 # leave open, then browse: http://localhost:8042/settings.html
 ```
 
-**Option B — public IP.** Bind the server to all interfaces and open the port in the AWS Security Group:
-
-```bash
-# On the VM
-cd mockups && python3 -m http.server 8042 --bind 0.0.0.0
-# In AWS Console: EC2 → this instance → Security → inbound rule
-#   TCP 8042, source = My IP (not 0.0.0.0/0 — mockups have no auth)
-# Get the public IPv4 from inside the VM:
-TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token \
-  -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
-curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
-  http://169.254.169.254/latest/meta-data/public-ipv4
-# Then browse: http://<that-ip>:8042/settings.html
-```
-
-EC2 public IPs change when the instance is stopped and started — re-check via IMDS after a restart. To keep the server running after you close the shell, use `nohup ... &` or `tmux`.
+The VM-side server still has to be running; run `serve.sh` on the VM first.
 
 | Mockup | Spec source | Notes |
 |---|---|---|
