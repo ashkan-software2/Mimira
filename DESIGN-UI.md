@@ -91,8 +91,8 @@ Order matters: Latin first, Thai second. Browsers fall through per-glyph for mix
 | `--ai-accent-bg` | `#ecf6f6` | Soft background tint for AI-accent surfaces. |
 | `--link` | `#2563eb` | Links, focus ring. Used sparingly. |
 | `--success` | `#16a34a` | Save toasts, sent state. |
-| `--warning` | `#d97706` | Low-confidence escalations, quota 80%+. |
-| `--error` | `#dc2626` | Tripwire escalations, hard failures. |
+| `--warning` | `#d97706` | "Needs attention" escalations (tripwire + low-confidence collapsed), quota 80%+. |
+| `--error` | `#dc2626` | Hard system failures (service unreachable, save failed). Not used for AI escalations. |
 | `--info` | `#2563eb` | Info alerts. Same as link. |
 
 ### Dark mode (tokens reserved, implementation v1)
@@ -242,8 +242,7 @@ Rules:
 
 | Variant | Border + tint | Use |
 |---|---|---|
-| Tripwire | `--error` | Hard escalation (keyword tripwire, judge-fail) |
-| Low confidence | `--warning` | LLM confidence below threshold |
+| Needs attention | `--warning` | Any AI-side escalation (tripwire keyword match, low LLM confidence, judge-fail). One label, one color — staff doesn't triage by internal mechanism. |
 | Staff requested | `--info` | Customer asked for human staff |
 | Yuna | `--ai-accent` | Inline marker on every AI-generated reply |
 
@@ -375,6 +374,7 @@ These are blocking. A PR that ships any of these is wrong:
 | 2026-05-25 | Single AI accent `#0a7c7c` for AI-only elements | Teaches the eye where AI is at work. Critical for trust-but-verify of Yuna's replies. |
 | 2026-05-25 | Dark mode tokens reserved; implementation v1 | Per design-review appendix. Tokens defined now so engineering doesn't back-fill. |
 | 2026-05-25 | Polestar locked: "calm and quiet, never overwhelming" | Single sentence that every future design decision must serve. |
+| 2026-05-25 | Collapsed Tripwire + Low-confidence badges into single "Needs attention" (amber) | Staff doesn't need to triage by internal mechanism. The conversation content tells them urgency; the badge just signals "AI flagged this." Internal vocabulary (tripwire, judge-fail, confidence threshold) stays in `DESIGN.md` and the audit log — UI uses plain language. `--error` red reserved for hard system failures only. |
 
 ---
 

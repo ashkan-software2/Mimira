@@ -13,13 +13,13 @@ The admin app has 5 tabs. Each screen below lists purpose, what the user sees fi
 ### Inbox (default landing tab, most-used)
 **Purpose:** Staff sees live + escalated chats, can take over any thread, can manually reply.
 **Information hierarchy:**
-1. **Escalated chats list** (left rail) — sorted by escalation timestamp newest-first. Each row: customer Line display name, last message preview (1 line, truncated), escalation reason badge (red = tripwire, amber = low confidence, blue = staff-request), age in minutes.
+1. **Escalated chats list** (left rail) — sorted by escalation timestamp newest-first. Each row: customer Line display name, last message preview (1 line, truncated), escalation badge (amber = "Needs attention" — collapses tripwire + low-confidence; blue = "Staff requested" — customer asked for human), age in minutes.
 2. **Active chat thread** (center column) — full message history. Yuna's replies tagged with a subtle "Yuna" badge; staff replies tagged with staff initials. Auto-scrolls to latest. RAG sources for each Yuna reply shown inline (collapsible).
-3. **Customer context** (right rail) — Line user ID, phone (if captured), previous bookings, language, Yuna's inferred conversation goal, audit log link.
+3. **Customer context** (right rail) — Line user ID, phone (if captured), previous bookings, language, audit log link.
 
 **Primary CTA:** "Take over chat" (top-right of active thread). Pressing it puts Yuna silent for that thread; staff types in the composer at the bottom.
 
-**Secondary actions:** "Resolve & return to Yuna" (post-takeover), "Flag for review" (escalates to owner), "Add to knowledge" (right-click a good Yuna reply → drops into Knowledge as a sample).
+**Secondary actions:** "Resolve & return to Yuna" (post-takeover), "Flag for review" (escalates to owner).
 
 ### Knowledge
 **Purpose:** Owner/staff uploads, structures, and edits the clinic-specific content Yuna grounds its replies on.
