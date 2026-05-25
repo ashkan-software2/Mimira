@@ -1,0 +1,1508 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Settings · Yuna</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #fafbfc;
+      --surface: #ffffff;
+      --surface-2: #f7f8fa;
+      --fg: #0a0a0a;
+      --fg-muted: #6b7280;
+      --fg-subtle: #9ca3af;
+      --border: #e5e7eb;
+      --border-subtle: #f1f3f5;
+      --cta-fill: #0a0a0a;
+      --cta-fg: #ffffff;
+      --ai-accent: #0a7c7c;
+      --ai-accent-bg: #ecf6f6;
+      --link: #2563eb;
+      --success: #16a34a;
+      --warning: #d97706;
+      --error: #dc2626;
+      --info: #2563eb;
+
+      --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Thai Looped', system-ui, sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+      --space-2xs: 2px;
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 12px;
+      --space-lg: 16px;
+      --space-xl: 24px;
+      --space-2xl: 32px;
+      --space-3xl: 48px;
+
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+
+      --shadow-modal: 0 4px 20px rgba(0,0,0,0.08);
+
+      --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+      --ease-move: cubic-bezier(0.45, 0, 0.55, 1);
+      --dur-micro: 80ms;
+      --dur-short: 160ms;
+      --dur-medium: 240ms;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0a0a0a;
+        --surface: #141414;
+        --surface-2: #1a1a1a;
+        --fg: #fafafa;
+        --fg-muted: #a1a1aa;
+        --fg-subtle: #71717a;
+        --border: #27272a;
+        --border-subtle: #1f1f23;
+        --cta-fill: #fafafa;
+        --cta-fg: #0a0a0a;
+        --ai-accent: #2dd4bf;
+        --ai-accent-bg: #0e2a2a;
+        --link: #60a5fa;
+        --info: #60a5fa;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    button, input, select, textarea { font-family: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-rows: 52px 1fr;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    /* ---------- Top bar (shared with Inbox) ---------- */
+
+    .topbar {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: var(--space-xl);
+      padding: 0 var(--space-xl);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .brand { display: flex; align-items: center; gap: var(--space-sm); font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+    .brand-mark { width: 22px; height: 22px; border-radius: var(--radius-sm); background: var(--fg); color: var(--bg); display: grid; place-items: center; font-size: 13px; font-weight: 600; }
+    .brand-name { color: var(--fg); }
+    .brand-clinic { color: var(--fg-muted); font-weight: 400; }
+    .brand-sep { color: var(--fg-subtle); }
+
+    .tabs { display: flex; gap: var(--space-2xs); justify-self: start; }
+    .tab {
+      appearance: none; background: transparent; border: 0;
+      padding: 8px 12px; font-size: 14px; font-weight: 500;
+      color: var(--fg-muted); border-radius: var(--radius-sm);
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+      transition: color var(--dur-micro), background var(--dur-micro);
+    }
+    .tab:hover { color: var(--fg); background: var(--surface-2); }
+    .tab[aria-current="page"] { color: var(--fg); background: var(--surface-2); }
+    .tab .count {
+      font-variant-numeric: tabular-nums; font-size: 11px;
+      color: var(--fg-muted); background: var(--border-subtle);
+      padding: 1px 6px; border-radius: var(--radius-full);
+      min-width: 18px; text-align: center;
+    }
+    .tab[aria-current="page"] .count { color: var(--fg); background: var(--surface); border: 1px solid var(--border); }
+
+    .topbar-right { display: flex; align-items: center; gap: var(--space-lg); }
+    .avatar {
+      width: 28px; height: 28px; border-radius: var(--radius-full);
+      background: var(--surface-2); border: 1px solid var(--border);
+      display: grid; place-items: center;
+      font-size: 11px; font-weight: 500; color: var(--fg);
+    }
+
+    /* ---------- Workspace: 2-column (nav + content) ---------- */
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 0;
+      overflow: hidden;
+    }
+    @media (max-width: 1024px) {
+      .workspace { grid-template-columns: 220px 1fr; }
+    }
+    @media (max-width: 768px) {
+      .workspace { grid-template-columns: 1fr; }
+      .col-nav { display: none; }
+    }
+
+    .col { min-height: 0; display: flex; flex-direction: column; }
+    .col-nav { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; }
+    .col-content { background: var(--bg); overflow-y: auto; }
+
+    /* ---------- Section nav (left rail) ---------- */
+
+    .nav-header {
+      padding: var(--space-md) var(--space-lg) var(--space-sm);
+    }
+    .nav-header h2 {
+      margin: 0; font-size: 13px; font-weight: 500;
+      color: var(--fg-muted); letter-spacing: 0.02em; text-transform: uppercase;
+    }
+    .nav-list {
+      list-style: none; margin: 0; padding: var(--space-xs) var(--space-sm) var(--space-lg);
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .nav-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 14px; font-weight: 500;
+      color: var(--fg-muted);
+      cursor: pointer;
+      text-decoration: none;
+      transition: color var(--dur-micro), background var(--dur-micro);
+    }
+    .nav-item:hover { color: var(--fg); background: var(--surface-2); }
+    .nav-item[aria-current="true"] {
+      color: var(--fg); background: var(--surface-2);
+    }
+    .nav-item[aria-current="true"]::before {
+      content: ""; width: 2px; height: 14px;
+      background: var(--fg); border-radius: var(--radius-full);
+      position: absolute; left: 0; margin-left: -6px;
+    }
+    .nav-item { position: relative; }
+    .nav-tag {
+      font-size: 10px; font-weight: 500; line-height: 1;
+      padding: 2px 6px; border-radius: var(--radius-full);
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .nav-tag-ai { background: var(--ai-accent-bg); color: var(--ai-accent); }
+    .nav-tag-warn { background: color-mix(in srgb, var(--warning) 8%, var(--surface)); color: var(--warning); border: 1px solid color-mix(in srgb, var(--warning) 24%, var(--border)); }
+    .nav-tag-dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--warning); }
+
+    /* ---------- Content: stacked cards ---------- */
+
+    .content {
+      max-width: 760px;
+      width: 100%;
+      margin: 0 auto;
+      padding: var(--space-xl) var(--space-xl) var(--space-3xl);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+
+    .page-header {
+      padding-bottom: var(--space-sm);
+    }
+    .page-header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      color: var(--fg);
+    }
+    .page-header .sub {
+      margin-top: var(--space-2xs);
+      font-size: 13px;
+      color: var(--fg-muted);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-md) var(--space-lg);
+      cursor: pointer;
+      background: var(--surface);
+      transition: background var(--dur-micro);
+    }
+    .card-head:hover { background: var(--surface-2); }
+    .card-head .chev {
+      width: 18px; height: 18px;
+      display: grid; place-items: center;
+      color: var(--fg-subtle);
+      transition: transform var(--dur-short) var(--ease-move);
+    }
+    .card-head .chev svg { width: 12px; height: 12px; }
+    .card-head h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.005em;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    .card-head .summary {
+      grid-column: 2;
+      font-size: 13px;
+      color: var(--fg-muted);
+      font-variant-numeric: tabular-nums;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .card-head .saved {
+      font-size: 11px;
+      color: var(--fg-subtle);
+      font-variant-numeric: tabular-nums;
+    }
+    .card[data-open="true"] .card-head .chev { transform: rotate(90deg); }
+    .card[data-open="true"] .card-head .summary { display: none; }
+
+    .card-body {
+      display: none;
+      padding: var(--space-md) var(--space-lg) var(--space-lg);
+      border-top: 1px solid var(--border-subtle);
+    }
+    .card[data-open="true"] .card-body { display: block; }
+
+    .card-body .help {
+      font-size: 13px;
+      color: var(--fg-muted);
+      margin: 0 0 var(--space-md);
+    }
+
+    /* ---------- Form primitives ---------- */
+
+    .field { display: grid; gap: var(--space-xs); margin-bottom: var(--space-md); }
+    .field:last-child { margin-bottom: 0; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); }
+    .field-row .field { margin-bottom: 0; }
+    .label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+    .label .req { color: var(--fg-subtle); }
+    .hint { font-size: 12px; color: var(--fg-muted); }
+    .input, .select, .textarea {
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 14px;
+      line-height: 1.4;
+      color: var(--fg);
+      width: 100%;
+    }
+    .input:hover, .select:hover, .textarea:hover { border-color: var(--fg-muted); }
+    .input:focus, .select:focus, .textarea:focus {
+      outline: none;
+      border-color: var(--link);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--link) 18%, transparent);
+    }
+    .input[readonly] {
+      background: var(--surface-2);
+      color: var(--fg-muted);
+      cursor: default;
+    }
+    .input[readonly]:hover { border-color: var(--border); }
+
+    .input-mono {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .textarea { resize: vertical; min-height: 88px; }
+    .textarea-lg { min-height: 140px; }
+
+    /* ---------- Buttons ---------- */
+
+    .btn {
+      appearance: none;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background var(--dur-micro), border-color var(--dur-micro);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary { background: var(--cta-fill); color: var(--cta-fg); border-color: var(--cta-fill); }
+    .btn-primary:hover { background: #1f1f1f; border-color: #1f1f1f; }
+    .btn-secondary { background: var(--surface); color: var(--fg); border-color: var(--border); }
+    .btn-secondary:hover { border-color: var(--fg-muted); }
+    .btn-ghost { background: transparent; color: var(--fg-muted); }
+    .btn-ghost:hover { color: var(--fg); background: var(--surface-2); }
+    .btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--link);
+    }
+    .btn-sm { padding: 5px 9px; font-size: 12px; }
+    .btn-link {
+      appearance: none; background: none; border: 0;
+      color: var(--link); font-size: 13px; cursor: pointer;
+      padding: 0;
+    }
+    .btn-link:hover { text-decoration: underline; }
+
+    .card-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-top: var(--space-lg);
+      padding-top: var(--space-md);
+      border-top: 1px solid var(--border-subtle);
+    }
+    .card-actions .save-meta {
+      flex: 1;
+      font-size: 12px;
+      color: var(--fg-subtle);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ---------- Segmented control (LLM provider) ---------- */
+
+    .segment {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      gap: 2px;
+    }
+    .segment button {
+      appearance: none; border: 0; background: transparent;
+      padding: 6px 12px; font-size: 13px; font-weight: 500;
+      color: var(--fg-muted); border-radius: 4px;
+      cursor: pointer;
+      transition: background var(--dur-micro), color var(--dur-micro);
+    }
+    .segment button:hover { color: var(--fg); }
+    .segment button[aria-pressed="true"] {
+      background: var(--surface);
+      color: var(--fg);
+      box-shadow: 0 0 0 1px var(--border);
+    }
+
+    /* ---------- Locked field (Cohere) ---------- */
+
+    .locked-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: var(--space-md);
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+    }
+    .locked-row .lock {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--fg);
+    }
+    .locked-row .lock .ico { width: 12px; height: 12px; color: var(--fg-subtle); }
+    .locked-row .meta { font-size: 12px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+
+    /* ---------- Slider (temperature) ---------- */
+
+    .slider-row { display: grid; grid-template-columns: 1fr auto; gap: var(--space-md); align-items: center; }
+    .slider {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 4px; border-radius: var(--radius-full);
+      background: var(--border); outline: none; cursor: pointer;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 16px; height: 16px; border-radius: var(--radius-full);
+      background: var(--fg); cursor: pointer;
+      border: 2px solid var(--surface);
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    .slider::-moz-range-thumb {
+      width: 16px; height: 16px; border-radius: var(--radius-full);
+      background: var(--fg); cursor: pointer;
+      border: 2px solid var(--surface);
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    .slider-value {
+      font-size: 13px; color: var(--fg);
+      font-variant-numeric: tabular-nums;
+      min-width: 32px; text-align: right;
+    }
+    .slider-scale {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--fg-subtle);
+      margin-top: 4px; padding: 0 2px;
+    }
+
+    /* ---------- Kill-switch toggle (AI brain card) ---------- */
+
+    .kill-switch {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+    }
+    .kill-switch .label-block { display: grid; gap: 2px; }
+    .kill-switch .label-block .label { font-size: 14px; }
+    .kill-switch .label-block .hint { font-size: 12px; }
+
+    .switch {
+      position: relative;
+      width: 40px; height: 22px;
+      border-radius: var(--radius-full);
+      background: var(--ai-accent);
+      cursor: pointer;
+      transition: background var(--dur-short) var(--ease-move);
+      flex-shrink: 0;
+      border: 0; padding: 0;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 2px; left: 20px;
+      width: 18px; height: 18px;
+      border-radius: var(--radius-full);
+      background: #fff;
+      transition: left var(--dur-short) var(--ease-move);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+    .switch[aria-checked="false"] {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+    .switch[aria-checked="false"]::after {
+      left: 1px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .switch[aria-checked="false"][data-paused="true"] {
+      background: color-mix(in srgb, var(--warning) 24%, var(--surface-2));
+      border-color: color-mix(in srgb, var(--warning) 40%, var(--border));
+    }
+    .switch:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--link);
+    }
+
+    /* ---------- AI accent inline indicators ---------- */
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 500;
+      padding: 2px 6px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--fg-muted); line-height: 1.3;
+    }
+    .badge-yuna {
+      color: var(--ai-accent);
+      background: var(--ai-accent-bg);
+      border-color: color-mix(in srgb, var(--ai-accent) 22%, var(--ai-accent-bg));
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      padding: 2px 6px;
+    }
+    .badge-success { color: var(--success); border-color: color-mix(in srgb, var(--success) 30%, var(--border)); background: color-mix(in srgb, var(--success) 6%, var(--surface)); }
+    .badge-success::before { content:""; width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; }
+
+    /* ---------- Test signature row ---------- */
+
+    .test-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: var(--space-md);
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+    }
+    .test-row .status {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--fg);
+    }
+    .test-row .status .dot { width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--success); }
+    .test-row .when { font-size: 12px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+
+    /* ---------- Brand voice dialogue pairs ---------- */
+
+    .dialogue-list { display: grid; gap: var(--space-sm); }
+    .dialogue {
+      display: grid;
+      gap: var(--space-xs);
+      padding: var(--space-md) var(--space-lg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+    }
+    .dialogue .turn { display: grid; grid-template-columns: 68px 1fr auto; gap: var(--space-md); align-items: start; }
+    .dialogue .turn .who { font-size: 12px; color: var(--fg-muted); padding-top: 2px; }
+    .dialogue .turn .who.yuna { color: var(--ai-accent); font-weight: 500; }
+    .dialogue .turn .text {
+      font-size: 14px; color: var(--fg);
+      line-height: 1.45;
+    }
+    .dialogue .turn .text .badge-yuna { margin-right: 4px; }
+    .dialogue .remove {
+      appearance: none; background: transparent; border: 0;
+      color: var(--fg-subtle); cursor: pointer; font-size: 12px;
+      padding: 2px 4px;
+    }
+    .dialogue .remove:hover { color: var(--fg); }
+    .dialogue + .add-sample { margin-top: var(--space-xs); }
+    .add-sample { padding: 9px 12px; color: var(--fg-muted); }
+
+    /* ---------- Compact rows: capacity, aftercare, team ---------- */
+
+    .table { width: 100%; border-collapse: collapse; }
+    .table th, .table td {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .table th { font-weight: 500; color: var(--fg-muted); font-size: 12px; letter-spacing: 0.02em; text-transform: uppercase; }
+    .table tr:last-child td { border-bottom: 0; }
+    .table td.num { font-variant-numeric: tabular-nums; text-align: right; }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; padding: 2px 8px; border-radius: var(--radius-full);
+      background: var(--surface-2); color: var(--fg-muted);
+      border: 1px solid var(--border-subtle);
+    }
+    .pill-owner { color: var(--fg); background: var(--surface); border-color: var(--border); }
+
+    /* ---------- DSAR / disclosure block ---------- */
+
+    .disclosure {
+      padding: var(--space-md) var(--space-lg);
+      background: var(--surface-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      color: var(--fg);
+      line-height: 1.5;
+    }
+    .disclosure .label-row {
+      font-size: 11px;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    .disclosure code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--surface);
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* ---------- Aftercare time pickers ---------- */
+
+    .time-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+    .toggle-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .toggle-row:last-child { border-bottom: 0; }
+    .toggle-row .when-text { font-size: 12px; color: var(--fg-muted); font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+    /* ---------- Billing usage meter ---------- */
+
+    .meter {
+      height: 8px; background: var(--surface-2);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .meter-fill {
+      height: 100%;
+      background: var(--fg);
+      border-radius: var(--radius-full);
+    }
+    .billing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-lg);
+    }
+    .price {
+      display: flex; align-items: baseline; gap: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .price .amount { font-size: 28px; font-weight: 600; letter-spacing: -0.015em; }
+    .price .per { font-size: 13px; color: var(--fg-muted); }
+
+    /* ---------- Save toast ---------- */
+
+    .toast {
+      position: fixed;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: 10px 16px;
+      background: var(--fg);
+      color: var(--bg);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      box-shadow: var(--shadow-modal);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--dur-short), transform var(--dur-short) var(--ease-enter);
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      z-index: 100;
+    }
+    .toast[data-visible="true"] {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast .check {
+      width: 14px; height: 14px;
+      border-radius: var(--radius-full);
+      background: var(--success);
+      display: grid; place-items: center;
+      color: #fff; font-size: 10px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .toast { transition: opacity var(--dur-short); }
+    }
+
+    /* ---------- Misc ---------- */
+
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0);
+      white-space: nowrap; border: 0;
+    }
+
+    .col-content, .col-nav { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+    .col-content::-webkit-scrollbar, .col-nav::-webkit-scrollbar { width: 8px; height: 8px; }
+    .col-content::-webkit-scrollbar-thumb, .col-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-full); }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar" role="banner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">Y</div>
+      <div>
+        <span class="brand-name">Yuna</span>
+        <span class="brand-sep">·</span>
+        <span class="brand-clinic">Sukhumvit Skin &amp; Laser</span>
+      </div>
+    </div>
+
+    <nav class="tabs" aria-label="Primary">
+      <button class="tab">Inbox <span class="count">7</span></button>
+      <button class="tab">Knowledge</button>
+      <button class="tab">Bookings <span class="count">3</span></button>
+      <button class="tab">Broadcasts</button>
+      <button class="tab" aria-current="page">Settings</button>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="avatar" title="Pim · staff">ภ</div>
+    </div>
+  </header>
+
+  <!-- ============ WORKSPACE ============ -->
+  <div class="workspace">
+
+    <!-- ===== LEFT NAV ===== -->
+    <aside class="col col-nav" aria-label="Settings sections">
+      <div class="nav-header">
+        <h2>Settings · 10</h2>
+      </div>
+      <ul class="nav-list">
+        <li><a class="nav-item" href="#clinic" data-target="clinic">Clinic profile</a></li>
+        <li><a class="nav-item" href="#line" data-target="line"><span>Line OA</span><span class="nav-tag-dot" aria-label="action needed" title="Test signature pending"></span></a></li>
+        <li><a class="nav-item" href="#ai-brain" data-target="ai-brain" aria-current="true"><span>AI brain</span><span class="nav-tag nav-tag-ai">Yuna</span></a></li>
+        <li><a class="nav-item" href="#kill-switch" data-target="kill-switch"><span>Kill switch</span><span class="nav-tag nav-tag-ai">Yuna</span></a></li>
+        <li><a class="nav-item" href="#brand-voice" data-target="brand-voice">Brand voice</a></li>
+        <li><a class="nav-item" href="#capacity" data-target="capacity">Capacity rules</a></li>
+        <li><a class="nav-item" href="#aftercare" data-target="aftercare">Aftercare</a></li>
+        <li><a class="nav-item" href="#privacy" data-target="privacy">Privacy &amp; retention</a></li>
+        <li><a class="nav-item" href="#team" data-target="team">Team</a></li>
+        <li><a class="nav-item" href="#billing" data-target="billing">Billing</a></li>
+      </ul>
+    </aside>
+
+    <!-- ===== CONTENT ===== -->
+    <section class="col col-content" aria-label="Settings">
+      <div class="content">
+
+        <header class="page-header">
+          <h1>Settings</h1>
+          <div class="sub" data-pretext>Each section saves on its own. Changes take effect on the next inbound message.</div>
+        </header>
+
+        <!-- ===== 1. CLINIC PROFILE (collapsed) ===== -->
+        <article class="card" id="clinic" data-open="false">
+          <header class="card-head" role="button" tabindex="0">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
+            </span>
+            <h2>Clinic profile</h2>
+            <span class="summary">Sukhumvit Skin &amp; Laser · Bangkok · 10:00–20:00 · TH, EN</span>
+            <span class="saved">Saved 3 days ago</span>
+          </header>
+          <div class="card-body">
+            <div class="field-row">
+              <div class="field">
+                <label class="label" for="clinic-name">Clinic name</label>
+                <input class="input" id="clinic-name" value="Sukhumvit Skin &amp; Laser" />
+              </div>
+              <div class="field">
+                <label class="label" for="clinic-tz">Timezone</label>
+                <select class="select" id="clinic-tz">
+                  <option>Asia/Bangkok (UTC+7)</option>
+                  <option>Asia/Singapore (UTC+8)</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="clinic-addr">Address</label>
+              <input class="input" id="clinic-addr" value="492/2 Sukhumvit Rd, Khlong Toei, Bangkok 10110" />
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="label" for="clinic-hours">Hours</label>
+                <input class="input" id="clinic-hours" value="Mon–Sat · 10:00–20:00" />
+              </div>
+              <div class="field">
+                <label class="label" for="clinic-langs">Languages spoken</label>
+                <input class="input" id="clinic-langs" value="Thai, English" />
+              </div>
+            </div>
+            <div class="card-actions">
+              <span class="save-meta">Last saved 3 days ago by Pim</span>
+              <button class="btn btn-secondary">Cancel</button>
+              <button class="btn btn-primary" data-save="clinic">Save changes</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===== 2. LINE OA (expanded) ===== -->
+        <article class="card" id="line" data-open="true">
+          <header class="card-head" role="button" tabindex="0">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
+            </span>
+            <h2>Line OA</h2>
+            <span class="summary">@sukhumvit-skin · channel Cf12…8a · last test 14:02 ✓</span>
+            <span class="saved">Saved 2 weeks ago</span>
+          </header>
+          <div class="card-body">
+            <p class="help" data-pretext>The clinic's Line Official Account credentials. Channel secret is encrypted at rest — only the last 4 characters are shown.</p>
+
+            <div class="field-row">
+              <div class="field">
+                <label class="label" for="line-id">Channel ID</label>
+                <input class="input input-mono" id="line-id" value="Cf12a93e8b8a" />
+              </div>
+              <div class="field">
+                <label class="label" for="line-oa">OA display name</label>
+                <input class="input" id="line-oa" value="@sukhumvit-skin" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="line-secret">Channel secret <span class="req">· encrypted</span></label>
+              <div style="display:grid;grid-template-columns:1fr auto;gap:8px;">
+                <input class="input input-mono" id="line-secret" value="••••••••••••••3f9c" readonly />
+                <button class="btn btn-secondary btn-sm">Rotate</button>
+              </div>
+              <span class="hint">Stored in Supabase Vault. Last rotated 14 days ago.</span>
+            </div>
+
+            <div class="field">
+              <label class="label" for="line-webhook">Webhook URL <span class="req">· read-only</span></label>
+              <input class="input input-mono" id="line-webhook" value="https://api.yuna.app/v1/line/webhook/cf12a93e8b8a" readonly />
+              <span class="hint">Paste this into the Line Developers Console → Messaging API → Webhook URL.</span>
+            </div>
+
+            <div class="field">
+              <label class="label">Verify connection</label>
+              <div class="test-row">
+                <div class="status">
+                  <span class="dot" aria-hidden="true"></span>
+                  <span>Last ping received</span>
+                </div>
+                <span class="when">Today · 14:02 ICT</span>
+                <button class="btn btn-secondary btn-sm">Test signature</button>
+              </div>
+              <span class="hint">Sends a signed test event from Yuna. Your webhook should respond within 1s.</span>
+            </div>
+
+            <div class="card-actions">
+              <span class="save-meta">Last saved 2 weeks ago by Owner</span>
+              <button class="btn btn-secondary">Cancel</button>
+              <button class="btn btn-primary" data-save="line">Save changes</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===== 3. AI BRAIN (expanded — teal accents) ===== -->
+        <article class="card" id="ai-brain" data-open="true">
+          <header class="card-head" role="button" tabindex="0">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
+            </span>
+            <h2>AI brain <span class="badge badge-yuna">Yuna</span></h2>
+            <span class="summary">Anthropic · claude-sonnet-4-7 · Cohere v3 · temp 0.4</span>
+            <span class="saved">Saved 4h ago</span>
+          </header>
+          <div class="card-body">
+            <p class="help" data-pretext>Which model writes Yuna's replies. Changes apply to new conversations — active threads finish on the current provider. All changes are written to the audit log.</p>
+
+            <div class="field">
+              <label class="label">Provider</label>
+              <div class="segment" role="radiogroup" aria-label="LLM provider">
+                <button role="radio" aria-pressed="false">OpenAI</button>
+                <button role="radio" aria-pressed="true">Anthropic</button>
+                <button role="radio" aria-pressed="false">Google</button>
+              </div>
+              <span class="hint">Recommended for Thai: Anthropic. You can change anytime.</span>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label class="label" for="ai-model">Model</label>
+                <select class="select" id="ai-model">
+                  <option>claude-sonnet-4-7 (recommended)</option>
+                  <option>claude-haiku-4-5</option>
+                  <option>claude-opus-4-7</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="ai-temp">Temperature</label>
+                <div class="slider-row">
+                  <input id="ai-temp" type="range" min="0" max="1" step="0.05" value="0.4" class="slider" />
+                  <span class="slider-value" id="ai-temp-val">0.40</span>
+                </div>
+                <div class="slider-scale"><span>Precise</span><span>Creative</span></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Embedding model</label>
+              <div class="locked-row">
+                <div class="lock">
+                  <svg class="ico" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="8" height="6" rx="1"/><path d="M4 5V3a2 2 0 0 1 4 0v2"/></svg>
+                  <span>Cohere embed-multilingual-v3</span>
+                </div>
+                <div class="meta">1024 dim · <button class="btn-link" type="button">Request override</button></div>
+              </div>
+              <span class="hint">Locked in v0. Changing the embedding model would require re-indexing your entire Knowledge base.</span>
+            </div>
+
+            <div class="card-actions">
+              <span class="save-meta">Last saved 4h ago by Owner · <button class="btn-link" type="button">View audit log</button></span>
+              <button class="btn btn-secondary">Cancel</button>
+              <button class="btn btn-primary" data-save="ai-brain">Save changes</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===== 4. KILL SWITCH (its own card — expanded) ===== -->
+        <article class="card" id="kill-switch" data-open="true">
+          <header class="card-head" role="button" tabindex="0">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
+            </span>
+            <h2>Kill switch <span class="badge badge-yuna">Yuna</span></h2>
+            <span class="summary">Yuna AI is active · no state change in 2 weeks</span>
+            <span class="saved">Owner-only</span>
+          </header>
+          <div class="card-body">
+            <p class="help" data-pretext>One toggle to pause Yuna for this clinic. Inbound messages route straight to the staff inbox until you turn her back on. Use this for off-hours, trainings, or if a customer flags Yuna's reply as wrong.</p>
+
+            <div class="kill-switch">
+              <div class="label-block">
+                <span class="label">Yuna AI is <span style="color:var(--ai-accent)">active</span></span>
+                <span class="hint">All inbound messages currently flow through Yuna with staff escalation as needed.</span>
+              </div>
+              <button class="switch" role="switch" aria-checked="true" data-kill-switch aria-label="Pause Yuna for this clinic"></button>
+            </div>
+
+            <div class="card-actions">
+              <span class="save-meta">No state change in the last 2 weeks · <button class="btn-link" type="button">View audit log</button></span>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===== 5. BRAND VOICE (expanded) ===== -->
+        <article class="card" id="brand-voice" data-open="true">
+          <header class="card-head" role="button" tabindex="0">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
+            </span>
+            <h2>Brand voice</h2>
+            <span class="summary">Warm · close-friend · 3 sample dialogues</span>
+            <span class="saved">Saved yesterday</span>
+          </header>
+          <div class="card-body">
+            <p class="help" data-pretext>Tell Yuna how she should sound. Free-form prompt sets the register; sample dialogues show, don't tell — they have the largest effect on tone.</p>
+
+            <div class="field">
+              <label class="label" for="voice-prompt">Voice prompt</label>
+              <textarea class="textarea textarea-lg" id="voice-prompt" data-pretext>ใช้น้ำเสียงอบอุ่น เหมือนพี่สาวที่คุยกับเพื่อนสนิท ไม่ทางการ ไม่หรูหรา ใช้คำว่า "ค่ะ" ลงท้ายเสมอ ห้ามใช้ภาษาทางการแพทย์ที่เข้าใจยาก ถ้าลูกค้าถามเรื่องที่ไม่แน่ใจ ให้บอกตรงๆ ว่าจะส่งให้พี่หมอช่วยดู ไม่เดา ไม่วินิจฉัย ไม่แนะนำยา</textarea>
+              <span class="hint">Plain Thai or English. Avoid mentioning specific prices — those come from Knowledge.</span>
+            </div>
+
+            <div class="field">
+              <label class="label">Sample dialogues <span class="req">· 3 of 5</span></label>
+              <div class="dialogue-list">
+
+                <div class="dialogue">
+                  <div class="turn">
+                    <span class="who">Customer</span>
+                    <div class="text" data-pretext>สวัสดีค่ะ ทำเลเซอร์รักแร้ราคาเท่าไหร่คะ</div>
+                    <button class="remove" aria-label="Remove">×</button>
+                  </div>
+                  <div class="turn">
+                    <span class="who yuna">Yuna</span>
+                    <div class="text" data-pretext><span class="badge badge-yuna">Yuna</span>สวัสดีค่ะ! เลเซอร์รักแร้ที่คลินิกเรามี 2 แพ็คเกจค่ะ แบบ 6 ครั้ง ราคา 8,900 บาท เฉลี่ยครั้งละไม่ถึง 1,500 ทำต่อเนื่องผลดีกว่าค่ะ จองคิวเลยมั้ยคะ?</div>
+                    <button class="remove" aria-label="Remove">×</button>
+                  </div>
+                </div>
+
+                <div class="dialogue">
+                  <div class="turn">
+                    <span class="who">Customer</span>
+                    <div class="text" data-pretext>ทำแล้วเจ็บมั้ย กลัวเข็มมาก</div>
+                    <button class="remove" aria-label="Remove">×</button>
+                  </div>
+                  <div class="turn">
+                    <span class="who yuna">Yuna</span>
+                    <div class="text" data-pretext><span class="badge badge-yuna">Yuna</span>ไม่ต้องกลัวเลยค่ะ เลเซอร์ไม่ใช้เข็มเลย เป็นแสงสั้นๆ พักผิวสักพัก ลูกค้าบอกรู้สึกเหมือนยางรัดเบาๆ เรามีเครื่องเป่าเย็นช่วยด้วยค่ะ</div>
+                    <button class="remove" aria-label="Remove">×</button>
+                  </div>
+                </div>
+
+                <div class="dialogue">
+                  <div class="turn">
+                    <span class="who">Customer</span>
+                    <div class="text" data-pretext>หลังทำควรดูแลตัวเองยังไงคะ</div>
+                    <button class="remove" aria-label="Remove">×</button>
+                  </div>
+                  <div class="turn">
+                    <span class="who yuna">Yuna</span>
+                    <div class="text" data-pretext><span class="badge badge-yuna">Yuna</span>หลังทำ 24 ชม. หลีกเลี่ยงน้ำร้อนกับการขัดถูแรงๆ นะคะ ทาครีมกันแดดทุกครั้งที่ออกแดด เดี๋ยวจะส่งไกด์ดูแลผิวฉบับเต็มให้นะคะ</div>
+                    <button class="remove" aria-label="Remove">×</button>
+                  </div>
+                </div>
+
+              </div>
+              <button class="btn btn-ghost add-sample" type="button">+ Add sample dialogue</button>
+            </div>
+
+            <div class="card-actions">
+              <span class="save-meta">Last saved yesterday by Owner</span>
+              <button class="btn btn-secondary">Cancel</button>
+              <button class="btn btn-primary" data-save="brand-voice">Save changes</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===== 5. CAPACITY RULES (collapsed) ===== -->
+        <article class="card" id="capacity" data-open="false">
+          <header class="card-head" role="button" tabindex="0">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
+            </span>
+            <h2>Capacity rules</h2>
+            <span class="summary">4 treatments · 18 bookings/day max</span>
+            <span class="saved">Saved 5 days ago</span>
+          </header>
+          <div class="card-body">
+            <p class="help" data-pretext>Informational only in v0. Yuna mentions these when customers ask about availability, but doesn't auto-block bookings.</p>
+            <table class="table">
+              <thead><tr><th>Treatment</th><th class="num">Bookings / day</th><th class="num">Slot length</th><th></th></tr></thead>
+              <tbody>
+                <tr><td>Underarm laser</td><td class="num">8</td><td class="num">30 min</td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
+                <tr><td>Picosure facial</td><td class="num">4</td><td class="num">60 min</td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
+                <tr><td>HIFU</td><td class="num">3</td><td class="num">90 min</td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
+                <tr><td>Consultation</td><td class="num">3</td><td class="num">20 min</td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
+              </tbody>
+            </table>
+            <div class="card-actions">
+              <span class="save-meta">Last saved 5 days ago by Pim</span>
+              <button class="btn btn-secondary">+ Add treatment</button>
+              <button class="btn btn-primary" data-save="capacity">Save changes</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===== 6. AFTERCARE (collapsed) ===== -->
+        <article class="card" id="aftercare" data-open="false">
+          <header class="card-head" role="button" tabindex="0">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
+            </span>
+            <h2>Aftercare schedule</h2>
+            <span class="summary">D1 · 10:00 ICT · D7 · 10:00 ICT · Thai + English</span>
+            <span class="saved">Saved 6 days ago</span>
+          </header>
+          <div class="card-body">
+            <p class="help" data-pretext>Day-1 and Day-7 followup messages send automatically after a treatment. Each reply passes a safety classifier before sending.</p>
+
+            <div class="toggle-row">
+              <div>
+                <div class="label">Day 1 followup</div>
+                <div class="when-text">Sends 10:00 ICT, one day after the appointment date.</div>
+              </div>
+              <button class="switch" role="switch" aria-checked="true" aria-label="Enable Day 1 followup"></button>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="label">Day 7 followup</div>
+                <div class="when-text">Sends 10:00 ICT, seven days after the appointment date.</div>
+              </div>
+              <button class="switch" role="switch" aria-checked="true" aria-label="Enable Day 7 followup"></button>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="label">Day 30 followup</div>
+                <div class="when-text">Off by default. Useful for laser series only.</div>
+              </div>
+              <button class="switch" role="switch" aria-checked="false" aria-label="Enable Day 30 followup"></button>
+            </div>
+
+            <div class="time-grid" style="margin-top:16px;">
+              <div class="field">
+                <label class="label" for="ac-time">Send time (clinic timezone)</label>
+                <input class="input" id="ac-time" type="time" value="10:00" />
+              </div>
+              <div class="field">
+                <label class="label" for="ac-langs">Template languages</label>
+                <select class="select" id="ac-langs">
+                  <option>Thai + English</option>
+                  <option>Thai only</option>
+                  <option>English only</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-actions">
+              <span class="save-meta">Last saved 6 days ago by Owner</span>
+              <button class="btn btn-secondary">Edit templates</button>
+              <button class="btn btn-primary" data-save="aftercare">Save changes</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===== 7. PRIVACY (collapsed) ===== -->
+        <article class="card" id="privacy" data-open="false">
+          <header class="card-head" role="button" tabindex="0">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
+            </span>
+            <h2>Privacy &amp; retention</h2>
+            <span class="summary">24-month retention · 3 sub-processors · DSAR enabled</span>
+            <span class="saved">Saved 30 days ago</span>
+          </header>
+          <div class="card-body">
+            <p class="help" data-pretext>How long conversation data is stored, and who processes it. These values appear in your PDPA disclosure to customers.</p>
+
+            <div class="field-row">
+              <div class="field">
+                <label class="label" for="ret-conv">Conversation retention</label>
+                <select class="select" id="ret-conv">
+                  <option>24 months (default)</option>
+                  <option>12 months</option>
+                  <option>6 months</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="ret-audit">Audit log retention</label>
+                <select class="select" id="ret-audit">
+                  <option>36 months (PDPA recommended)</option>
+                  <option>24 months</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Sub-processors</label>
+              <div class="disclosure">
+                <div class="label-row">Auto-generated from your current AI brain selection</div>
+                <div data-pretext>Anthropic <code>claude-sonnet-4-7</code> generates replies. Cohere <code>embed-multilingual-v3</code> embeds Knowledge for retrieval. Supabase (Singapore) stores all data at rest. Customer messages cross the SG–US border for the model call only; no personally identifiable data is retained by sub-processors.</div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Data subject access requests (DSAR)</label>
+              <div class="test-row">
+                <div class="status">
+                  <span class="dot" style="background:var(--info)" aria-hidden="true"></span>
+                  <span>DSAR endpoint live</span>
+                </div>
+                <span class="when">0 pending</span>
+                <button class="btn btn-secondary btn-sm">Export customer data</button>
+              </div>
+              <span class="hint">Staff can export or delete a customer's entire history within 30 days, as required by PDPA.</span>
+            </div>
+
+            <div class="card-actions">
+              <span class="save-meta">Last saved 30 days ago by Owner</span>
+              <button class="btn btn-secondary">Cancel</button>
+              <button class="btn btn-primary" data-save="privacy">Save changes</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===== 8. TEAM (collapsed) ===== -->
+        <article class="card" id="team" data-open="false">
+          <header class="card-head" role="button" tabindex="0">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
+            </span>
+            <h2>Team</h2>
+            <span class="summary">5 members · 1 owner · 4 staff</span>
+            <span class="saved">Saved 2 days ago</span>
+          </header>
+          <div class="card-body">
+            <table class="table">
+              <thead><tr><th>Member</th><th>Role</th><th class="num">Last active</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>Dr. Anchalee P.<div class="hint">anchalee@sukhumvit-skin.com</div></td>
+                  <td><span class="pill pill-owner">Owner</span></td>
+                  <td class="num">2h ago</td>
+                  <td><button class="btn btn-ghost btn-sm">Manage</button></td>
+                </tr>
+                <tr>
+                  <td>Pim (you)<div class="hint">pim@sukhumvit-skin.com</div></td>
+                  <td><span class="pill">Staff</span></td>
+                  <td class="num">now</td>
+                  <td><button class="btn btn-ghost btn-sm">Manage</button></td>
+                </tr>
+                <tr>
+                  <td>Nok<div class="hint">nok@sukhumvit-skin.com</div></td>
+                  <td><span class="pill">Staff</span></td>
+                  <td class="num">14h ago</td>
+                  <td><button class="btn btn-ghost btn-sm">Manage</button></td>
+                </tr>
+                <tr>
+                  <td>Tip<div class="hint">tip@sukhumvit-skin.com</div></td>
+                  <td><span class="pill">Staff</span></td>
+                  <td class="num">3 days ago</td>
+                  <td><button class="btn btn-ghost btn-sm">Manage</button></td>
+                </tr>
+                <tr>
+                  <td>Phak<div class="hint">phak@sukhumvit-skin.com · invite pending</div></td>
+                  <td><span class="pill">Staff</span></td>
+                  <td class="num">—</td>
+                  <td><button class="btn btn-ghost btn-sm">Resend invite</button></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="card-actions">
+              <span class="save-meta">Last saved 2 days ago by Owner</span>
+              <button class="btn btn-primary">+ Invite member</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===== 9. BILLING (collapsed) ===== -->
+        <article class="card" id="billing" data-open="false">
+          <header class="card-head" role="button" tabindex="0">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
+            </span>
+            <h2>Billing</h2>
+            <span class="summary">Starter · 4,247 / 10,000 msgs · renews in 8 days</span>
+            <span class="saved">Auto-renew on</span>
+          </header>
+          <div class="card-body">
+            <div class="billing-grid">
+              <div>
+                <div class="hint" style="margin-bottom:4px;">Current plan</div>
+                <div class="price">
+                  <span class="amount">฿2,490</span><span class="per">/ month</span>
+                </div>
+                <div class="hint" style="margin-top:6px;">Starter · up to 10,000 outbound messages</div>
+                <div style="margin-top:12px;"><button class="btn btn-secondary btn-sm">Compare plans</button></div>
+              </div>
+              <div>
+                <div class="hint" style="margin-bottom:4px;">Message volume · May</div>
+                <div class="meter"><div class="meter-fill" style="width:42%;"></div></div>
+                <div class="hint" style="margin-top:6px;font-variant-numeric:tabular-nums;">4,247 / 10,000 outbound · resets in 8 days</div>
+              </div>
+            </div>
+
+            <div class="field" style="margin-top:20px;">
+              <label class="label">Payment method</label>
+              <div class="test-row">
+                <div class="status">
+                  <span class="dot" style="background:var(--fg-subtle)" aria-hidden="true"></span>
+                  <span>Visa ending in 4242</span>
+                </div>
+                <span class="when">Expires 09/29</span>
+                <button class="btn btn-secondary btn-sm">Update</button>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <span class="save-meta">Next invoice: ฿2,490 on 2 Jun 2026</span>
+              <button class="btn btn-ghost">Download invoices</button>
+              <button class="btn btn-secondary">Manage plan</button>
+            </div>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- Save toast (hidden by default) -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="check" aria-hidden="true">✓</span>
+  <span id="toast-text">Saved</span>
+</div>
+
+<!-- ============ PRETEXT WIRING ============ -->
+<script type="module">
+  import { prepare, layout } from './pretext.js';
+
+  await document.fonts.ready;
+
+  // Pattern 1: Simple layout / Card grid — self-sizing multi-line text.
+  const elements = document.querySelectorAll('[data-pretext]');
+  const prepared = new Map();
+
+  function fontFor(el) {
+    const cs = getComputedStyle(el);
+    const weight = cs.fontWeight || '400';
+    const size = cs.fontSize || '14px';
+    const family = cs.fontFamily || 'IBM Plex Sans, sans-serif';
+    return `${weight} ${size} ${family}`;
+  }
+
+  function reprepare(el) {
+    // Skip non-leaf elements (badges inside dialogue text are children, not the layout target).
+    const text = el.textContent.trim();
+    if (!text) return;
+    prepared.set(el, prepare(text, fontFor(el)));
+  }
+
+  function relayout() {
+    for (const [el, handle] of prepared) {
+      // Only re-flow elements whose card is open; collapsed cards have clientWidth=0.
+      if (el.clientWidth < 20) continue;
+      const cs = getComputedStyle(el);
+      const padL = parseFloat(cs.paddingLeft) || 0;
+      const padR = parseFloat(cs.paddingRight) || 0;
+      const inner = Math.max(20, el.clientWidth - padL - padR);
+      const lineHeight = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) * 1.45);
+      const { height } = layout(handle, inner, lineHeight);
+      const padTop = parseFloat(cs.paddingTop) || 0;
+      const padBot = parseFloat(cs.paddingBottom) || 0;
+      el.style.minHeight = `${Math.ceil(height + padTop + padBot)}px`;
+    }
+  }
+
+  for (const el of elements) reprepare(el);
+  relayout();
+
+  // Re-prepare contenteditable changes.
+  for (const el of elements) {
+    if (el.contentEditable === 'true') {
+      new MutationObserver(() => { reprepare(el); relayout(); })
+        .observe(el, { characterData: true, subtree: true, childList: true });
+    }
+  }
+
+  // Resize-aware.
+  let raf = 0;
+  new ResizeObserver(() => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(relayout);
+  }).observe(document.body);
+
+  // ============ INTERACTIONS ============
+
+  // Collapsible cards.
+  document.querySelectorAll('.card-head').forEach((head) => {
+    const card = head.closest('.card');
+    const toggle = () => {
+      const open = card.dataset.open === 'true';
+      card.dataset.open = open ? 'false' : 'true';
+      // After expanding, re-flow the newly visible Pretext targets.
+      requestAnimationFrame(() => requestAnimationFrame(relayout));
+    };
+    head.addEventListener('click', (e) => {
+      // Don't toggle when clicking inside form controls (none in head, but safe).
+      if (e.target.closest('button, input, select')) return;
+      toggle();
+    });
+    head.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
+  });
+
+  // Section nav scroll-spy + active state.
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach((item) => {
+    item.addEventListener('click', (e) => {
+      const targetId = item.dataset.target;
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      e.preventDefault();
+      // Open the card if collapsed.
+      if (target.dataset.open === 'false') {
+        target.dataset.open = 'true';
+        requestAnimationFrame(() => requestAnimationFrame(relayout));
+      }
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      navItems.forEach((i) => i.removeAttribute('aria-current'));
+      item.setAttribute('aria-current', 'true');
+    });
+  });
+
+  // Scroll-spy: highlight the section nearest the top of the viewport.
+  const cards = document.querySelectorAll('.card[id]');
+  const contentEl = document.querySelector('.col-content');
+  const onScroll = () => {
+    let activeId = null;
+    let bestDistance = Infinity;
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      const distance = Math.abs(rect.top - 80);
+      if (rect.top < window.innerHeight && rect.bottom > 0 && distance < bestDistance) {
+        bestDistance = distance;
+        activeId = card.id;
+      }
+    }
+    if (activeId) {
+      navItems.forEach((i) => i.toggleAttribute('aria-current', i.dataset.target === activeId));
+      navItems.forEach((i) => i.dataset.target === activeId ? i.setAttribute('aria-current', 'true') : i.removeAttribute('aria-current'));
+    }
+  };
+  if (contentEl) contentEl.addEventListener('scroll', onScroll, { passive: true });
+
+  // Provider segmented control.
+  document.querySelectorAll('.segment').forEach((seg) => {
+    const buttons = seg.querySelectorAll('button[role="radio"]');
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        buttons.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+      });
+    });
+  });
+
+  // Temperature slider readout.
+  const temp = document.getElementById('ai-temp');
+  const tempVal = document.getElementById('ai-temp-val');
+  if (temp && tempVal) {
+    temp.addEventListener('input', () => {
+      tempVal.textContent = parseFloat(temp.value).toFixed(2);
+    });
+  }
+
+  // Kill switch & toggle rows.
+  document.querySelectorAll('.switch').forEach((sw) => {
+    sw.addEventListener('click', () => {
+      const on = sw.getAttribute('aria-checked') === 'true';
+      sw.setAttribute('aria-checked', on ? 'false' : 'true');
+      // Kill switch in AI brain card: when off, mark as paused (amber).
+      if (sw.dataset.killSwitch !== undefined) {
+        if (on) sw.dataset.paused = 'true';
+        else delete sw.dataset.paused;
+        // Update the active/paused label next to it.
+        const labelEl = sw.parentElement.querySelector('.label-block .label span');
+        if (labelEl) {
+          labelEl.textContent = on ? 'paused' : 'active';
+          labelEl.style.color = on ? 'var(--warning)' : 'var(--ai-accent)';
+        }
+      }
+    });
+  });
+
+  // Save buttons → toast.
+  const toast = document.getElementById('toast');
+  const toastText = document.getElementById('toast-text');
+  let toastTimer = 0;
+  document.querySelectorAll('[data-save]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const section = btn.dataset.save;
+      toastText.textContent = `Saved · ${section.replace('-', ' ')}`;
+      toast.dataset.visible = 'true';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.dataset.visible = 'false'; }, 2400);
+
+      // Update the section's "Saved" timestamp.
+      const card = btn.closest('.card');
+      const saved = card?.querySelector('.card-head .saved');
+      if (saved) saved.textContent = 'Just saved';
+    });
+  });
+
+  // Tab nav placeholder (don't navigate, just visual).
+  document.querySelectorAll('.tabs .tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      if (tab.getAttribute('aria-current') === 'page') return;
+      // No-op in mockup. Real app would route.
+    });
+  });
+</script>
+
+</body>
+</html>

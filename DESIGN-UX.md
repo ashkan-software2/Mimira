@@ -45,14 +45,17 @@ The admin app has 5 tabs. Each screen below lists purpose, what the user sees fi
 
 ### Broadcasts
 **Purpose:** Owner composes and sends manual broadcasts (promotions, news).
+
+**v0 scope:** No in-app push-quota readout. Pulling Line's per-OA quota in real time is operationally awkward; clinics already see the canonical number in Line OA Manager. v0 lets Line server-side enforce the cap and surfaces partial sends post-hoc (see Interaction State Matrix below). Tag-based segments are deferred to a future Pro tier — v0 ships only **All customers** and **Last 90 days**.
+
 **Information hierarchy:**
-1. **Push-quota readout** (banner, always visible at top) — "Used 4,200 / 10,000 this month — resets in 8 days." Turns amber at 80%, red at 95%.
-2. **Composer** (center) — message body with character counter (Line limit 5,000), optional image, target segment (all / last-90-day bookings / staff-defined tag), schedule (now / scheduled).
-3. **Past broadcasts** (below) — list with read receipts (if Line OA tier supports) and reply counts.
+1. **Composer** (top) — recipient segment (two cards: All customers / Last 90 days; a third "By tag" card is visible but disabled with a `Pro` badge), message body with character counter (Line limit 5,000), optional image, schedule (now / scheduled).
+2. **Live Line preview** (right side of composer) — phone-framed mockup of how the message appears on Line, re-wraps live as the owner types.
+3. **Past broadcasts** (below) — list of recent sends with delivered / scheduled / stopped-early states, recipient counts, read percentage, and reply counts.
 
-**Primary CTA:** "Send now" (large, bottom-right). Disabled until a target segment is selected.
+**Primary CTA:** "Send to N" (bottom-right of composer). A segment is preselected (Last 90 days), so the CTA is never disabled at idle — clicking the disabled "By tag" card does nothing and shows the `Pro` badge.
 
-**Edge:** If a broadcast would exceed remaining monthly push quota, Send is disabled with a tooltip explaining how many recipients fit in the remaining quota.
+**Edge:** A broadcast that Line stops mid-send (quota exhausted, OA suspended, or other Line-side rejection) appears in the past-broadcasts list as `Stopped early` with the partial recipient count (e.g. `3,400 / 4,210`). No pre-send guard in v0; the owner sees the outcome, not a prediction.
 
 ### Settings
 **Purpose:** Owner configures everything that affects Yuna's behavior, billing, and team.
@@ -84,8 +87,7 @@ Every feature ships with all five states designed. Missing states = engineer shi
 | Knowledge — tree | Skeleton tree (5 placeholder leaves) | 3-step starter (see Knowledge empty state above) | "Couldn't load knowledge base. Retry." | Document saved → toast "Saved. Reindexing 14 chunks…" → "Reindex complete. Live in 30s." | "8 of 12 documents loaded — loading remaining" with progress |
 | Knowledge — editor | Editor placeholder shimmer | "Pick a document from the tree or click Add Document." | "Failed to save — your edits are kept locally. Retry." | Save → "Saved" → fades to "Saved 8s ago" | Auto-saved draft toast every 30s |
 | Bookings — queue | Skeleton cards (3) | "No pending bookings. New requests appear here when a customer commits in chat." + link to a sample chat | "Couldn't load bookings. Retry." | Confirm → card slides to Confirmed section with a green check | Missing-fields cards highlighted yellow with "needs phone" badge |
-| Broadcasts — composer | n/a (instant) | n/a (always usable) | If image upload fails: inline below image area "Couldn't upload. Try a smaller image or paste a Line CDN URL." | Send → progress bar (recipients reached / total) → toast "Sent to 4,210 / 4,210 customers" | Mid-send quota exhausted: "Stopped at 3,400 / 4,210 — quota exhausted. Remaining resumes next month." |
-| Broadcasts — quota readout | Skeleton bar | n/a (always has a value if Line OA connected) | "Couldn't fetch quota. Estimated 8,500 / 10,000 based on last sync." | Real-time tick as broadcasts send | If Line OA disconnected: red banner "Line OA disconnected — reconnect in Settings" |
+| Broadcasts — composer | n/a (instant) | n/a (always usable) | If image upload fails: inline below image area "Couldn't upload. Try a smaller image or paste a Line CDN URL." | Send → progress bar (recipients reached / total) → toast "Sent to 4,210 / 4,210 customers" | Line stopped the send mid-flight (quota / OA suspended / API error): broadcast appears in the log as `Stopped early` with the partial count (e.g. `3,400 / 4,210`) and a tooltip showing the Line error response. No in-app quota readout; the owner's source of truth for remaining quota is Line OA Manager. |
 | Settings — any section | Skeleton fields per section | n/a (always has defaults) | "Couldn't save. Your changes are kept locally — retry?" | Save → toast "Saved" → audit log entry in background | Field-level validation: red inline text below the field, never a global error |
 | Customer first-contact consent (Line) | n/a | n/a | If Line API fails, customer sees nothing; server-side retry | Customer sees Thai consent message + 2 quick-reply buttons ("ยินยอม" / "สอบถามก่อน") | n/a |
 | Aftercare D1/D7 send | n/a (server-side) | n/a | DLQ after 3 retries; `audit_events` entry visible to staff | Sent → `audit_events` entry + delivered tag in customer's conversation | LLM-judge classifier blocks an aftercare reply: doesn't send, escalates to staff inbox with "auto-blocked: diagnosis language detected" |
@@ -150,7 +152,7 @@ There is no visual `DESIGN.md` yet. To prevent the admin UI from defaulting to A
 - Generic hero copy is banned. The login page header is NOT "Welcome to Yuna." It is a concrete one-sentence statement of what Yuna does for this clinic.
 - **Typography:** pick a real Thai-aware typeface (recommend IBM Plex Sans Thai Looped or Noto Sans Thai) for both UI and content. Do NOT ship with `system-ui` as the primary font — Thai script in `system-ui` falls back to vendor defaults that look unprofessional.
 - Body text minimum 16px. Thai script needs the height; 14px is unreadable for casual register.
-- Tabular numerics (`font-variant-numeric: tabular-nums`) on number columns (push-quota, message counts, dates).
+- Tabular numerics (`font-variant-numeric: tabular-nums`) on number columns (recipient counts, message counts, dates).
 
 **Litmus checks before week 4 demo:**
 1. Brand/product unmistakable in first screen? — must be YES (logo + product tagline on every screen)
@@ -205,7 +207,7 @@ Each will haunt implementation if deferred without owner input. Recommendation g
 | 5 | **Customer-side staff handoff UX** — does the customer see "a staff member is replying" or does the conversation just continue? | Customer is confused why reply tone suddenly changes | **One subtle Thai transition message:** "เจ้าหน้าที่กำลังตอบกลับค่ะ". Single sentence, no separate avatar/branding. Sent once per handoff, not per staff message. |
 | 6 | **Knowledge document structure** — single dump per category or structured per file | Engineer ships single textarea per category; RAG recall suffers; clinic edits become big-bang re-embeddings | **Structured: each treatment / device / FAQ entry is its own document with metadata.** Plan already leans this way (Open Question #2). Lock it in. |
 | 7 | **Consent message Thai copy** — formal legal vs. friendly short-text | Formal text scares customers off; chat completion rate drops | **Friendly short-text (2–3 sentences) + a "Read full terms" link to a longer formal version.** Get clinic #1's lawyer to vet both. |
-| 8 | **Push-quota readout placement** — Broadcasts tab only, or banner across the app | Broadcast sender hits quota mid-send because they didn't look at the readout | **Both: tab-level prominent banner in Broadcasts, plus a tiny indicator in the global top bar turning amber/red at thresholds.** |
+| 8 | ~~**Push-quota readout placement**~~ — **RESOLVED 2026-05-25: no in-app quota readout in v0** | Owner doesn't see remaining quota inside Yuna; they look at Line OA Manager (the canonical source) | **No quota UI in v0.** Pulling per-OA quota from Line in real time is operationally awkward, and the clinic already sees the canonical number in Line OA Manager. Line server-side enforces the cap; Yuna surfaces partial sends post-hoc in the broadcast log as `Stopped early` with the partial recipient count. Surfacing quota in-app is reserved for a future Pro tier. |
 
 ---
 
@@ -234,7 +236,7 @@ Nothing. Yuna is greenfield. Every component, screen, and visual decision is bei
 | T4 | P1 | ~4h / ~15min | inbox-states | Implement all 5 states for Inbox per state matrix | Pass 2 — state matrix |
 | T5 | P1 | ~2h / ~10min | knowledge-empty | Build the 3-step starter empty state with a hard go-live gate | Knowledge empty state spec |
 | T6 | P2 | ~3h / ~10min | settings-cards | Split Settings into 9 independently-saving collapsible cards | Settings information hierarchy |
-| T7 | P2 | ~2h / ~10min | quota-banner | Top-bar quota indicator + Broadcasts tab banner | Unresolved #8 — quota placement |
+| T7 | — | — | — | ~~Top-bar quota indicator + Broadcasts tab banner~~ — **DROPPED 2026-05-25.** Quota tracking is not in v0 (see Unresolved #8 resolution); the broadcast log's `Stopped early` state covers the failure case. Tag-based segments also deferred to Pro tier — v0 Broadcasts ships with two segments (All customers · Last 90 days) and a disabled `Pro`-badged "By tag" card. | Unresolved #8 — quota placement |
 | T8 | P2 | ~4h / ~15min | sse-inbox | Real-time Inbox updates via SSE with polling fallback | Unresolved #4 — Inbox real-time |
 | T9 | P2 | ~2h / ~10min | staff-handoff | Auto-send "เจ้าหน้าที่กำลังตอบกลับค่ะ" on takeover (once per handoff) | Unresolved #5 — staff handoff UX |
 | T10 | P3 | ~1h / ~5min | consent-copy | Clinic #1's lawyer vets short + long Thai consent text | Unresolved #7 — consent copy |

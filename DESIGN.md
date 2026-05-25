@@ -50,7 +50,7 @@ Clinics need an AI that handles inquiries with brand-specific warm Thai voice, a
 
 - **Webhook signature verification** required on every request (HMAC-SHA256 of body with channel secret). Reject unverified webhooks before any work.
 - **Reply token expires in 60 seconds.** This forces async: ack the webhook immediately (< 1 sec), then process + reply via push or queued reply. Design assumes a queue, not in-request LLM calls.
-- **Monthly push quotas** per Line OA (varies by clinic plan). Broadcast and D1/D7 aftercare consume push budget; the admin UI must surface remaining quota or the clinic will hit a cliff. v0: show current month's used/limit on Settings.
+- **Monthly push quotas** per Line OA (varies by clinic plan). Broadcast and D1/D7 aftercare consume push budget. **v0 does NOT surface quota in the admin UI** — pulling reliable real-time quota from Line per-OA is operationally awkward, and clinics already see the canonical number in the Line OA Manager. v0 lets Line server-side enforce the cap and reports the result post-hoc (a broadcast that Line rejects mid-send shows as "Stopped early" with the partial count in the Broadcasts log). Surfacing quota in-app is reserved for a future Pro tier — see [TODOS.md](TODOS.md) and [DESIGN-UX.md](DESIGN-UX.md) Unresolved #8.
 - **Inbound message types:** customers send images of skin conditions and stickers constantly. v0 = text only; image/sticker/audio messages get a polite Thai fallback ("ทีมงานจะตอบกลับเร็วๆ นี้") and route directly to staff escalation queue. Image understanding deferred.
 
 ### PDPA Compliance (v0)
@@ -106,7 +106,7 @@ Skipped this session — user prioritized velocity. A Codex / second-Claude cold
 - **Channel adapter:** Line Messaging API webhook → normalized internal `Message` type → bot pipeline. The adapter interface is what lets FB / WhatsApp / IG plug in later without core rewrites.
 - **Scheduler:** **Inngest.** Thailand-friendly, free tier covers v0, durable execution and retry built in. Used for D1/D7 aftercare and broadcast send.
 - **Scheduled message reliability:** `scheduled_messages` table with `(clinic_id, customer_id, kind, scheduled_for, idempotency_key)` and status state machine (`pending → sending → sent | failed → dlq`). Max 3 retries with exponential backoff. Idempotency key prevents double-sends on retry.
-- **Admin UI:** Same Next.js app. **Two roles in v0: `owner` and `staff`** (manager role deferred until a clinic actually asks for it). Tabs: Inbox (escalated chats + take-over), Knowledge (upload + manage docs), Bookings (intent queue), Broadcasts (compose + send), Settings (LLM provider, brand voice, capacity rules, Line OA credentials, retention, push-quota readout, staff invites).
+- **Admin UI:** Same Next.js app. **Two roles in v0: `owner` and `staff`** (manager role deferred until a clinic actually asks for it). Tabs: Inbox (escalated chats + take-over), Knowledge (upload + manage docs), Bookings (intent queue), Broadcasts (compose + send), Settings (LLM provider, brand voice, capacity rules, Line OA credentials, retention, staff invites).
 - **Auth:** Supabase Auth. `org_id` claim in JWT, used by RLS.
 - **Secrets:** Per-clinic LLM API keys and Line OA channel credentials encrypted at rest in **Supabase Vault**. Master key stored in Vercel env var. Rotation runbook documented in `/docs/secrets-rotation.md`.
 - **Hosting:** Vercel (app) + Supabase Singapore (DB + Vault) + Inngest (scheduler). All Singapore-region or Singapore-aware.
@@ -118,7 +118,7 @@ Skipped this session — user prioritized velocity. A Codex / second-Claude cold
 3. **Week 3:** LLM provider abstraction. Chat pipeline: receive → RAG retrieve → LLM reply with brand voice → escalate-or-respond decision. PDPA consent message on first inbound.
 4. **Week 4:** Admin inbox (see active/escalated chats, take over, send manual reply). Brand voice + LLM provider configuration UI in Settings.
 5. **Week 5:** Booking intent capture + booking queue UI. Per-clinic capacity rule fields (informational v0, no auto-enforcement). Aftercare scheduler infrastructure: `scheduled_messages` table + Inngest jobs + state machine.
-6. **Week 6:** Aftercare safety guardrails (deny-list prompt + keyword tripwires + LLM-judge classifier + `audit_events` table). 50-turn labeled eval set built with clinic #1. Simple broadcast composer + push-quota readout. **Clinic #1 cutover happens at end of week 6.**
+6. **Week 6:** Aftercare safety guardrails (deny-list prompt + keyword tripwires + LLM-judge classifier + `audit_events` table). 50-turn labeled eval set built with clinic #1. Simple broadcast composer (two segments in v0: All customers + Last-90-days; tag-based segmentation deferred to Pro). Line push-cap errors surface in the broadcast log post-hoc — no in-app quota readout. **Clinic #1 cutover happens at end of week 6.**
 7. **Week 7:** Polish + bug squash + clinic #1 stabilization + demo prep. DSAR endpoint + retention TTL. Analytics folder placeholder + README listing the events to track later.
 8. **Week 8 (buffer):** Whatever the previous 7 weeks didn't predict. Singapore region quirks, Line webhook edge cases, scheduler retries — there will be one of these. Plan for it.
 

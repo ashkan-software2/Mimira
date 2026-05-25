@@ -1,0 +1,1195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Broadcasts · Yuna</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #fafbfc;
+      --surface: #ffffff;
+      --surface-2: #f7f8fa;
+      --fg: #0a0a0a;
+      --fg-muted: #6b7280;
+      --fg-subtle: #9ca3af;
+      --border: #e5e7eb;
+      --border-subtle: #f1f3f5;
+      --cta-fill: #0a0a0a;
+      --cta-fg: #ffffff;
+      --ai-accent: #0a7c7c;
+      --ai-accent-bg: #ecf6f6;
+      --link: #2563eb;
+      --success: #16a34a;
+      --warning: #d97706;
+      --error: #dc2626;
+      --info: #2563eb;
+
+      --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Thai Looped', system-ui, sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+      --space-2xs: 2px;
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 12px;
+      --space-lg: 16px;
+      --space-xl: 24px;
+      --space-2xl: 32px;
+
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+
+      --shadow-modal: 0 4px 20px rgba(0,0,0,0.08);
+
+      --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+      --ease-move: cubic-bezier(0.45, 0, 0.55, 1);
+      --dur-micro: 80ms;
+      --dur-short: 160ms;
+      --dur-medium: 240ms;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0a0a0a;
+        --surface: #141414;
+        --surface-2: #1a1a1a;
+        --fg: #fafafa;
+        --fg-muted: #a1a1aa;
+        --fg-subtle: #71717a;
+        --border: #27272a;
+        --border-subtle: #1f1f23;
+        --cta-fill: #fafafa;
+        --cta-fg: #0a0a0a;
+        --ai-accent: #2dd4bf;
+        --ai-accent-bg: #0e2a2a;
+        --link: #60a5fa;
+        --info: #60a5fa;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    button { font-family: inherit; }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0);
+      white-space: nowrap; border: 0;
+    }
+
+    /* ---------- App shell ---------- */
+
+    .app {
+      display: grid;
+      grid-template-rows: 52px 1fr;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    /* ---------- Top bar (shared with Inbox) ---------- */
+
+    .topbar {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: var(--space-xl);
+      padding: 0 var(--space-xl);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+    .brand-mark {
+      width: 22px;
+      height: 22px;
+      border-radius: var(--radius-sm);
+      background: var(--fg);
+      color: var(--bg);
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .brand-name { color: var(--fg); }
+    .brand-clinic { color: var(--fg-muted); font-weight: 400; }
+    .brand-sep { color: var(--fg-subtle); }
+
+    .tabs {
+      display: flex;
+      gap: var(--space-2xs);
+      justify-self: start;
+    }
+    .tab {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg-muted);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: color var(--dur-micro) var(--ease-move), background var(--dur-micro) var(--ease-move);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab:hover { color: var(--fg); background: var(--surface-2); }
+    .tab[aria-current="page"] { color: var(--fg); background: var(--surface-2); }
+    .tab .count {
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      color: var(--fg-muted);
+      background: var(--border-subtle);
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      min-width: 18px;
+      text-align: center;
+    }
+    .tab[aria-current="page"] .count { color: var(--fg); background: var(--surface); border: 1px solid var(--border); }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+    }
+
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-full);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    /* ---------- Workspace shell (Broadcasts is desktop-primary) ---------- */
+
+    .workspace {
+      min-height: 0;
+      overflow-y: auto;
+      padding: var(--space-xl) var(--space-xl) var(--space-2xl);
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xl);
+    }
+
+    /* ---------- Two-column composer + preview ---------- */
+
+    .work {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: var(--space-xl);
+      align-items: start;
+    }
+    @media (max-width: 1100px) {
+      .work {
+        grid-template-columns: 1fr;
+      }
+      .preview { order: -1; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: var(--space-md) var(--space-xl);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-md);
+    }
+    .card-header h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+    }
+    .card-header .hint {
+      font-size: 12px;
+      color: var(--fg-subtle);
+    }
+
+    /* ---------- Composer (slab 2 left) ---------- */
+
+    .composer-body {
+      padding: var(--space-lg) var(--space-xl) var(--space-xl);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xl);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    .field-label {
+      font-size: 12px;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 500;
+    }
+
+    /* Segment radio cards */
+    .segments {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: var(--space-sm);
+    }
+    @media (max-width: 720px) { .segments { grid-template-columns: 1fr; } }
+
+    .segment {
+      position: relative;
+      display: block;
+      padding: var(--space-md) var(--space-lg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      cursor: pointer;
+      transition: border-color var(--dur-micro), background var(--dur-micro);
+    }
+    .segment:hover { border-color: var(--fg-muted); }
+    .segment input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .segment-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+    .segment-count {
+      font-size: 12px;
+      color: var(--fg-muted);
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+    }
+    .segment[data-selected="true"] {
+      border-color: var(--fg);
+      background: var(--surface-2);
+      box-shadow: inset 0 0 0 1px var(--fg);
+    }
+    .segment .check {
+      position: absolute;
+      top: 10px; right: 12px;
+      width: 14px; height: 14px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: grid;
+      place-items: center;
+    }
+    .segment[data-selected="true"] .check {
+      background: var(--fg);
+      border-color: var(--fg);
+    }
+    .segment[data-selected="true"] .check::after {
+      content: "";
+      width: 5px; height: 8px;
+      border: 1.5px solid var(--bg);
+      border-top: 0;
+      border-left: 0;
+      transform: translateY(-1px) rotate(45deg);
+    }
+
+    /* Disabled (Pro-gated) segment */
+    .segment[aria-disabled="true"] {
+      cursor: not-allowed;
+      background: var(--surface-2);
+      opacity: 0.7;
+    }
+    .segment[aria-disabled="true"]:hover { border-color: var(--border); background: var(--surface-2); }
+    .segment[aria-disabled="true"] .segment-name { color: var(--fg-muted); }
+    .segment[aria-disabled="true"] .check { display: none; }
+
+    .pro-badge {
+      position: absolute;
+      top: 10px; right: 12px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
+    }
+
+    .tag-picker {
+      margin-top: var(--space-sm);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--fg-subtle);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .tag-picker svg { flex: none; color: var(--fg-subtle); }
+
+    /* Message body */
+    .body-frame {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      transition: border-color var(--dur-micro), box-shadow var(--dur-micro);
+    }
+    .body-frame:focus-within {
+      border-color: var(--link);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--link) 18%, transparent);
+    }
+    .body-input {
+      font: inherit;
+      font-size: 15px;
+      line-height: 1.5;
+      width: 100%;
+      min-height: 132px;
+      max-height: 360px;
+      resize: none;
+      padding: var(--space-md) var(--space-lg);
+      border: 0;
+      background: transparent;
+      color: var(--fg);
+      display: block;
+    }
+    .body-input:focus { outline: none; }
+    .body-input::placeholder { color: var(--fg-subtle); }
+
+    .body-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      padding: var(--space-sm) var(--space-lg);
+      border-top: 1px solid var(--border-subtle);
+      background: var(--surface-2);
+      border-bottom-left-radius: var(--radius-md);
+      border-bottom-right-radius: var(--radius-md);
+    }
+    .body-tools {
+      display: inline-flex;
+      gap: var(--space-2xs);
+    }
+    .icon-btn {
+      appearance: none;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      font-size: 12px;
+      color: var(--fg-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: color var(--dur-micro), background var(--dur-micro);
+    }
+    .icon-btn:hover { color: var(--fg); background: var(--surface); border-color: var(--border); }
+    .char-count {
+      font-size: 11px;
+      color: var(--fg-subtle);
+      font-variant-numeric: tabular-nums;
+    }
+    .char-count.warn { color: var(--warning); }
+    .char-count.over { color: var(--error); }
+
+    /* Schedule row */
+    .schedule {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+    }
+    .seg-toggle {
+      display: inline-flex;
+      padding: 2px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .seg-toggle button {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      padding: 6px 12px;
+      font-size: 13px;
+      color: var(--fg-muted);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background var(--dur-micro), color var(--dur-micro);
+    }
+    .seg-toggle button[aria-pressed="true"] {
+      background: var(--surface);
+      color: var(--fg);
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    .when-meta {
+      font-size: 13px;
+      color: var(--fg-muted);
+    }
+    .when-meta strong { color: var(--fg); font-weight: 500; }
+
+    /* Composer footer (send) */
+    .composer-foot {
+      padding: var(--space-md) var(--space-xl);
+      border-top: 1px solid var(--border);
+      background: var(--surface-2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+    }
+    .send-meta {
+      font-size: 13px;
+      color: var(--fg-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .send-meta strong { color: var(--fg); font-weight: 500; }
+    .send-meta.warn { color: var(--warning); }
+
+    /* ---------- Buttons (shared with Inbox) ---------- */
+
+    .btn {
+      appearance: none;
+      padding: 9px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background var(--dur-micro) var(--ease-move), border-color var(--dur-micro);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary { background: var(--cta-fill); color: var(--cta-fg); border-color: var(--cta-fill); }
+    .btn-primary:hover { background: #1f1f1f; border-color: #1f1f1f; }
+    .btn-primary[disabled] { opacity: 0.5; pointer-events: none; }
+    .btn-secondary { background: var(--surface); color: var(--fg); border-color: var(--border); }
+    .btn-secondary:hover { border-color: var(--fg-muted); }
+    .btn-ghost { background: transparent; color: var(--fg-muted); }
+    .btn-ghost:hover { color: var(--fg); background: var(--surface); }
+    .btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--link);
+    }
+
+    /* ---------- Live Line preview (slab 2 right) ---------- */
+
+    .preview {
+      position: sticky;
+      top: var(--space-xl);
+    }
+    .preview .card-header .hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .preview-stage {
+      padding: var(--space-lg);
+      background: var(--surface-2);
+      display: grid;
+      place-items: center;
+    }
+
+    /* Phone frame */
+    .phone {
+      width: 280px;
+      background: #f5f6f7;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 4px var(--surface);
+      display: flex;
+      flex-direction: column;
+    }
+    .phone-bar {
+      background: var(--surface);
+      padding: 8px 14px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .phone-bar .back {
+      color: var(--fg-muted);
+      font-size: 18px;
+      line-height: 1;
+    }
+    .phone-bar .clinic-mark {
+      width: 28px; height: 28px;
+      border-radius: var(--radius-full);
+      background: linear-gradient(0deg, #d9d9d9, #ececec);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    .phone-bar .name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg);
+      line-height: 1.1;
+    }
+    .phone-bar .name small {
+      display: block;
+      font-size: 10px;
+      color: var(--fg-subtle);
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    .phone-scroll {
+      padding: 14px 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #f0f1f3;
+      flex: 1;
+      min-height: 320px;
+    }
+    .phone-time {
+      align-self: center;
+      font-size: 10px;
+      color: var(--fg-subtle);
+      padding: 2px 8px;
+      background: rgba(0,0,0,0.04);
+      border-radius: var(--radius-full);
+    }
+    .phone-bubble-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+    .phone-image {
+      width: 220px;
+      height: 124px;
+      border-radius: 14px;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--ai-accent) 24%, #fff) 0%, color-mix(in srgb, var(--ai-accent) 6%, #fff) 100%);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: var(--fg-muted);
+      font-size: 11px;
+    }
+    .phone-bubble {
+      max-width: 220px;
+      background: var(--surface);
+      color: var(--fg);
+      border-radius: 14px;
+      border-top-left-radius: 4px;
+      padding: 9px 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .phone-meta {
+      font-size: 10px;
+      color: var(--fg-subtle);
+      padding: 0 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ---------- Past broadcasts (slab 3) ---------- */
+
+    .past-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .past-header {
+      padding: var(--space-md) var(--space-xl);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-md);
+    }
+    .past-header h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+    }
+    .past-list {
+      display: flex;
+      flex-direction: column;
+    }
+    .past-row {
+      display: grid;
+      grid-template-columns: 132px minmax(0, 1fr) 110px 110px 110px;
+      gap: var(--space-md) var(--space-xl);
+      align-items: center;
+      padding: var(--space-md) var(--space-xl);
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background var(--dur-micro);
+    }
+    .past-row:hover { background: var(--surface-2); }
+    .past-row:last-child { border-bottom: 0; }
+
+    @media (max-width: 900px) {
+      .past-row { grid-template-columns: 1fr auto; }
+      .past-row .stat { display: none; }
+    }
+
+    .past-when {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+    .past-when .date {
+      font-size: 13px;
+      color: var(--fg);
+      font-weight: 500;
+    }
+    .past-when .time {
+      font-size: 11px;
+      color: var(--fg-subtle);
+    }
+
+    .past-preview {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .past-preview .line {
+      font-size: 13px;
+      color: var(--fg);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .past-tags {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      font-size: 13px;
+      color: var(--fg);
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat .v { font-weight: 500; }
+    .stat .l { font-size: 11px; color: var(--fg-subtle); letter-spacing: 0.04em; text-transform: uppercase; }
+
+    /* ---------- Badges (shared) ---------- */
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--fg-muted);
+      line-height: 1.3;
+      letter-spacing: 0.01em;
+    }
+    .badge::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: var(--radius-full);
+      background: currentColor;
+    }
+    .badge-success { color: var(--success); border-color: color-mix(in srgb, var(--success) 30%, var(--border)); background: color-mix(in srgb, var(--success) 6%, var(--surface)); }
+    .badge-scheduled { color: var(--info); border-color: color-mix(in srgb, var(--info) 30%, var(--border)); background: color-mix(in srgb, var(--info) 6%, var(--surface)); }
+    .badge-attention { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 30%, var(--border)); background: color-mix(in srgb, var(--warning) 6%, var(--surface)); }
+    .badge-error { color: var(--error); border-color: color-mix(in srgb, var(--error) 30%, var(--border)); background: color-mix(in srgb, var(--error) 6%, var(--surface)); }
+
+    /* ---------- Focus ring for contenteditable preview ---------- */
+    [contenteditable="true"]:focus-visible {
+      outline: 2px dashed color-mix(in srgb, var(--link) 50%, transparent);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* ---------- Scrollbars (calm) ---------- */
+    .workspace {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .workspace::-webkit-scrollbar { width: 8px; height: 8px; }
+    .workspace::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-full); }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar" role="banner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">Y</div>
+      <div>
+        <span class="brand-name">Yuna</span>
+        <span class="brand-sep">·</span>
+        <span class="brand-clinic">Sukhumvit Skin &amp; Laser</span>
+      </div>
+    </div>
+
+    <nav class="tabs" aria-label="Primary">
+      <button class="tab">Inbox <span class="count">7</span></button>
+      <button class="tab">Knowledge</button>
+      <button class="tab">Bookings <span class="count">3</span></button>
+      <button class="tab" aria-current="page">Broadcasts</button>
+      <button class="tab">Settings</button>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="avatar" title="Pim · staff">ภ</div>
+    </div>
+  </header>
+
+  <!-- ============ WORKSPACE ============ -->
+  <div class="workspace">
+    <div class="container">
+
+      <!-- ===== SLAB 1: TWO-COLUMN COMPOSER + PREVIEW ===== -->
+      <section class="work" aria-label="Compose broadcast">
+
+        <!-- LEFT: composer -->
+        <div class="card composer" aria-label="Composer">
+          <div class="card-header">
+            <h2>New broadcast</h2>
+            <span class="hint">Draft · saved 6s ago</span>
+          </div>
+
+          <div class="composer-body">
+
+            <!-- Target segment -->
+            <div class="field">
+              <label class="field-label">Send to</label>
+              <div class="segments" role="radiogroup" aria-label="Recipient segment">
+
+                <label class="segment" data-selected="false" data-count="4247">
+                  <input type="radio" name="segment" value="all">
+                  <span class="check" aria-hidden="true"></span>
+                  <div class="segment-name">All customers</div>
+                  <div class="segment-count">4,247 recipients</div>
+                </label>
+
+                <label class="segment" data-selected="true" data-count="1213">
+                  <input type="radio" name="segment" value="recent" checked>
+                  <span class="check" aria-hidden="true"></span>
+                  <div class="segment-name">Last 90 days</div>
+                  <div class="segment-count">1,213 recipients</div>
+                </label>
+
+                <div class="segment" aria-disabled="true" title="Tag-based segments are a Pro feature">
+                  <span class="pro-badge">Pro</span>
+                  <div class="segment-name">By tag</div>
+                  <div class="tag-picker" aria-disabled="true">
+                    <span>Select tag…</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Message body -->
+            <div class="field">
+              <label class="field-label" for="msg-body">Message</label>
+              <div class="body-frame">
+                <textarea id="msg-body" class="body-input" spellcheck="false" placeholder="Write in Thai or English. Keep it under 5,000 characters.">โปรโมชั่นสงกรานต์ค่ะ ✨ Picosure ลดพิเศษ 30% ตลอดเดือนเมษายนนี้ จองคิวล่วงหน้าทักไลน์มาได้เลยนะคะ ทีมงานคลินิกพร้อมดูแล 🙏</textarea>
+                <div class="body-foot">
+                  <div class="body-tools">
+                    <button class="icon-btn" type="button" title="Attach image">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                      Image
+                    </button>
+                    <button class="icon-btn" type="button" title="Add a Line sticker">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+                      Sticker
+                    </button>
+                    <button class="icon-btn" type="button" title="Insert link">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07L11 5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07L13 19"/></svg>
+                      Link
+                    </button>
+                  </div>
+                  <div class="char-count" id="char-count">142 / 5,000</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Schedule -->
+            <div class="field">
+              <label class="field-label">When</label>
+              <div class="schedule">
+                <div class="seg-toggle" role="tablist" aria-label="Send timing">
+                  <button type="button" aria-pressed="true" data-when="now">Send now</button>
+                  <button type="button" aria-pressed="false" data-when="later">Schedule</button>
+                </div>
+                <span class="when-meta" id="when-meta">Will start sending immediately · <strong>~3 min</strong> to deliver 1,213 messages</span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="composer-foot">
+            <div class="send-meta" id="send-meta">
+              Will send to <strong>1,213</strong> customers · est. <strong>~3 min</strong> to deliver
+            </div>
+            <div style="display:inline-flex; gap: var(--space-sm); align-items:center;">
+              <button class="btn btn-ghost" type="button">Save draft</button>
+              <button class="btn btn-primary" id="send-btn" type="button">Send to 1,213</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: live Line preview -->
+        <aside class="card preview" aria-label="Line preview">
+          <div class="card-header">
+            <h2>Line preview</h2>
+            <span class="hint" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Updates live
+            </span>
+          </div>
+          <div class="preview-stage">
+            <div class="phone" role="img" aria-label="Phone preview of how the broadcast appears in Line">
+              <div class="phone-bar">
+                <span class="back" aria-hidden="true">‹</span>
+                <div class="clinic-mark" aria-hidden="true">SS</div>
+                <div class="name">
+                  Sukhumvit Skin &amp; Laser
+                  <small>Official account</small>
+                </div>
+              </div>
+              <div class="phone-scroll">
+                <div class="phone-time">14:32</div>
+                <div class="phone-bubble-wrap">
+                  <div class="phone-image" aria-hidden="true">no image attached</div>
+                  <div id="preview-bubble" class="phone-bubble" data-pretext>โปรโมชั่นสงกรานต์ค่ะ ✨ Picosure ลดพิเศษ 30% ตลอดเดือนเมษายนนี้ จองคิวล่วงหน้าทักไลน์มาได้เลยนะคะ ทีมงานคลินิกพร้อมดูแล 🙏</div>
+                  <div class="phone-meta">14:32 · read</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+      </section>
+
+      <!-- ===== SLAB 3: PAST BROADCASTS ===== -->
+      <section class="past-card" aria-label="Past broadcasts">
+        <div class="past-header">
+          <h2>Past broadcasts</h2>
+          <button class="btn btn-ghost" type="button" style="font-size:12px; padding:4px 8px;">View all</button>
+        </div>
+
+        <div class="past-list">
+
+          <article class="past-row">
+            <div class="past-when">
+              <div class="date">02 Jun · 10:00</div>
+              <div class="time">scheduled</div>
+            </div>
+            <div class="past-preview">
+              <div class="line" data-pretext-single>ครีมกันแดดสูตรใหม่ มาถึงคลินิกแล้วค่ะ ลองได้ที่หน้าร้านเลยนะคะ</div>
+              <div class="past-tags">
+                <span class="badge badge-scheduled">Scheduled</span>
+                <span class="badge">Last 90 days</span>
+              </div>
+            </div>
+            <div class="stat"><span class="v">—</span><span class="l">Recipients</span></div>
+            <div class="stat"><span class="v">—</span><span class="l">Read</span></div>
+            <div class="stat"><span class="v">—</span><span class="l">Replies</span></div>
+          </article>
+
+          <article class="past-row">
+            <div class="past-when">
+              <div class="date">18 May · 11:14</div>
+              <div class="time">sent</div>
+            </div>
+            <div class="past-preview">
+              <div class="line" data-pretext-single>HIFU ลดราคา 25% เฉพาะวันเสาร์อาทิตย์นี้ค่ะ จองล่วงหน้าได้เลย</div>
+              <div class="past-tags">
+                <span class="badge badge-success">Delivered</span>
+                <span class="badge">All customers</span>
+              </div>
+            </div>
+            <div class="stat"><span class="v">4,210 / 4,210</span><span class="l">Recipients</span></div>
+            <div class="stat"><span class="v">61%</span><span class="l">Read</span></div>
+            <div class="stat"><span class="v">38</span><span class="l">Replies</span></div>
+          </article>
+
+          <article class="past-row">
+            <div class="past-when">
+              <div class="date">04 May · 09:30</div>
+              <div class="time">stopped</div>
+            </div>
+            <div class="past-preview">
+              <div class="line" data-pretext-single>เปิดจองคิวเลเซอร์รักษาสิวกับคุณหมอ Sarah เริ่ม 15 พฤษภาคม</div>
+              <div class="past-tags">
+                <span class="badge badge-attention">Stopped early</span>
+                <span class="badge">All customers</span>
+              </div>
+            </div>
+            <div class="stat"><span class="v">3,400 / 4,210</span><span class="l">Recipients</span></div>
+            <div class="stat"><span class="v">58%</span><span class="l">Read</span></div>
+            <div class="stat"><span class="v">21</span><span class="l">Replies</span></div>
+          </article>
+
+          <article class="past-row">
+            <div class="past-when">
+              <div class="date">22 Apr · 13:02</div>
+              <div class="time">sent</div>
+            </div>
+            <div class="past-preview">
+              <div class="line" data-pretext-single>สงกรานต์ปิดวันที่ 13-15 เมษายนค่ะ กลับมาเปิดตามปกติ 16 เมษายน</div>
+              <div class="past-tags">
+                <span class="badge badge-success">Delivered</span>
+                <span class="badge">All customers</span>
+              </div>
+            </div>
+            <div class="stat"><span class="v">4,108 / 4,108</span><span class="l">Recipients</span></div>
+            <div class="stat"><span class="v">72%</span><span class="l">Read</span></div>
+            <div class="stat"><span class="v">12</span><span class="l">Replies</span></div>
+          </article>
+
+          <article class="past-row">
+            <div class="past-when">
+              <div class="date">11 Apr · 16:45</div>
+              <div class="time">sent</div>
+            </div>
+            <div class="past-preview">
+              <div class="line" data-pretext-single>Picosure โปร 30% เฉพาะลูกค้าเก่า · ทักมาบอกพี่ภาได้เลยค่ะ</div>
+              <div class="past-tags">
+                <span class="badge badge-success">Delivered</span>
+                <span class="badge">Tag: laser interest</span>
+              </div>
+            </div>
+            <div class="stat"><span class="v">387 / 387</span><span class="l">Recipients</span></div>
+            <div class="stat"><span class="v">81%</span><span class="l">Read</span></div>
+            <div class="stat"><span class="v">44</span><span class="l">Replies</span></div>
+          </article>
+
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============ PRETEXT WIRING ============ -->
+<script type="module">
+  import {
+    prepare,
+    layout
+  } from './pretext.js';
+
+  // Wait for IBM Plex to actually paint before we measure.
+  await document.fonts.ready;
+
+  function fontFor(el) {
+    const cs = getComputedStyle(el);
+    const weight = cs.fontWeight || '400';
+    const size = cs.fontSize || '15px';
+    const family = cs.fontFamily || 'IBM Plex Sans, sans-serif';
+    return `${weight} ${size} ${family}`;
+  }
+
+  // The phone-preview bubble uses Pretext (real height, real wrap).
+  const previewBubble = document.getElementById('preview-bubble');
+  let previewHandle = null;
+
+  function reprepPreview() {
+    previewHandle = prepare(previewBubble.textContent, fontFor(previewBubble));
+  }
+
+  function layoutPreview() {
+    if (!previewHandle) return;
+    const cs = getComputedStyle(previewBubble);
+    const padL = parseFloat(cs.paddingLeft) || 0;
+    const padR = parseFloat(cs.paddingRight) || 0;
+    const inner = Math.max(40, previewBubble.clientWidth - padL - padR);
+    const lineHeight = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) * 1.5);
+    const { height } = layout(previewHandle, inner, lineHeight);
+    const padT = parseFloat(cs.paddingTop) || 0;
+    const padB = parseFloat(cs.paddingBottom) || 0;
+    previewBubble.style.height = `${Math.ceil(height + padT + padB)}px`;
+  }
+
+  reprepPreview();
+  layoutPreview();
+
+  // The composer textarea height tracks content via Pretext too.
+  const bodyInput = document.getElementById('msg-body');
+  const charCount = document.getElementById('char-count');
+
+  function autosize() {
+    bodyInput.style.height = 'auto';
+    const next = Math.min(360, Math.max(132, bodyInput.scrollHeight));
+    bodyInput.style.height = `${next}px`;
+  }
+
+  function updateCharCount() {
+    const n = bodyInput.value.length;
+    charCount.textContent = `${n.toLocaleString()} / 5,000`;
+    charCount.classList.toggle('warn', n >= 4500 && n < 5000);
+    charCount.classList.toggle('over', n >= 5000);
+  }
+
+  function updatePreview() {
+    previewBubble.textContent = bodyInput.value;
+    reprepPreview();
+    layoutPreview();
+  }
+
+  bodyInput.addEventListener('input', () => {
+    autosize();
+    updateCharCount();
+    updatePreview();
+  });
+  autosize();
+  updateCharCount();
+
+  // Resize-aware: re-layout the bubble when the preview column changes width.
+  let raf = 0;
+  const onResize = () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(layoutPreview);
+  };
+  new ResizeObserver(onResize).observe(document.body);
+
+  // ============ INTERACTIONS ============
+
+  // Segment radio cards (Pro-locked segments ignore clicks)
+  const segments = document.querySelectorAll('.segment');
+  const sendBtn = document.getElementById('send-btn');
+  const sendMeta = document.getElementById('send-meta');
+  const whenMeta = document.getElementById('when-meta');
+
+  function fmt(n) { return n.toLocaleString(); }
+
+  function setSegment(seg) {
+    segments.forEach(s => {
+      if (s.getAttribute('aria-disabled') === 'true') return;
+      s.dataset.selected = (s === seg ? 'true' : 'false');
+    });
+    const count = parseInt(seg.dataset.count, 10);
+    const seconds = Math.ceil(count / 8); // ~8 pushes/sec heuristic for the mock
+    const mins = Math.max(1, Math.round(seconds / 60));
+
+    sendBtn.textContent = `Send to ${fmt(count)}`;
+    sendMeta.innerHTML = `Will send to <strong>${fmt(count)}</strong> customers · est. <strong>~${mins} min</strong> to deliver`;
+    whenMeta.innerHTML = `Will start sending immediately · <strong>~${mins} min</strong> to deliver ${fmt(count)} messages`;
+  }
+
+  segments.forEach(seg => {
+    if (seg.getAttribute('aria-disabled') === 'true') return;
+    seg.addEventListener('click', () => {
+      const input = seg.querySelector('input');
+      if (input) input.checked = true;
+      setSegment(seg);
+    });
+  });
+
+  // Send-timing toggle
+  document.querySelectorAll('.seg-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const group = btn.parentElement;
+      group.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+      if (btn.dataset.when === 'later') {
+        const seg = document.querySelector('.segment[data-selected="true"]');
+        const count = seg ? parseInt(seg.dataset.count, 10) : 0;
+        whenMeta.innerHTML = `Pick a date and time · <strong>${fmt(count)}</strong> recipients will receive it`;
+        sendBtn.textContent = 'Schedule';
+      } else {
+        const seg = document.querySelector('.segment[data-selected="true"]');
+        if (seg) setSegment(seg);
+      }
+    });
+  });
+
+  // Tab navigation (mock — wire to real routes later)
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      const label = t.textContent.trim().split(/\s+/)[0].toLowerCase();
+      if (label === 'inbox' && !t.matches('[aria-current="page"]')) {
+        window.location.href = './inbox.html';
+      }
+    });
+  });
+
+  // Past broadcast rows (mock click)
+  document.querySelectorAll('.past-row').forEach(row => {
+    row.addEventListener('click', () => {
+      row.style.transition = 'background 160ms ease';
+      row.style.background = 'var(--surface-2)';
+    });
+  });
+</script>
+
+</body>
+</html>

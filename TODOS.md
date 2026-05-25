@@ -51,7 +51,7 @@ These five decisions surfaced during /plan-eng-review on 2026-05-25 but did not 
 - **Cofounder week-0 blocker.** Elevate the plan's "Assignment" afterthought to a hard precondition before week 1.
 - **Reframe "≤1 day onboarding" metric** to "≤1 day of OUR work after clinic delivers creds + knowledge."
 - **PDPA consent UX:** append-to-first-reply (with link to clinic privacy notice) vs the current standalone-wall consent message. Lawyer review before week 6.
-- **Pre-send quota hard-block** for aftercare + broadcast, vs visibility-only as the plan currently has it.
+- ~~**Pre-send quota hard-block** for aftercare + broadcast~~ — **RESOLVED 2026-05-25: no in-app quota awareness in v0.** Line server-side enforces; the broadcast log's `Stopped early` state covers the failure case post-hoc. The owner's source of truth for remaining quota is Line OA Manager. See [DESIGN.md](DESIGN.md) §Line API Constraints, [DESIGN-UX.md](DESIGN-UX.md) Unresolved #8, [DESIGN-ENG.md](DESIGN-ENG.md) Unresolved #4.
 - **Front-desk shadowing as week-0 HARD GATE** (vs week-0 nice-to-have). Plan's "Assignment" section currently has the shadowing recommendation but doesn't gate week 1 schema work on it.
 
 ## Other deferred items (from plan)
@@ -65,3 +65,19 @@ These five decisions surfaced during /plan-eng-review on 2026-05-25 but did not 
 - **Multi-org user (cofounder owns multiple clinics)** — multi-org membership UI deferred until first multi-org owner request.
 - **Calendar integrations for bookings** — paid clinics can custom.
 - **Product analytics** — placeholder folder + README only in v0.
+
+## Pro-tier features (deferred from v0)
+
+Features intentionally scoped out of v0 and surfaced as locked `Pro` entry points in the UI. Each is a deliberate upsell hook, not an oversight.
+
+### Tag-based broadcast segments
+
+- **What:** Owner-defined customer tags (e.g. `laser-interest`, `vip`, `lapsed-90d`) usable as a Broadcasts recipient segment. v0 ships only two segments: All customers, Last 90 days. Tags are visible as a third disabled "By tag" card with a `Pro` badge in the Broadcasts composer.
+- **Why deferred:** Tagging needs (a) a tag-management UI in the customer drawer, (b) an audit story for who tagged whom and when, and (c) at least one validated clinic use case beyond "laser interest" — none of which clinic #1 has asked for yet. Shipping the disabled card in v0 lets us learn whether owners try to click it.
+- **Depends on:** First clinic that explicitly asks for tag segmentation; tag schema in `customers` table.
+
+### In-app push-quota readout
+
+- **What:** Live readout of Line OA monthly push quota in the admin (banner in Broadcasts, indicator in the top bar). See resolved entry above under "Unresolved engineering review decisions" for why v0 ships without it.
+- **Why deferred:** Real-time per-OA quota pull is operationally awkward (Line's quota endpoint has its own rate limits and per-OA refresh quirks). The clinic already sees the canonical number in Line OA Manager. Pro tier could justify the engineering work as part of a broader analytics surface.
+- **Depends on:** A clinic explicitly asking for in-app visibility; a reliable cache strategy for the Line quota endpoint.

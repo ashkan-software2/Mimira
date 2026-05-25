@@ -1,0 +1,1129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Inbox · Yuna</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #fafbfc;
+      --surface: #ffffff;
+      --surface-2: #f7f8fa;
+      --fg: #0a0a0a;
+      --fg-muted: #6b7280;
+      --fg-subtle: #9ca3af;
+      --border: #e5e7eb;
+      --border-subtle: #f1f3f5;
+      --cta-fill: #0a0a0a;
+      --cta-fg: #ffffff;
+      --ai-accent: #0a7c7c;
+      --ai-accent-bg: #ecf6f6;
+      --link: #2563eb;
+      --success: #16a34a;
+      --warning: #d97706;
+      --error: #dc2626;
+      --info: #2563eb;
+
+      --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Thai Looped', system-ui, sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+      --space-2xs: 2px;
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 12px;
+      --space-lg: 16px;
+      --space-xl: 24px;
+      --space-2xl: 32px;
+
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+
+      --shadow-modal: 0 4px 20px rgba(0,0,0,0.08);
+
+      --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+      --ease-move: cubic-bezier(0.45, 0, 0.55, 1);
+      --dur-micro: 80ms;
+      --dur-short: 160ms;
+      --dur-medium: 240ms;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0a0a0a;
+        --surface: #141414;
+        --surface-2: #1a1a1a;
+        --fg: #fafafa;
+        --fg-muted: #a1a1aa;
+        --fg-subtle: #71717a;
+        --border: #27272a;
+        --border-subtle: #1f1f23;
+        --cta-fill: #fafafa;
+        --cta-fg: #0a0a0a;
+        --ai-accent: #2dd4bf;
+        --ai-accent-bg: #0e2a2a;
+        --link: #60a5fa;
+        --info: #60a5fa;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    button { font-family: inherit; }
+
+    /* ---------- App shell ---------- */
+
+    .app {
+      display: grid;
+      grid-template-rows: 52px 1fr;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    /* ---------- Top bar ---------- */
+
+    .topbar {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: var(--space-xl);
+      padding: 0 var(--space-xl);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+    .brand-mark {
+      width: 22px;
+      height: 22px;
+      border-radius: var(--radius-sm);
+      background: var(--fg);
+      color: var(--bg);
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .brand-name { color: var(--fg); }
+    .brand-clinic { color: var(--fg-muted); font-weight: 400; }
+    .brand-sep { color: var(--fg-subtle); }
+
+    .tabs {
+      display: flex;
+      gap: var(--space-2xs);
+      justify-self: start;
+    }
+    .tab {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg-muted);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: color var(--dur-micro) var(--ease-move), background var(--dur-micro) var(--ease-move);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab:hover { color: var(--fg); background: var(--surface-2); }
+    .tab[aria-current="page"] { color: var(--fg); background: var(--surface-2); }
+    .tab .count {
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      color: var(--fg-muted);
+      background: var(--border-subtle);
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      min-width: 18px;
+      text-align: center;
+    }
+    .tab[aria-current="page"] .count { color: var(--fg); background: var(--surface); border: 1px solid var(--border); }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+    }
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-full);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    /* ---------- Three-column grid ---------- */
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 320px 1fr 280px;
+      min-height: 0;
+    }
+
+    @media (max-width: 1100px) {
+      .workspace {
+        grid-template-columns: 280px 1fr;
+      }
+      .col-context { display: none; }
+    }
+    @media (max-width: 768px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+      .col-list { display: none; }
+    }
+
+    .col {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+    }
+    .col-list { border-right: 1px solid var(--border); }
+    .col-thread { background: var(--bg); }
+    .col-context { border-left: 1px solid var(--border); }
+
+    /* ---------- Left rail: escalations list ---------- */
+
+    .list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md) var(--space-lg) var(--space-sm);
+    }
+    .list-header h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg-muted);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .filter-button {
+      appearance: none;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 3px 8px;
+      font-size: 12px;
+      color: var(--fg-muted);
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+    }
+    .filter-button:hover { color: var(--fg); border-color: var(--fg-muted); }
+
+    .search {
+      padding: 0 var(--space-lg) var(--space-md);
+    }
+    .search input {
+      width: 100%;
+      padding: 8px 12px 8px 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      font: inherit;
+      font-size: 14px;
+      color: var(--fg);
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>");
+      background-repeat: no-repeat;
+      background-position: 10px center;
+    }
+    .search input::placeholder { color: var(--fg-subtle); }
+    .search input:focus {
+      outline: none;
+      border-color: var(--link);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--link) 18%, transparent);
+    }
+
+    .escalations {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 0 var(--space-lg);
+    }
+
+    .escalation {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 2px var(--space-sm);
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      position: relative;
+      transition: background var(--dur-micro);
+    }
+    .escalation:hover { background: var(--surface-2); }
+    .escalation[aria-current="true"] {
+      background: var(--surface-2);
+    }
+    .escalation[aria-current="true"]::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--fg);
+    }
+
+    .esc-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg);
+      grid-column: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .esc-age {
+      font-size: 11px;
+      color: var(--fg-subtle);
+      font-variant-numeric: tabular-nums;
+      grid-column: 2;
+      align-self: start;
+      padding-top: 2px;
+    }
+    .esc-preview {
+      font-size: 13px;
+      color: var(--fg-muted);
+      grid-column: 1 / -1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+    .esc-meta {
+      grid-column: 1 / -1;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ---------- Badges ---------- */
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--fg-muted);
+      line-height: 1.3;
+      letter-spacing: 0.01em;
+    }
+    .badge::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: var(--radius-full);
+      background: currentColor;
+    }
+    .badge-attention { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 30%, var(--border)); background: color-mix(in srgb, var(--warning) 6%, var(--surface)); }
+    .badge-staff { color: var(--info); border-color: color-mix(in srgb, var(--info) 30%, var(--border)); background: color-mix(in srgb, var(--info) 6%, var(--surface)); }
+    .badge-yuna {
+      color: var(--ai-accent);
+      background: var(--ai-accent-bg);
+      border-color: color-mix(in srgb, var(--ai-accent) 22%, var(--ai-accent-bg));
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      padding: 2px 6px;
+    }
+    .badge-yuna::before { display: none; }
+
+    /* ---------- Thread ---------- */
+
+    .thread-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: var(--space-md);
+      align-items: center;
+      padding: var(--space-md) var(--space-xl);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .thread-title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .thread-title h1 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.005em;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    .thread-sub {
+      font-size: 12px;
+      color: var(--fg-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .thread-sub .dot { width: 3px; height: 3px; background: var(--fg-subtle); border-radius: var(--radius-full); display: inline-block; }
+    .thread-actions {
+      display: inline-flex;
+      gap: var(--space-sm);
+      align-items: center;
+    }
+
+    .btn {
+      appearance: none;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background var(--dur-micro) var(--ease-move), border-color var(--dur-micro);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary { background: var(--cta-fill); color: var(--cta-fg); border-color: var(--cta-fill); }
+    .btn-primary:hover { background: #1f1f1f; border-color: #1f1f1f; }
+    .btn-secondary { background: var(--surface); color: var(--fg); border-color: var(--border); }
+    .btn-secondary:hover { border-color: var(--fg-muted); }
+    .btn-ghost { background: transparent; color: var(--fg-muted); }
+    .btn-ghost:hover { color: var(--fg); background: var(--surface-2); }
+    .btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--link);
+    }
+
+    /* ---------- Messages ---------- */
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-xl) var(--space-xl) var(--space-2xl);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+      scroll-behavior: smooth;
+    }
+
+    .day-divider {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      color: var(--fg-subtle);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      margin: var(--space-md) 0 var(--space-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .day-divider::before, .day-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border-subtle);
+    }
+
+    .system-note {
+      align-self: center;
+      max-width: 78%;
+      text-align: center;
+      font-size: 12px;
+      color: var(--fg-muted);
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .msg-row {
+      display: flex;
+      flex-direction: column;
+      max-width: 78%;
+      gap: var(--space-2xs);
+    }
+    .msg-row[data-side="left"] { align-self: flex-start; }
+    .msg-row[data-side="right"] { align-self: flex-end; align-items: flex-end; }
+
+    .msg-meta-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--fg-muted);
+      padding: 0 4px;
+    }
+    .msg-author {
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: var(--radius-lg);
+      font-size: 15px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-width: 100%;
+    }
+    .bubble-customer {
+      background: var(--surface);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: var(--radius-sm);
+    }
+    .bubble-yuna {
+      background: var(--surface);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: var(--radius-sm);
+    }
+    .bubble-staff {
+      background: var(--cta-fill);
+      color: var(--cta-fg);
+      border: 1px solid var(--cta-fill);
+      border-bottom-right-radius: var(--radius-sm);
+    }
+
+    .msg-meta-bottom {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--fg-subtle);
+      font-variant-numeric: tabular-nums;
+      padding: 0 4px;
+    }
+    .msg-meta-bottom .sources {
+      color: var(--ai-accent);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .msg-meta-bottom .sources:hover { text-decoration: underline; }
+
+    /* ---------- Escalation banner ---------- */
+
+    .escalation-banner {
+      align-self: stretch;
+      max-width: 100%;
+      margin: var(--space-md) 0;
+      padding: var(--space-md) var(--space-lg);
+      background: color-mix(in srgb, var(--warning) 5%, var(--surface));
+      border: 1px solid color-mix(in srgb, var(--warning) 26%, var(--border));
+      border-radius: var(--radius-md);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: var(--space-md);
+      align-items: center;
+    }
+    .escalation-banner .icon {
+      width: 8px;
+      height: 8px;
+      border-radius: var(--radius-full);
+      background: var(--warning);
+    }
+    .escalation-banner .text { font-size: 13px; color: var(--fg); }
+    .escalation-banner .text strong { font-weight: 500; }
+    .escalation-banner .text .reason { color: var(--fg-muted); }
+
+    /* ---------- Composer ---------- */
+
+    .composer-wrap {
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: var(--space-md) var(--space-xl) var(--space-lg);
+    }
+    .composer-state-ai {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface-2);
+    }
+    .composer-state-ai .label {
+      font-size: 13px;
+      color: var(--fg-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .composer-state-ai .label .pulse {
+      width: 8px; height: 8px;
+      border-radius: var(--radius-full);
+      background: var(--ai-accent);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--ai-accent) 60%, transparent);
+      animation: pulse 2.6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ai-accent) 50%, transparent); }
+      70% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--ai-accent) 0%, transparent); }
+      100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ai-accent) 0%, transparent); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .composer-state-ai .label .pulse { animation: none; }
+    }
+
+    .composer-state-staff {
+      display: none;
+    }
+    .composer-wrap[data-mode="staff"] .composer-state-ai { display: none; }
+    .composer-wrap[data-mode="staff"] .composer-state-staff {
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: var(--space-sm);
+    }
+    .composer-staff-toolbar {
+      display: flex;
+      gap: var(--space-sm);
+      align-items: center;
+      color: var(--fg-subtle);
+      font-size: 12px;
+    }
+    .composer-input {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: var(--space-sm);
+      align-items: end;
+    }
+    .composer-input textarea {
+      font: inherit;
+      font-size: 15px;
+      line-height: 1.45;
+      width: 100%;
+      min-height: 44px;
+      max-height: 200px;
+      resize: none;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--fg);
+    }
+    .composer-input textarea:focus {
+      outline: none;
+      border-color: var(--link);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--link) 18%, transparent);
+    }
+
+    /* ---------- Right rail: customer context ---------- */
+
+    .context {
+      padding: var(--space-md) var(--space-lg);
+      overflow-y: auto;
+      flex: 1;
+    }
+    .context section { padding: var(--space-md) 0; border-bottom: 1px solid var(--border-subtle); }
+    .context section:last-child { border-bottom: 0; }
+    .context h3 {
+      margin: 0 0 var(--space-sm);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--fg-subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .context dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 4px var(--space-md);
+      font-size: 13px;
+    }
+    .context dt { color: var(--fg-muted); }
+    .context dd { margin: 0; color: var(--fg); font-variant-numeric: tabular-nums; }
+    .context dd .mono { font-family: var(--font-mono); font-size: 12px; }
+
+    .booking-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: var(--space-sm);
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .booking-row + .booking-row { border-top: 1px solid var(--border-subtle); }
+    .booking-row .when { color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    /* ---------- Empty / focus visible ---------- */
+    [contenteditable="true"]:focus-visible {
+      outline: 2px dashed color-mix(in srgb, var(--link) 50%, transparent);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* ---------- Scrollbars (calm) ---------- */
+    .escalations, .messages, .context {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .escalations::-webkit-scrollbar, .messages::-webkit-scrollbar, .context::-webkit-scrollbar {
+      width: 8px; height: 8px;
+    }
+    .escalations::-webkit-scrollbar-thumb, .messages::-webkit-scrollbar-thumb, .context::-webkit-scrollbar-thumb {
+      background: var(--border); border-radius: var(--radius-full);
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar" role="banner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">Y</div>
+      <div>
+        <span class="brand-name">Yuna</span>
+        <span class="brand-sep">·</span>
+        <span class="brand-clinic">Sukhumvit Skin &amp; Laser</span>
+      </div>
+    </div>
+
+    <nav class="tabs" aria-label="Primary">
+      <button class="tab" aria-current="page">Inbox <span class="count">7</span></button>
+      <button class="tab">Knowledge</button>
+      <button class="tab">Bookings <span class="count">3</span></button>
+      <button class="tab">Broadcasts</button>
+      <button class="tab">Settings</button>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="avatar" title="Pim · staff">ภ</div>
+    </div>
+  </header>
+
+  <!-- ============ WORKSPACE ============ -->
+  <div class="workspace">
+
+    <!-- ===== LEFT RAIL ===== -->
+    <aside class="col col-list" aria-label="Escalations">
+      <div class="list-header">
+        <h2>Escalations · 7</h2>
+        <button class="filter-button">All</button>
+      </div>
+      <div class="search">
+        <label class="visually-hidden" for="esc-search">Search escalations</label>
+        <input id="esc-search" type="search" placeholder="Search name or message…" />
+      </div>
+
+      <div class="escalations" role="list">
+
+        <article class="escalation" role="listitem" aria-current="true">
+          <div class="esc-name">คุณนุช · Noot J.</div>
+          <div class="esc-age">now</div>
+          <div class="esc-preview" data-pretext-single>ทำไมยังแดงอยู่เลยคะ ทำไปสองวันแล้ว ปวดมากด้วย</div>
+          <div class="esc-meta">
+            <span class="badge badge-attention">Needs attention</span>
+            <span class="badge">post-procedure</span>
+          </div>
+        </article>
+
+        <article class="escalation" role="listitem">
+          <div class="esc-name">Khun Mali · มะลิ</div>
+          <div class="esc-age">2 min</div>
+          <div class="esc-preview" data-pretext-single>Picosure ราคาเท่าไหร่คะ มีโปรเดือนนี้มั้ย</div>
+          <div class="esc-meta">
+            <span class="badge badge-attention">Needs attention</span>
+          </div>
+        </article>
+
+        <article class="escalation" role="listitem">
+          <div class="esc-name">คุณแก้ว · Kaew P.</div>
+          <div class="esc-age">5 min</div>
+          <div class="esc-preview" data-pretext-single>ขอคุยกับพี่หมอหน่อยค่ะ เรื่องผลข้างเคียง</div>
+          <div class="esc-meta">
+            <span class="badge badge-staff">Staff requested</span>
+          </div>
+        </article>
+
+        <article class="escalation" role="listitem">
+          <div class="esc-name">Thida W. · ธิดา</div>
+          <div class="esc-age">8 min</div>
+          <div class="esc-preview" data-pretext-single>เลื่อนนัดพรุ่งนี้ได้มั้ย ติดงานด่วน</div>
+          <div class="esc-meta">
+            <span class="badge badge-attention">Needs attention</span>
+            <span class="badge">booking</span>
+          </div>
+        </article>
+
+        <article class="escalation" role="listitem">
+          <div class="esc-name">คุณปุ๊ก · Puk S.</div>
+          <div class="esc-age">12 min</div>
+          <div class="esc-preview" data-pretext-single>ทำ HIFU แล้วหน้าบวมปกติมั้ยคะ</div>
+          <div class="esc-meta">
+            <span class="badge badge-attention">Needs attention</span>
+            <span class="badge">post-procedure</span>
+          </div>
+        </article>
+
+        <article class="escalation" role="listitem">
+          <div class="esc-name">Aey · เอ๋</div>
+          <div class="esc-age">18 min</div>
+          <div class="esc-preview" data-pretext-single>ที่จองไว้เสาร์ ขอเปลี่ยนเป็นบ่ายสามได้มั้ย</div>
+          <div class="esc-meta">
+            <span class="badge badge-staff">Staff requested</span>
+          </div>
+        </article>
+
+        <article class="escalation" role="listitem">
+          <div class="esc-name">คุณฝน · Fon</div>
+          <div class="esc-age">26 min</div>
+          <div class="esc-preview" data-pretext-single>มีคูปองส่วนลดมั้ยคะ เพื่อนแนะนำมา</div>
+          <div class="esc-meta">
+            <span class="badge badge-attention">Needs attention</span>
+          </div>
+        </article>
+
+      </div>
+    </aside>
+
+    <!-- ===== CENTER: THREAD ===== -->
+    <section class="col col-thread" aria-label="Active conversation">
+
+      <header class="thread-header">
+        <div class="thread-title">
+          <h1>
+            คุณนุช · Noot J.
+            <span class="badge badge-attention">Needs attention</span>
+          </h1>
+          <div class="thread-sub">
+            <span>LINE @sukhumvit-skin</span>
+            <span class="dot"></span>
+            <span>Thai · TH</span>
+          </div>
+        </div>
+        <div class="thread-actions">
+          <button class="btn btn-ghost" id="flag-btn">Flag</button>
+          <button class="btn btn-primary" id="takeover-btn">Take over chat</button>
+        </div>
+      </header>
+
+      <div class="messages" id="messages">
+
+        <div class="day-divider"><span>Today · 14:08 ICT</span></div>
+
+        <div class="msg-row" data-side="left">
+          <div class="msg-meta-top"><span class="msg-author">คุณนุช</span></div>
+          <div class="bubble bubble-customer" data-pretext contenteditable="true" spellcheck="false">สวัสดีค่ะ พึ่งทำเลเซอร์มาเมื่อวานนี้ แต่ตอนนี้ผิวยังแดงและปวดมากเลย เป็นปกติไหมคะ</div>
+          <div class="msg-meta-bottom"><time>14:08</time></div>
+        </div>
+
+        <div class="msg-row" data-side="left">
+          <div class="msg-meta-top">
+            <span class="msg-author">Yuna</span>
+            <span class="badge badge-yuna">Yuna</span>
+          </div>
+          <div class="bubble bubble-yuna" data-pretext contenteditable="true" spellcheck="false">ขอบคุณที่ติดต่อมานะคะ คุณนุช เข้าใจค่ะว่าตอนนี้กังวล หลังเลเซอร์ผิวจะแดงและรู้สึกอุ่นได้ประมาณ 24–48 ชั่วโมง แต่ "ปวดมาก" ไม่ใช่อาการปกติค่ะ เดี๋ยวเจ้าหน้าที่ของเราจะเข้ามาช่วยดูเคสนี้ทันทีนะคะ</div>
+          <div class="msg-meta-bottom">
+            <time>14:08</time>
+            <span class="sources" aria-label="View RAG sources">▾ 2 sources · aftercare-laser.md</span>
+          </div>
+        </div>
+
+        <div class="escalation-banner" role="alert">
+          <span class="icon" aria-hidden="true"></span>
+          <div class="text">
+            <strong>Yuna handed this to staff.</strong>
+            <span class="reason">Customer said <em>"ปวด"</em> (pain) within 72 hours of a procedure. Yuna sent a safety reply and stopped, waiting for you.</span>
+          </div>
+        </div>
+
+        <div class="msg-row" data-side="left">
+          <div class="msg-meta-top"><span class="msg-author">คุณนุช</span></div>
+          <div class="bubble bubble-customer" data-pretext contenteditable="true" spellcheck="false">ตรงรักแร้ขวานี่บวมแดงเลยค่ะ กดแล้วเจ็บ กลัวจะติดเชื้อ ต้องไปคลินิกเลยมั้ย หรือทายาอะไรก่อนได้</div>
+          <div class="msg-meta-bottom"><time>14:11</time></div>
+        </div>
+
+        <div class="msg-row" data-side="left">
+          <div class="msg-meta-top"><span class="msg-author">คุณนุช</span></div>
+          <div class="bubble bubble-customer" data-pretext contenteditable="true" spellcheck="false">มีรูปด้วยนะคะ</div>
+          <div class="msg-meta-bottom"><time>14:11</time></div>
+        </div>
+
+        <div class="system-note">คุณนุชส่งรูปภาพ · staff-only preview</div>
+
+        <div class="msg-row" data-side="right">
+          <div class="msg-meta-top"><span class="msg-author">ครูภา (you)</span></div>
+          <div class="bubble bubble-staff" data-pretext contenteditable="true" spellcheck="false">สวัสดีค่ะคุณนุช ครูภาเองนะคะ ขอดูรูปที่ส่งมาก่อนสักครู่ค่ะ ระหว่างนี้อย่าเพิ่งทายาอะไร และประคบเย็นเบาๆ ได้ค่ะ</div>
+          <div class="msg-meta-bottom"><time>14:13</time><span>✓ delivered</span></div>
+        </div>
+
+      </div>
+
+      <div class="composer-wrap" data-mode="ai" id="composer">
+
+        <!-- AI mode (default — Yuna is handling) -->
+        <div class="composer-state-ai">
+          <div class="label">
+            <span class="pulse" aria-hidden="true"></span>
+            Yuna is paused on this thread — escalated to staff.
+          </div>
+          <button class="btn btn-primary" id="composer-takeover">Take over chat</button>
+        </div>
+
+        <!-- Staff mode (after takeover) -->
+        <div class="composer-state-staff" aria-hidden="true">
+          <div class="composer-input">
+            <textarea id="staff-input" placeholder="Type your reply in Thai or English… Enter to send, Shift+Enter for new line"></textarea>
+            <button class="btn btn-primary" id="send-btn">Send</button>
+          </div>
+          <div class="composer-staff-toolbar">
+            <span>Staff: ครูภา</span>
+            <span>·</span>
+            <button class="btn btn-ghost" style="padding:2px 6px;font-size:12px;">Insert template</button>
+            <span>·</span>
+            <button class="btn btn-ghost" style="padding:2px 6px;font-size:12px;">Resolve &amp; return to Yuna</button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ===== RIGHT RAIL ===== -->
+    <aside class="col col-context" aria-label="Customer context">
+      <div class="context">
+
+        <section>
+          <h3>Customer</h3>
+          <dl>
+            <dt>Display name</dt><dd>คุณนุช · Noot J.</dd>
+            <dt>LINE ID</dt><dd><span class="mono">U7a3…4f2c</span></dd>
+            <dt>Phone</dt><dd>081-234-xxxx</dd>
+            <dt>Language</dt><dd>Thai (TH)</dd>
+          </dl>
+        </section>
+
+        <section>
+          <h3>Recent bookings · 4</h3>
+          <div class="booking-row"><span>Underarm laser</span><span class="when">24 May</span></div>
+          <div class="booking-row"><span>Brow shape</span><span class="when">12 Apr</span></div>
+          <div class="booking-row"><span>Underarm laser</span><span class="when">02 Mar</span></div>
+          <div class="booking-row"><span>Consultation</span><span class="when">14 Feb</span></div>
+        </section>
+
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- ============ PRETEXT WIRING ============ -->
+<script type="module">
+  import {
+    prepare,
+    layout,
+    prepareWithSegments,
+    walkLineRanges
+  } from './pretext.js';
+
+  // Wait for IBM Plex to actually paint before we measure.
+  await document.fonts.ready;
+
+  // 1) Self-sizing multi-line text (bubbles, goal card).
+  const flex = document.querySelectorAll('[data-pretext]');
+  const prepared = new Map();
+
+  function fontFor(el) {
+    const cs = getComputedStyle(el);
+    // Pretext wants a CSS shorthand. Build one that always includes weight + size + family.
+    const weight = cs.fontWeight || '400';
+    const size = cs.fontSize || '15px';
+    const family = cs.fontFamily || 'IBM Plex Sans, sans-serif';
+    return `${weight} ${size} ${family}`;
+  }
+
+  function reprepare(el) {
+    prepared.set(el, prepare(el.textContent, fontFor(el)));
+  }
+
+  function relayout() {
+    for (const [el, handle] of prepared) {
+      const cs = getComputedStyle(el);
+      // Inner width = clientWidth minus horizontal padding
+      const padL = parseFloat(cs.paddingLeft) || 0;
+      const padR = parseFloat(cs.paddingRight) || 0;
+      const inner = Math.max(20, el.clientWidth - padL - padR);
+      const lineHeight = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) * 1.45);
+      const { height } = layout(handle, inner, lineHeight);
+      // Set explicit height so resize is instant and bubble visibly shrinkwraps.
+      // Padding is part of border-box already (we use border-box globally).
+      el.style.height = `${Math.ceil(height + (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0))}px`;
+    }
+  }
+
+  // 2) Tight-fit bubble width: binary-search the narrowest width that still gives
+  //    the same line count at our 78% max. Bubbles "shrinkwrap" instead of stretching.
+  const bubbles = document.querySelectorAll('.bubble[data-pretext]');
+  function shrinkwrap(el) {
+    const cs = getComputedStyle(el);
+    const padL = parseFloat(cs.paddingLeft) || 0;
+    const padR = parseFloat(cs.paddingRight) || 0;
+    const lineHeight = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) * 1.45);
+    const row = el.closest('.msg-row');
+    if (!row) return;
+    const maxInner = Math.max(40, row.clientWidth - padL - padR);
+    const handle = prepare(el.textContent, fontFor(el));
+    const target = layout(handle, maxInner, lineHeight).lineCount;
+
+    let lo = 40, hi = maxInner;
+    // Coarse first.
+    while (hi - lo > 8) {
+      const mid = (lo + hi) / 2;
+      if (layout(handle, mid, lineHeight).lineCount <= target) hi = mid;
+      else lo = mid;
+    }
+    el.style.width = `${Math.ceil(hi + padL + padR)}px`;
+  }
+
+  // Initial prep.
+  for (const el of flex) reprepare(el);
+
+  function fullLayout() {
+    for (const el of bubbles) shrinkwrap(el);
+    relayout();
+  }
+  fullLayout();
+
+  // Re-prepare and re-layout when contenteditable changes.
+  for (const el of flex) {
+    if (el.contentEditable === 'true') {
+      const obs = new MutationObserver(() => {
+        reprepare(el);
+        if (el.classList.contains('bubble')) shrinkwrap(el);
+        relayout();
+      });
+      obs.observe(el, { characterData: true, subtree: true, childList: true });
+    }
+  }
+
+  // Resize-aware. Re-shrinkwrap on resize because the 78% max width changed.
+  let raf = 0;
+  const onResize = () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(fullLayout);
+  };
+  new ResizeObserver(onResize).observe(document.body);
+
+  // 3) Truncated preview rows in the left rail: leave the browser's text-overflow
+  //    ellipsis in place — single-line ellipsis is correct here; Pretext is overkill.
+  //    (data-pretext-single is a future hook; no JS needed today.)
+
+  // ============ INTERACTIONS ============
+
+  const composer = document.getElementById('composer');
+  const messages = document.getElementById('messages');
+
+  function takeOver() {
+    composer.dataset.mode = 'staff';
+    const ai = composer.querySelector('.composer-state-ai');
+    const staff = composer.querySelector('.composer-state-staff');
+    if (ai) ai.setAttribute('aria-hidden', 'true');
+    if (staff) staff.setAttribute('aria-hidden', 'false');
+    const ta = document.getElementById('staff-input');
+    setTimeout(() => ta && ta.focus(), 50);
+  }
+
+  document.getElementById('takeover-btn').addEventListener('click', takeOver);
+  document.getElementById('composer-takeover').addEventListener('click', takeOver);
+
+  // Send: append a staff bubble.
+  document.getElementById('send-btn').addEventListener('click', sendStaffReply);
+  document.getElementById('staff-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendStaffReply();
+    }
+  });
+
+  function sendStaffReply() {
+    const ta = document.getElementById('staff-input');
+    const text = ta.value.trim();
+    if (!text) return;
+
+    const row = document.createElement('div');
+    row.className = 'msg-row';
+    row.dataset.side = 'right';
+    row.innerHTML = `
+      <div class="msg-meta-top"><span class="msg-author">ครูภา (you)</span></div>
+      <div class="bubble bubble-staff" data-pretext contenteditable="true" spellcheck="false"></div>
+      <div class="msg-meta-bottom"><time>now</time><span>sending…</span></div>
+    `;
+    const bubble = row.querySelector('.bubble');
+    bubble.textContent = text;
+    messages.appendChild(row);
+    ta.value = '';
+
+    // Hook the new bubble into Pretext.
+    reprepare(bubble);
+    shrinkwrap(bubble);
+    relayout();
+    messages.scrollTop = messages.scrollHeight;
+
+    // Fake "delivered" tick after 600ms.
+    setTimeout(() => {
+      const meta = row.querySelector('.msg-meta-bottom');
+      if (meta) meta.innerHTML = '<time>now</time><span>✓ delivered</span>';
+    }, 600);
+  }
+
+  // Switching escalations in the left rail.
+  document.querySelectorAll('.escalation').forEach((row) => {
+    row.addEventListener('click', () => {
+      document.querySelectorAll('.escalation[aria-current]').forEach(r => r.removeAttribute('aria-current'));
+      row.setAttribute('aria-current', 'true');
+    });
+  });
+
+  // Scroll thread to bottom on first paint.
+  messages.scrollTop = messages.scrollHeight;
+</script>
+
+</body>
+</html>
