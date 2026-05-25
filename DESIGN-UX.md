@@ -1,0 +1,246 @@
+# Design Review Appendix
+
+> Companion to [DESIGN.md](DESIGN.md) (core product/architecture) and [DESIGN-ENG.md](DESIGN-ENG.md) (engineering review). Added by `/plan-design-review` on 2026-05-25.
+
+The product/architecture body in [DESIGN.md](DESIGN.md) is solid (8/10). This appendix takes the plan from architecture-complete to design-complete: screen inventory, interaction states, user journeys, AI-slop hard rules, responsive + a11y, and 8 unresolved decisions that will haunt week 1 if left ambiguous.
+
+Initial design completeness: **3/10**. After this appendix: **8/10** (gated on the 8 unresolved decisions getting owner input).
+
+## Screen Inventory & Information Hierarchy
+
+The admin app has 5 tabs. Each screen below lists purpose, what the user sees first/second/third, primary CTA, and any edge that affects layout.
+
+### Inbox (default landing tab, most-used)
+**Purpose:** Staff sees live + escalated chats, can take over any thread, can manually reply.
+**Information hierarchy:**
+1. **Escalated chats list** (left rail) — sorted by escalation timestamp newest-first. Each row: customer Line display name, last message preview (1 line, truncated), escalation reason badge (red = tripwire, amber = low confidence, blue = staff-request), age in minutes.
+2. **Active chat thread** (center column) — full message history. Yuna's replies tagged with a subtle "Yuna" badge; staff replies tagged with staff initials. Auto-scrolls to latest. RAG sources for each Yuna reply shown inline (collapsible).
+3. **Customer context** (right rail) — Line user ID, phone (if captured), previous bookings, language, Yuna's inferred conversation goal, audit log link.
+
+**Primary CTA:** "Take over chat" (top-right of active thread). Pressing it puts Yuna silent for that thread; staff types in the composer at the bottom.
+
+**Secondary actions:** "Resolve & return to Yuna" (post-takeover), "Flag for review" (escalates to owner), "Add to knowledge" (right-click a good Yuna reply → drops into Knowledge as a sample).
+
+### Knowledge
+**Purpose:** Owner/staff uploads, structures, and edits the clinic-specific content Yuna grounds its replies on.
+**Information hierarchy:**
+1. **Knowledge tree** (left rail) — hierarchical: Treatments / Aftercare / FAQ / Brand stories / Pricing. Each node shows chunk count and last-edited date.
+2. **Editor** (center column) — Markdown editor with live preview. "Reindex" button appears when content is dirty.
+3. **Metadata panel** (right rail) — language(s), tags, "active in chat" toggle (lets owner stage drafts without affecting live replies), embedding model + dim (read-only).
+
+**Primary CTA:** "Add document" (top-left, prominent). Modal asks for category, language, optional tags, then drops user into the editor.
+
+**Empty state (critical):** A clinic with zero documents sees a 3-step starter: "1. Upload your treatment menu. 2. Upload your top 10 FAQs. 3. Upload one brand-voice sample." Each step has an upload button. **No Yuna replies will go live until step 1 completes — hard gate, not a suggestion.**
+
+### Bookings
+**Purpose:** Staff sees inbound booking intents captured from chat; confirms manually.
+**Information hierarchy:**
+1. **Pending queue** (top) — newest first. Each card: customer name, requested treatment, requested date/time, captured phone, link back to source chat.
+2. **Confirmed** (middle) — past 30 days.
+3. **Declined / no-show** (bottom, collapsed by default).
+
+**Primary CTA:** "Confirm" (green, on each pending card) or "Reschedule" (opens a template message back to the customer's Line).
+
+**Edge:** Booking intents with ambiguous fields ("next week", "afternoon") get a yellow border and a "needs phone" / "needs time" badge listing what's missing.
+
+### Broadcasts
+**Purpose:** Owner composes and sends manual broadcasts (promotions, news).
+**Information hierarchy:**
+1. **Push-quota readout** (banner, always visible at top) — "Used 4,200 / 10,000 this month — resets in 8 days." Turns amber at 80%, red at 95%.
+2. **Composer** (center) — message body with character counter (Line limit 5,000), optional image, target segment (all / last-90-day bookings / staff-defined tag), schedule (now / scheduled).
+3. **Past broadcasts** (below) — list with read receipts (if Line OA tier supports) and reply counts.
+
+**Primary CTA:** "Send now" (large, bottom-right). Disabled until a target segment is selected.
+
+**Edge:** If a broadcast would exceed remaining monthly push quota, Send is disabled with a tooltip explaining how many recipients fit in the remaining quota.
+
+### Settings
+**Purpose:** Owner configures everything that affects Yuna's behavior, billing, and team.
+**Information hierarchy — nine independently-saving sections, each its own collapsible card. DO NOT cram into one scrolling page:**
+1. **Clinic profile** — name, address, hours, languages spoken.
+2. **Line OA** — channel ID + secret (encrypted, last-4 visible only), webhook URL (read-only), "Test signature" button.
+3. **AI brain** — LLM provider picker (OpenAI / Anthropic / Google), model dropdown, embedding provider (locked to Cohere v0 with "request override" link), temperature slider.
+4. **Brand voice** — free-form prompt textarea + 3–5 sample dialogue pairs. See Unresolved.
+5. **Capacity rules** — informational fields ("we handle X bookings/day per treatment"); surfaces in chat to prevent overbooking talk. v0 = informational only.
+6. **Aftercare schedule** — D1/D7 toggles, hour-of-day picker (clinic timezone), template messages per language.
+7. **Privacy & retention** — conversation TTL (default 24mo), DSAR export button, sub-processor disclosure (auto-generated from current AI brain selection).
+8. **Team** — staff invites, role assignments (owner / staff), audit log access.
+9. **Billing** — current plan, message volume meter, payment method.
+
+**Primary CTA per section:** "Save changes" — each section saves independently; no global save button.
+
+**Edge:** Changing the LLM provider shows a confirmation modal: "This affects all future replies. Active conversations finish on the current provider." Save is logged to `audit_events`.
+
+---
+
+## Interaction State Matrix
+
+Every feature ships with all five states designed. Missing states = engineer ships "No items found." which depletes goodwill.
+
+| Feature | Loading | Empty | Error | Success | Partial |
+|---|---|---|---|---|---|
+| Inbox — escalated chats list | Skeleton rows (3 placeholders, exact row height, subtle shimmer) | "No escalations. Yuna is handling everything." + sparkline of replies/hour today | "Couldn't reach chat service. Retrying in 5s..." + manual retry | New escalation slides in from top with a brief amber pulse | If only some chats load: show what loaded + "5 more queued, retrying" sticky at top |
+| Inbox — active thread | Skeleton message bubbles (5 placeholders) | "Pick a chat from the left to view" + small illustration of the side rail | "Couldn't load this thread. Try refreshing." | Sent staff reply appears immediately with a subtle "sending…" tag; replaces with checkmark on confirm | Loaded most messages + spinner at top for older history |
+| Knowledge — tree | Skeleton tree (5 placeholder leaves) | 3-step starter (see Knowledge empty state above) | "Couldn't load knowledge base. Retry." | Document saved → toast "Saved. Reindexing 14 chunks…" → "Reindex complete. Live in 30s." | "8 of 12 documents loaded — loading remaining" with progress |
+| Knowledge — editor | Editor placeholder shimmer | "Pick a document from the tree or click Add Document." | "Failed to save — your edits are kept locally. Retry." | Save → "Saved" → fades to "Saved 8s ago" | Auto-saved draft toast every 30s |
+| Bookings — queue | Skeleton cards (3) | "No pending bookings. New requests appear here when a customer commits in chat." + link to a sample chat | "Couldn't load bookings. Retry." | Confirm → card slides to Confirmed section with a green check | Missing-fields cards highlighted yellow with "needs phone" badge |
+| Broadcasts — composer | n/a (instant) | n/a (always usable) | If image upload fails: inline below image area "Couldn't upload. Try a smaller image or paste a Line CDN URL." | Send → progress bar (recipients reached / total) → toast "Sent to 4,210 / 4,210 customers" | Mid-send quota exhausted: "Stopped at 3,400 / 4,210 — quota exhausted. Remaining resumes next month." |
+| Broadcasts — quota readout | Skeleton bar | n/a (always has a value if Line OA connected) | "Couldn't fetch quota. Estimated 8,500 / 10,000 based on last sync." | Real-time tick as broadcasts send | If Line OA disconnected: red banner "Line OA disconnected — reconnect in Settings" |
+| Settings — any section | Skeleton fields per section | n/a (always has defaults) | "Couldn't save. Your changes are kept locally — retry?" | Save → toast "Saved" → audit log entry in background | Field-level validation: red inline text below the field, never a global error |
+| Customer first-contact consent (Line) | n/a | n/a | If Line API fails, customer sees nothing; server-side retry | Customer sees Thai consent message + 2 quick-reply buttons ("ยินยอม" / "สอบถามก่อน") | n/a |
+| Aftercare D1/D7 send | n/a (server-side) | n/a | DLQ after 3 retries; `audit_events` entry visible to staff | Sent → `audit_events` entry + delivered tag in customer's conversation | LLM-judge classifier blocks an aftercare reply: doesn't send, escalates to staff inbox with "auto-blocked: diagnosis language detected" |
+
+Rule: **never ship "No items found." as an empty state.** Every empty state = message + primary action + (where possible) momentum (illustration, sparkline, or next-step hint).
+
+---
+
+## User Journey Storyboards
+
+Two journeys matter most in v0. Storyboard both before week 1.
+
+### Journey A — Clinic Owner Onboarding (target: ≤ 1 working day for clinic #2)
+
+| Step | User does | User feels | Plan supports? |
+|---|---|---|---|
+| 1 | Signs up at app.yuna.ai | Curious, mild skepticism | Yes — Supabase Auth |
+| 2 | Lands on "Welcome — let's get Yuna ready in 4 steps" | Relieved (clear scope) | **Missing — needs an onboarding checklist screen** |
+| 3 | Connect Line OA — pastes channel ID + secret | Anxious (these feel important) | Backend ready; **missing UX: a "Test signature" button that confirms the webhook received a real ping** |
+| 4 | Upload knowledge — drops in treatment menu | Skeptical ("will it parse correctly?") | **Missing — needs a preview of parsed chunks before commit** |
+| 5 | Set brand voice — picks LLM provider, writes voice prompt, optionally pastes 3 sample dialogues | Engaged (this is the magic) | Plan flags as Open Question — see Unresolved |
+| 6 | Test chat — talks to Yuna as if a customer | Excited or alarmed (defining moment) | **Missing — needs an in-app sandbox chat that uses the real configured Yuna in a dry-run scope** |
+| 7 | "Go live" toggle — Line OA inbound is now live | Hopeful, slightly nervous | **Missing — needs an explicit go-live screen with green-checked "must-haves"** |
+| 8 | First real customer message arrives, Yuna replies | Relief or panic | Inbox tab shows the live chat |
+
+**Gap:** the plan has no onboarding UX. A clinic owner sitting at their front desk at 8pm trying to set Yuna up will stall at step 2 (Line OA) with no test-ping confirmation. Add an onboarding flow to week 1.
+
+### Journey B — Thai Customer First Inbound Message (first-impression + PDPA)
+
+| Step | User does | User feels | Plan supports? |
+|---|---|---|---|
+| 1 | Adds the clinic's Line OA | Curious about the clinic | n/a (Line UX) |
+| 2 | Sends first message: "สวัสดีค่ะ อยากสอบถามเรื่องเลเซอร์" | Hopeful, casual | Webhook receives |
+| 3 | Sees consent message (Thai, friendly, 2 quick-reply buttons) | Slight friction, but accepts | Plan says consent exists; **need to design the exact Thai copy + button labels** |
+| 4 | Taps "ยินยอม" | Relief, ready to chat | Recorded in `consents` table |
+| 5 | Yuna replies in warm Thai: "ยินดีต้อนรับค่ะ! เลเซอร์ที่คลินิกเรามี 3 ประเภท..." | Pleasantly surprised — feels like a friend, not a robot | RAG + brand voice cover this |
+| 6 | Asks "ราคาเท่าไหร่คะ?" | Hopeful | Yes |
+| 7 | Yuna answers from Knowledge or escalates if pricing isn't in Knowledge | Satisfied OR "I'll wait for staff" | Escalation logic exists; **need to design the staff-handoff UX from customer's POV — does the customer see "a staff member will reply" or does the conversation just continue?** |
+| 8 | Books → Yuna captures booking intent | Excited | Yes |
+
+**Gap:** the consent message Thai copy + the customer-side staff-handoff UX are unspecified. Both are first-impression moments where trust is built or broken.
+
+---
+
+## Visual Hard Rules & AI-Slop Risk Audit
+
+There is no visual `DESIGN.md` yet. To prevent the admin UI from defaulting to AI-slop patterns, lock in these hard rules now.
+
+**Classifier:** the admin app is **APP UI** (dense, task-focused, dashboard-adjacent). The customer-facing surface is Line itself — not designed by us beyond message text.
+
+
+
+**Hard rules for the admin UI:**
+- No 1 rule: In all of the design choices, CEO prefers something easy to use. So if some things can be ignored, u can ignore. For example, adding or removing knowledge, can just be simple (or can be added later)
+- No purple / violet / indigo gradients. Default accent = a single warm color from the Thai-market palette (likely a calm teal or terracotta-amber — to be locked by `/design-consultation`).
+- No 3-column feature-grid layout anywhere. Every Settings "section" is a stacked card.
+- No icons in colored circles as section decoration.
+- No centered everything. Left-align by default; only headers and primary CTAs may center contextually.
+- Border-radius hierarchy: cards 8px, buttons 6px, inputs 4px. Not a uniform 16px bubbly radius.
+- No decorative blobs, floating circles, wavy SVG dividers.
+- No emoji as UI decoration. Emoji allowed only in user-generated content (customer messages, Knowledge body).
+- Generic hero copy is banned. The login page header is NOT "Welcome to Yuna." It is a concrete one-sentence statement of what Yuna does for this clinic.
+- **Typography:** pick a real Thai-aware typeface (recommend IBM Plex Sans Thai Looped or Noto Sans Thai) for both UI and content. Do NOT ship with `system-ui` as the primary font — Thai script in `system-ui` falls back to vendor defaults that look unprofessional.
+- Body text minimum 16px. Thai script needs the height; 14px is unreadable for casual register.
+- Tabular numerics (`font-variant-numeric: tabular-nums`) on number columns (push-quota, message counts, dates).
+
+**Litmus checks before week 4 demo:**
+1. Brand/product unmistakable in first screen? — must be YES (logo + product tagline on every screen)
+2. One strong visual anchor per screen? — YES (Inbox = active thread; Knowledge = editor; Settings = the open section)
+3. Page understandable by scanning headings only? — YES
+4. Each section has one job? — YES (the 9-section Settings is the biggest risk; one-page-scroll fails this)
+5. Are cards actually necessary? — review at week 4; cards allowed only where the card IS the interaction
+6. Does motion improve hierarchy? — minimum 3 intentional motions: new-escalation slide-in, save-toast fade, knowledge-tree expand
+7. Would it feel premium with all decorative shadows removed? — must be YES
+
+---
+
+## Design System Gap
+
+No visual `DESIGN.md` exists. The product design doc ([DESIGN.md](DESIGN.md)) covers business + architecture, not fonts, colors, spacing scale, motion, or component vocabulary.
+
+**Recommendation:** run `/design-consultation` before week 2 to produce a visual `DESIGN.md`. Without it, every screen designed in weeks 1–4 makes incompatible visual choices that compound into a brand-confused admin UI.
+
+Inputs the design consultation needs:
+- Target clinic owner persona (age, taste, devices, Thai-design sensibilities)
+- Aesthetic anchor: which 3 Thai brands feel right (a luxury hotel? a med-spa? a wellness app?)
+- Tone slider: clinical-professional vs. warm-friend (Yuna's customer voice is warm-friend; admin should reflect the same brand without becoming juvenile)
+- Reference SaaS apps the owner respects
+
+---
+
+## Responsive & Accessibility
+
+### Responsive
+
+- **Mobile (375–414px):** **Inbox is the only tab that MUST work fluidly on mobile** — clinic staff respond during peak hours from phones. Knowledge / Bookings / Broadcasts / Settings are desktop-primary, mobile-degraded.
+- **Tablet (768–1024px):** Inbox compresses 3-column → 2-column (list + thread). Right rail (customer context) drops to a slide-out drawer triggered from the thread header.
+- **Desktop (≥1024px):** Full 3-column Inbox. Knowledge tree + editor + metadata side-by-side. Settings sections side-by-side at ≥1440px.
+- No horizontal scroll at any breakpoint. No `user-scalable=no` in viewport meta. `env(safe-area-inset-*)` for notch devices (Thai market is heavily iPhone).
+
+### Accessibility
+
+- Touch targets ≥ 44px on all interactive elements.
+- `focus-visible` ring on every interactive element. Never `outline: none`.
+- WCAG AA contrast on body text (4.5:1).
+- Color is never the only signal: escalation reason uses color AND icon AND text label.
+- Keyboard nav: Tab through Inbox list, Enter to open a thread, J/K to move between threads (Slack/Gmail convention).
+- Screen-reader landmarks: `<nav>` for the tab bar, `<main>` for the active panel, `<aside>` for right-rail context.
+- Thai screen-reader exhaustive testing: defer to week 7 polish — flagged as TODO.
+
+---
+
+## Unresolved Design Decisions
+
+Each will haunt implementation if deferred without owner input. Recommendation given for each.
+
+| # | Decision | If deferred, what happens | Recommendation |
+|---|---|---|---|
+| 1 | **Admin UI language** — Thai-only, English-only, or both with toggle | Engineers ship whatever language is in JSX; clinic staff get an English admin UI by accident | **Both with toggle, Thai default.** Owner can switch in Settings. Affects every label. Translation pipeline needed from week 1. |
+| 2 | **Brand voice config UX** — free-form prompt, structured sliders + samples, or hybrid | Engineer ships a textarea labeled "Brand voice" with no examples; outputs are inconsistent across clinics | **Hybrid: free-form prompt + 3–5 sample dialogue pairs.** Office-hours session already recommended this; lock it in. |
+| 3 | **Mobile-first vs desktop-first for admin** | Engineer ships a desktop UI that's "responsive" by stacking columns on mobile; Inbox unusable on phone | **Desktop-first for Knowledge / Bookings / Broadcasts / Settings; mobile-first for Inbox only.** Reflects actual staff workflow. |
+| 4 | **Inbox real-time update mechanism** — polling, SSE, or notification-only | Engineer picks polling; staff sees stale chats for 5–10s after escalation | **SSE.** Simpler than WebSocket, native browser support, works through Vercel edge. Polling fallback if SSE fails. |
+| 5 | **Customer-side staff handoff UX** — does the customer see "a staff member is replying" or does the conversation just continue? | Customer is confused why reply tone suddenly changes | **One subtle Thai transition message:** "เจ้าหน้าที่กำลังตอบกลับค่ะ". Single sentence, no separate avatar/branding. Sent once per handoff, not per staff message. |
+| 6 | **Knowledge document structure** — single dump per category or structured per file | Engineer ships single textarea per category; RAG recall suffers; clinic edits become big-bang re-embeddings | **Structured: each treatment / device / FAQ entry is its own document with metadata.** Plan already leans this way (Open Question #2). Lock it in. |
+| 7 | **Consent message Thai copy** — formal legal vs. friendly short-text | Formal text scares customers off; chat completion rate drops | **Friendly short-text (2–3 sentences) + a "Read full terms" link to a longer formal version.** Get clinic #1's lawyer to vet both. |
+| 8 | **Push-quota readout placement** — Broadcasts tab only, or banner across the app | Broadcast sender hits quota mid-send because they didn't look at the readout | **Both: tab-level prominent banner in Broadcasts, plus a tiny indicator in the global top bar turning amber/red at thresholds.** |
+
+---
+
+## NOT in Scope (Design)
+
+Explicitly deferred:
+- Image / sticker understanding from customers — v0 routes to staff (plan §Line API Constraints).
+- Custom theming per clinic — Yuna admin uses one brand.
+- Dark mode — defer to v1.
+- Analytics dashboard UI — plan already defers; this review confirms.
+- Multi-channel UX (FB / IG / WhatsApp) — channel adapter exists architecturally; UX is Line-only in v0.
+- Calendar integrations UX — booking queue is manual confirm; integrations are upsell.
+- Thai screen-reader exhaustive testing — week 7 polish.
+
+## What Already Exists
+
+Nothing. Yuna is greenfield. Every component, screen, and visual decision is being made for the first time. There is no prior design system to leverage. This is why running `/design-consultation` before week 2 is high-value.
+
+## Implementation Tasks
+
+| ID | Priority | Effort (human / CC) | Component | Task | Source finding |
+|---|---|---|---|---|---|
+| T1 | P1 | ~3d / ~45min | onboarding-flow | Build 4-step onboarding (Line connect → Knowledge upload → brand voice → sandbox chat) with go-live gate | Journey A — clinic owner stalls at step 2 without test-ping |
+| T2 | P1 | ~1d / ~20min | design-system | Run `/design-consultation` → produce visual DESIGN.md (fonts, colors, spacing, motion) | Design System Gap section |
+| T3 | P1 | ~1d / ~30min | i18n | Set up translation pipeline (next-intl); ship Thai + English admin | Unresolved #1 — admin UI language |
+| T4 | P1 | ~4h / ~15min | inbox-states | Implement all 5 states for Inbox per state matrix | Pass 2 — state matrix |
+| T5 | P1 | ~2h / ~10min | knowledge-empty | Build the 3-step starter empty state with a hard go-live gate | Knowledge empty state spec |
+| T6 | P2 | ~3h / ~10min | settings-cards | Split Settings into 9 independently-saving collapsible cards | Settings information hierarchy |
+| T7 | P2 | ~2h / ~10min | quota-banner | Top-bar quota indicator + Broadcasts tab banner | Unresolved #8 — quota placement |
+| T8 | P2 | ~4h / ~15min | sse-inbox | Real-time Inbox updates via SSE with polling fallback | Unresolved #4 — Inbox real-time |
+| T9 | P2 | ~2h / ~10min | staff-handoff | Auto-send "เจ้าหน้าที่กำลังตอบกลับค่ะ" on takeover (once per handoff) | Unresolved #5 — staff handoff UX |
+| T10 | P3 | ~1h / ~5min | consent-copy | Clinic #1's lawyer vets short + long Thai consent text | Unresolved #7 — consent copy |
