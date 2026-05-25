@@ -22,6 +22,12 @@ Using gstack skills: After install, skills like /qa, /ship, /review, /investigat
 and /browse are available. Use /browse for all web browsing.
 Use ~/.claude/skills/gstack/... for gstack file paths (the global path).
 
+## Visual design system
+
+Always read `DESIGN-UI.md` before making any visual or UI decision (colors, fonts, spacing, layout, motion, component primitives). It is the single source of truth for the admin app's look and feel.
+
+The product/architecture design lives in `DESIGN.md`. `DESIGN-UI.md` is its visual companion — do not write visual tokens into `DESIGN.md`, and do not deviate from `DESIGN-UI.md` without explicit user approval. When running `/qa` or `/design-review`, flag any code that conflicts with the rules and tokens in `DESIGN-UI.md`.
+
 ## Skill routing
 
 When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.

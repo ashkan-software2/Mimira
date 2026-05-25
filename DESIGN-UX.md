@@ -165,15 +165,9 @@ There is no visual `DESIGN.md` yet. To prevent the admin UI from defaulting to A
 
 ## Design System Gap
 
-No visual `DESIGN.md` exists. The product design doc ([DESIGN.md](DESIGN.md)) covers business + architecture, not fonts, colors, spacing scale, motion, or component vocabulary.
+**RESOLVED 2026-05-25.** Visual design system now lives in [DESIGN-UI.md](DESIGN-UI.md). Aesthetic: Quiet Modernist (cool — ChatGPT/Apple lineage); type family: IBM Plex Sans + Plex Sans Thai Looped; primary CTA: near-black filled (not blue); single AI accent `#0a7c7c` reserved for Yuna-generated UI elements. Polestar: *calm and quiet, never overwhelming.*
 
-**Recommendation:** run `/design-consultation` before week 2 to produce a visual `DESIGN.md`. Without it, every screen designed in weeks 1–4 makes incompatible visual choices that compound into a brand-confused admin UI.
-
-Inputs the design consultation needs:
-- Target clinic owner persona (age, taste, devices, Thai-design sensibilities)
-- Aesthetic anchor: which 3 Thai brands feel right (a luxury hotel? a med-spa? a wellness app?)
-- Tone slider: clinical-professional vs. warm-friend (Yuna's customer voice is warm-friend; admin should reflect the same brand without becoming juvenile)
-- Reference SaaS apps the owner respects
+Note: the "warm color from the Thai-market palette" recommendation in the Hard rules section above (line 143) is **superseded** by `DESIGN-UI.md`. The cool direction was chosen because Yuna's warmth lives in her *message copy on Line*, not in the admin chrome — the admin is the instrument, not the hug.
 
 ---
 
