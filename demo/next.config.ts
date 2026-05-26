@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Allow access from arbitrary origins during `next dev` — EC2 public IPs
   // change across instance restarts, and we also tunnel via localhost. Dev only.
-  allowedDevOrigins: ["*"],
+  allowedDevOrigins: ["*", "127.0.0.1", "localhost", "0.0.0.0"],
 };
 
 export default nextConfig;
