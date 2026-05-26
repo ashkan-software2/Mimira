@@ -1,0 +1,7 @@
+Oligio X
+* total number of treatment shots
+   * whole face start 600 shots
+   * cheek and double chin start 300 shots
+   * whole face and neck 900 shots
+   * under eye and brow lifting start 300 shots
+   * neck area 300 shots

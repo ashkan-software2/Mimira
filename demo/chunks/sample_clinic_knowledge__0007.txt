@@ -1,0 +1,6 @@
+Xerf
+* total number of treatment shots
+   * whole face start 300 shots
+   * cheek and double chin start 300 shots
+   * whole face and neck 600 shots
+   * under eye and brow lifting start 200 shots
