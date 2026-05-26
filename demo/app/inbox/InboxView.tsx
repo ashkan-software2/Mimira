@@ -9,7 +9,20 @@ import {
   type KeyboardEvent,
 } from "react";
 import styles from "./Inbox.module.css";
-import type { ConversationListItem, ThreadMessage, ThreadResponse } from "./types";
+import {
+  PRESET_FLAGS,
+  type ConversationListItem,
+  type PresetFlag,
+  type ThreadMessage,
+  type ThreadResponse,
+} from "./types";
+
+const FLAG_BADGE_CLASS: Record<PresetFlag, string> = {
+  "Needs review": styles.badgeAttention,
+  "Doctor advice": styles.badgeDoctor,
+  Appointment: styles.badgeAppointment,
+  Addressed: styles.badgeAddressed,
+};
 
 const LIST_POLL_MS = 5000;
 const THREAD_POLL_MS = 4000;
@@ -147,42 +160,60 @@ export function InboxView({
   const aiPaused = thread?.customer.aiPaused ?? active?.aiPaused ?? false;
   const composerMode: "ai" | "staff" = aiPaused ? "staff" : "ai";
 
-  const threadHasOpenAttention = useMemo(
-    () => (thread?.messages ?? []).some((m) => m.needsAttention),
-    [thread]
+  const activeFlags = useMemo<string[]>(
+    () => thread?.customer.flags ?? active?.flags ?? [],
+    [thread, active]
   );
-  const [resolvingAttention, setResolvingAttention] = useState(false);
 
-  async function resolveAttention() {
-    if (!active || resolvingAttention) return;
+  async function toggleFlag(flag: PresetFlag, on: boolean) {
+    if (!active) return;
     const target = active.id;
-    setResolvingAttention(true);
     const now = Date.now();
-    // Optimistic: flip every open flag in the open thread to resolved, and
-    // clear the conversation row badge.
-    setThread((t) =>
-      t && t.customer.id === target
-        ? {
-            ...t,
-            messages: t.messages.map((m) =>
+
+    // Optimistic update for the open thread's flag set and (when Addressed
+    // is checked) the per-message attention badges. The server is the
+    // source of truth — refreshThread/refreshList reconcile after.
+    setThread((t) => {
+      if (!t || t.customer.id !== target) return t;
+      const nextFlags = on
+        ? Array.from(new Set([...t.customer.flags, flag]))
+        : t.customer.flags.filter((f) => f !== flag);
+      const messages =
+        flag === "Addressed" && on
+          ? t.messages.map((m) =>
               m.needsAttention
                 ? { ...m, needsAttention: false, attentionResolvedAt: now }
                 : m
-            ),
-          }
-        : t
-    );
+            )
+          : t.messages;
+      return {
+        ...t,
+        customer: { ...t.customer, flags: nextFlags },
+        messages,
+      };
+    });
     setConversations((cs) =>
-      cs.map((c) => (c.id === target ? { ...c, needsAttention: false } : c))
+      cs.map((c) => {
+        if (c.id !== target) return c;
+        const nextFlags = on
+          ? Array.from(new Set([...c.flags, flag]))
+          : c.flags.filter((f) => f !== flag);
+        return {
+          ...c,
+          flags: nextFlags,
+          needsAttention:
+            flag === "Addressed" && on ? false : c.needsAttention,
+        };
+      })
     );
+
     try {
-      await fetch("/api/inbox/resolve-attention", {
+      await fetch("/api/inbox/flags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId: target }),
+        body: JSON.stringify({ customerId: target, flag, on }),
       });
     } finally {
-      setResolvingAttention(false);
       refreshThread(target);
       refreshList();
     }
@@ -277,19 +308,20 @@ export function InboxView({
                   <span>LINE</span>
                   <span className={styles.dot}></span>
                   <span className="mono">{active.lineUserId.slice(0, 8)}…</span>
+                  {activeFlags.length > 0 && (
+                    <>
+                      <span className={styles.dot}></span>
+                      <span className={styles.threadFlags}>
+                        {activeFlags.map((f) => (
+                          <FlagPill key={f} flag={f} />
+                        ))}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className={styles.threadActions}>
-                {threadHasOpenAttention && (
-                  <button
-                    className={`${styles.btn} ${styles.btnSecondary}`}
-                    onClick={resolveAttention}
-                    disabled={resolvingAttention}
-                    title="Clear the Needs attention flag on every Yuna reply in this thread."
-                  >
-                    {resolvingAttention ? "Marking…" : "Mark thread addressed"}
-                  </button>
-                )}
+                <ActionsMenu flags={activeFlags} onToggle={toggleFlag} />
                 {composerMode === "ai" ? (
                   <button
                     className={`${styles.btn} ${styles.btnPrimary}`}
@@ -441,11 +473,9 @@ function LeftRail({
                 {c.preview || "(no messages)"}
               </div>
               <div className={styles.escMeta}>
-                {c.needsAttention && (
-                  <span className={`${styles.badge} ${styles.badgeAttention}`}>
-                    Needs attention
-                  </span>
-                )}
+                {c.flags.map((f) => (
+                  <FlagPill key={f} flag={f} />
+                ))}
                 {c.aiPaused && (
                   <span className={`${styles.badge} ${styles.badgeStaff}`}>
                     Paused
@@ -559,6 +589,77 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
       <div className={styles.msgMetaBottom}>
         <time>{timeOnly(message.createdAt)}</time>
       </div>
+    </div>
+  );
+}
+
+function FlagPill({ flag }: { flag: string }) {
+  // PresetFlag → known palette; anything else falls back to neutral.
+  const variant =
+    flag in FLAG_BADGE_CLASS
+      ? FLAG_BADGE_CLASS[flag as PresetFlag]
+      : "";
+  return (
+    <span className={`${styles.badge} ${variant}`}>{flag}</span>
+  );
+}
+
+function ActionsMenu({
+  flags,
+  onToggle,
+}: {
+  flags: string[];
+  onToggle: (flag: PresetFlag, on: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKey(e: globalThis.KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  return (
+    <div className={styles.actionsWrap} ref={wrapRef}>
+      <button
+        type="button"
+        className={`${styles.btn} ${styles.btnSecondary}`}
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        Actions <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className={styles.actionsPopover} role="menu">
+          <div className={styles.actionsHeader}>Flag this thread</div>
+          {PRESET_FLAGS.map((f) => {
+            const on = flags.includes(f);
+            return (
+              <label key={f} className={styles.actionItem}>
+                <input
+                  type="checkbox"
+                  checked={on}
+                  onChange={() => onToggle(f, !on)}
+                />
+                <span className={`${styles.actionDot} ${FLAG_BADGE_CLASS[f]}`} />
+                <span>{f}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

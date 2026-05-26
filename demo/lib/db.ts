@@ -122,6 +122,13 @@ function migrate(db: Database.Database) {
   if (!hasColumn(db, "settings", "data")) {
     db.exec("ALTER TABLE settings ADD COLUMN data TEXT");
   }
+
+  // Per-conversation flag set (added 2026-05-26). Stored as JSON-encoded
+  // string array on the customer row; NULL means "no flags". Drives the
+  // inbox Actions menu + conversation pills.
+  if (!hasColumn(db, "customers", "flags")) {
+    db.exec("ALTER TABLE customers ADD COLUMN flags TEXT");
+  }
 }
 
 function hasColumn(db: Database.Database, table: string, column: string): boolean {

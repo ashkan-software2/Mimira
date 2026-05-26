@@ -6,8 +6,20 @@ export type Customer = {
   display_name: string | null;
   phone: string | null;
   ai_paused: number;
+  flags: string | null;
   created_at: number;
 };
+
+// Preset conversation flags staff can toggle from the Inbox Actions menu.
+// Kept here (and not as a DB enum) so other surfaces (pipeline, list API)
+// can reference the canonical strings.
+export const PRESET_FLAGS = [
+  "Needs review",
+  "Doctor advice",
+  "Appointment",
+  "Addressed",
+] as const;
+export type PresetFlag = (typeof PRESET_FLAGS)[number];
 
 export type Message = {
   id: string;
@@ -228,6 +240,60 @@ export function setAiPaused(customerId: string, paused: boolean): void {
   getDb()
     .prepare("UPDATE customers SET ai_paused = ? WHERE id = ?")
     .run(paused ? 1 : 0, customerId);
+}
+
+export function getFlagsForCustomer(customerId: string): string[] {
+  return parseFlags(
+    (
+      getDb()
+        .prepare("SELECT flags FROM customers WHERE id = ?")
+        .get(customerId) as { flags: string | null } | undefined
+    )?.flags ?? null
+  );
+}
+
+export function parseFlags(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((v): v is string => typeof v === "string");
+  } catch {
+    return [];
+  }
+}
+
+export function setFlagsForCustomer(
+  customerId: string,
+  flags: string[]
+): string[] {
+  const cleaned = Array.from(
+    new Set(flags.map((f) => f.trim()).filter(Boolean))
+  );
+  getDb()
+    .prepare("UPDATE customers SET flags = ? WHERE id = ?")
+    .run(cleaned.length > 0 ? JSON.stringify(cleaned) : null, customerId);
+  return cleaned;
+}
+
+// Idempotent — used by the pipeline to auto-flag conversations the AI
+// handed off, without clobbering anything staff has already toggled.
+export function addFlagToCustomer(customerId: string, flag: string): string[] {
+  const current = getFlagsForCustomer(customerId);
+  if (current.includes(flag)) return current;
+  return setFlagsForCustomer(customerId, [...current, flag]);
+}
+
+export function removeFlagFromCustomer(
+  customerId: string,
+  flag: string
+): string[] {
+  const current = getFlagsForCustomer(customerId);
+  if (!current.includes(flag)) return current;
+  return setFlagsForCustomer(
+    customerId,
+    current.filter((f) => f !== flag)
+  );
 }
 
 export function getBrandVoice(): string {

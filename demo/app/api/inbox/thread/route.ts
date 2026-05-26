@@ -4,6 +4,7 @@ import {
   getCustomerById,
   messageAttentionResolvedAt,
   messageNeedsAttention,
+  parseFlags,
 } from "@/lib/repo";
 
 export const runtime = "nodejs";
@@ -31,6 +32,7 @@ export async function GET(req: Request) {
       phone: customer.phone,
       aiPaused: customer.ai_paused === 1,
       createdAt: customer.created_at,
+      flags: parseFlags(customer.flags),
     },
     messages: messages.map((m) => ({
       id: m.id,

@@ -1,4 +1,5 @@
 import {
+  addFlagToCustomer,
   getBrandVoice,
   getCustomerById,
   getSettings,
@@ -308,7 +309,11 @@ export async function runChatPipeline(args: {
 
   const meta: Record<string, unknown> = {};
   if (bookingId) meta.booking_id = bookingId;
-  if (detectHandoff(replyTextBody)) meta.needs_attention = true;
+  const handoff = detectHandoff(replyTextBody);
+  if (handoff) {
+    meta.needs_attention = true;
+    addFlagToCustomer(args.customerId, "Needs review");
+  }
 
   insertMessage({
     customerId: args.customerId,

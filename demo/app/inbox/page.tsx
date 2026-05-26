@@ -1,4 +1,8 @@
-import { customerIdsNeedingAttention, listConversations } from "@/lib/repo";
+import {
+  customerIdsNeedingAttention,
+  listConversations,
+  parseFlags,
+} from "@/lib/repo";
 import { InboxView } from "./InboxView";
 import type { ConversationListItem } from "./types";
 
@@ -15,6 +19,7 @@ export default function InboxPage() {
     preview: c.last_message?.text ?? "",
     lastMessageDirection: c.last_message?.direction ?? null,
     needsAttention: attentionSet.has(c.customer.id),
+    flags: parseFlags(c.customer.flags),
   }));
 
   return <InboxView initialConversations={conversations} />;

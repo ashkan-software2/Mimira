@@ -7,6 +7,7 @@ export type ConversationListItem = {
   preview: string;
   lastMessageDirection: "in" | "out" | null;
   needsAttention: boolean;
+  flags: string[];
 };
 
 export type ThreadMessage = {
@@ -27,6 +28,17 @@ export type ThreadResponse = {
     phone: string | null;
     aiPaused: boolean;
     createdAt: number;
+    flags: string[];
   };
   messages: ThreadMessage[];
 };
+
+// Mirrored from server-side PRESET_FLAGS in lib/repo.ts. The Actions menu
+// in InboxView renders these in order.
+export const PRESET_FLAGS = [
+  "Needs review",
+  "Doctor advice",
+  "Appointment",
+  "Addressed",
+] as const;
+export type PresetFlag = (typeof PRESET_FLAGS)[number];
