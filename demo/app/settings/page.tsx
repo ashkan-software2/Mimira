@@ -1,10 +1,9 @@
-import { Placeholder } from "../_components/Placeholder";
+import { getBrandVoice } from "@/lib/repo";
+import { SettingsView } from "./SettingsView";
+
+export const dynamic = "force-dynamic";
 
 export default function SettingsPage() {
-  return (
-    <Placeholder
-      title="Settings"
-      blurb="Brand voice textarea + Line/AI cards land here. See /mockups/settings.html."
-    />
-  );
+  const brandVoice = getBrandVoice();
+  return <SettingsView initialBrandVoice={brandVoice} />;
 }
