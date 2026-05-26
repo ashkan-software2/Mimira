@@ -100,6 +100,16 @@ export function insertMessage(args: {
   };
 }
 
+export function messageNeedsAttention(m: Message | null | undefined): boolean {
+  if (!m || !m.channel_meta) return false;
+  try {
+    const parsed = JSON.parse(m.channel_meta) as { needs_attention?: unknown };
+    return parsed.needs_attention === true;
+  } catch {
+    return false;
+  }
+}
+
 export function lastMessagesForCustomer(
   customerId: string,
   limit: number

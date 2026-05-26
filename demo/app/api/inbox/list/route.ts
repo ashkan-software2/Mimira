@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listConversations } from "@/lib/repo";
+import { listConversations, messageNeedsAttention } from "@/lib/repo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +15,7 @@ export async function GET() {
       lastMessageAt: c.last_message_at,
       preview: c.last_message?.text ?? "",
       lastMessageDirection: c.last_message?.direction ?? null,
+      needsAttention: messageNeedsAttention(c.last_message),
     })),
   });
 }

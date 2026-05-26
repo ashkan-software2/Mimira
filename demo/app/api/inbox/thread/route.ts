@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { allMessagesForCustomer, getCustomerById } from "@/lib/repo";
+import {
+  allMessagesForCustomer,
+  getCustomerById,
+  messageNeedsAttention,
+} from "@/lib/repo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +37,7 @@ export async function GET(req: Request) {
       sentBy: m.sent_by,
       text: m.text,
       createdAt: m.created_at,
+      needsAttention: messageNeedsAttention(m),
     })),
   });
 }

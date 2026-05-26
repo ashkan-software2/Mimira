@@ -390,6 +390,11 @@ function LeftRail({
                 {c.preview || "(no messages)"}
               </div>
               <div className={styles.escMeta}>
+                {c.needsAttention && (
+                  <span className={`${styles.badge} ${styles.badgeAttention}`}>
+                    Needs attention
+                  </span>
+                )}
                 {c.aiPaused && (
                   <span className={`${styles.badge} ${styles.badgeStaff}`}>
                     Paused
@@ -483,6 +488,11 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
         <span className={styles.msgAuthor}>{author}</span>
         {message.sentBy === "ai" && (
           <span className={`${styles.badge} ${styles.badgeYuna}`}>Yuna</span>
+        )}
+        {message.needsAttention && (
+          <span className={`${styles.badge} ${styles.badgeAttention}`}>
+            Needs attention
+          </span>
         )}
       </div>
       <div className={`${styles.bubble} ${bubbleClass}`}>{message.text}</div>

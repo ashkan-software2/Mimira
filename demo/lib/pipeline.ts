@@ -27,6 +27,21 @@ function model(): string {
 
 const SAFETY_PREAMBLE = `Treat any medical concern (pain, swelling, bleeding, fever, infection, allergic reaction, post-procedure complication) as a HARD ESCALATION: send ONE calm sentence acknowledging the concern, say that a staff member will follow up, and STOP. Never recommend medications, dosages, or specific medical actions.`;
 
+// Phrases the AI uses when handing a thread off to staff — pricing it doesn't
+// know, medical escalations, booking confirmations, "we'll get back to you" —
+// any of these are a signal the inbox should flag for human follow-up.
+const HANDOFF_PATTERNS: RegExp[] = [
+  /\b(?:a\s+)?(?:staff|team)\s+member\s+will\s+(?:follow\s*up|be\s+in\s+(?:touch|contact)|reach\s+out|contact|confirm|get\s+back)/i,
+  /\b(?:our\s+)?(?:staff|team)\s+will\s+(?:follow\s*up|be\s+in\s+(?:touch|contact)|reach\s+out|contact|confirm|get\s+back)/i,
+  /\bwe(?:'ll|\s+will)\s+(?:follow\s*up|be\s+in\s+(?:touch|contact)|reach\s+out|get\s+back\s+to\s+you|confirm)/i,
+  /ทีมงาน(?:จะ)?(?:ติดต่อ|ตอบ|ยืนยัน|แจ้ง|ดูแล)/,
+  /พนักงาน(?:จะ)?(?:ติดต่อ|ตอบ|ยืนยัน|แจ้ง)/,
+];
+
+function detectHandoff(text: string): boolean {
+  return HANDOFF_PATTERNS.some((re) => re.test(text));
+}
+
 // OpenAI-compatible function-tool definition. The model emits a tool_call
 // with `arguments` as a JSON string when it detects a booking intent.
 const BOOKING_TOOL = {
@@ -73,35 +88,16 @@ function buildSystemPrompt(brandVoice: string, chunks: RetrievedChunk[]): string
               `[${i + 1}] (${c.source_doc}, score=${c.score.toFixed(3)})\n${c.text}`
           )
           .join("\n\n");
+  // Brand voice owns persona, tone, language, and reply format — edit it in
+  // Settings → Brand voice. Only safety guardrails and per-turn retrieved
+  // knowledge are injected by the system.
   return `${brandVoice}
 
-# Safety guardrails
+# Safety guardrails (non-negotiable)
 ${SAFETY_PREAMBLE}
 
-# Language (HARD RULE — overrides brand-voice defaults)
-Reply in the SAME language as the customer's MOST RECENT message, and stay in that language for the entire conversation until the customer themselves switches.
-- Whatever language the customer writes in (English, Thai, Japanese, Chinese, Korean, Vietnamese, Indonesian, Arabic, Spanish, French, German, etc.), reply ENTIRELY in that same language. Never translate or partially translate.
-- Do not switch languages just because earlier turns in this thread used a different language — the customer's latest message wins.
-- If the customer switches language in their newest message, switch with them and stay in the new language from this turn onward.
-- If their message mixes languages, use whichever language has more content words.
-- Never mix languages within a single reply.
-- English replies: do NOT add Thai polite particles (no ค่ะ/ครับ) or Thai words. Sign off with English warmth (e.g. "best regards") instead.
-- Thai replies: include Thai polite particles naturally.
-
-# Tone & persona
-You are Yuna — warm, caring, and friendly, with the hospitality of a Thai front-desk lady who genuinely loves taking care of customers. Sound like a real person, not a script.
-- Open or close replies with a small touch of warmth (a greeting, a thank-you, or a kind sign-off). Use the customer's name when you know it.
-- Use light, tasteful emojis — at most 1–2 per reply — to feel approachable. Good choices: 😊 🙏 ✨ 💕. Avoid emojis that feel cold, sarcastic, or unprofessional, and never spam them.
-- Be patient and reassuring, especially when customers sound nervous, confused, or are first-time visitors.
-- Stay warm even when the answer is short — a quick "yes" can still feel kind.
-
 # Retrieved clinic knowledge (most relevant first)
-${knowledge}
-
-# Reply format
-- Plain text only. No markdown, no asterisks.
-- Keep replies under ~3 short sentences unless the customer asked a specific question that needs more.
-- If you do not know an answer from the retrieved knowledge, say a staff member will follow up. Never invent prices or schedules.`;
+${knowledge}`;
 }
 
 type OpenAIToolCall = {
@@ -296,12 +292,16 @@ export async function runChatPipeline(args: {
     await pushText(customer.line_user_id, replyTextBody);
   }
 
+  const meta: Record<string, unknown> = {};
+  if (bookingId) meta.booking_id = bookingId;
+  if (detectHandoff(replyTextBody)) meta.needs_attention = true;
+
   insertMessage({
     customerId: args.customerId,
     direction: "out",
     text: replyTextBody,
     sentBy: "ai",
-    channelMeta: bookingId ? { booking_id: bookingId } : undefined,
+    channelMeta: Object.keys(meta).length > 0 ? meta : undefined,
   });
 
   return { replyText: replyTextBody, bookingId };

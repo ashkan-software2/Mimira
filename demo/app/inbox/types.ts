@@ -6,6 +6,7 @@ export type ConversationListItem = {
   lastMessageAt: number;
   preview: string;
   lastMessageDirection: "in" | "out" | null;
+  needsAttention: boolean;
 };
 
 export type ThreadMessage = {
@@ -14,6 +15,7 @@ export type ThreadMessage = {
   sentBy: "customer" | "ai" | "staff";
   text: string;
   createdAt: number;
+  needsAttention: boolean;
 };
 
 export type ThreadResponse = {

@@ -1,4 +1,4 @@
-import { listConversations } from "@/lib/repo";
+import { listConversations, messageNeedsAttention } from "@/lib/repo";
 import { InboxView } from "./InboxView";
 import type { ConversationListItem } from "./types";
 
@@ -13,6 +13,7 @@ export default function InboxPage() {
     lastMessageAt: c.last_message_at,
     preview: c.last_message?.text ?? "",
     lastMessageDirection: c.last_message?.direction ?? null,
+    needsAttention: messageNeedsAttention(c.last_message),
   }));
 
   return <InboxView initialConversations={conversations} />;
