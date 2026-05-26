@@ -1,0 +1,104 @@
+.app {
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-xl);
+  padding: 0 var(--space-xl);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+}
+.brandMark {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--fg);
+  color: var(--bg);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+.brandName { color: var(--fg); }
+.brandClinic { color: var(--fg-muted); font-weight: 400; }
+.brandSep { color: var(--fg-subtle); }
+
+.tabs {
+  display: flex;
+  gap: var(--space-2xs);
+  justify-self: start;
+}
+.tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color var(--dur-micro) var(--ease-move),
+              background var(--dur-micro) var(--ease-move);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab:hover { color: var(--fg); background: var(--surface-2); }
+.tab[aria-current="page"] { color: var(--fg); background: var(--surface-2); }
+
+.count {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--fg-muted);
+  background: var(--border-subtle);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  min-width: 18px;
+  text-align: center;
+}
+.tab[aria-current="page"] .count {
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.topbarRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.main {
+  min-height: 0;
+  overflow: auto;
+  background: var(--bg);
+}

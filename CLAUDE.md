@@ -1,3 +1,9 @@
+## Repo layout
+
+- `demo/` — the demo Next.js app (Approach C, single-clinic, no multi-tenancy). All app code, package.json, serve.sh, and node_modules live here. Run the dev server with `bash demo/serve.sh`.
+- `mockups/` — static HTML visual references. The real demo must match the layout and tokens here.
+- `DESIGN.md`, `DESIGN-DEMO.md`, `DESIGN-ENG.md`, `DESIGN-UX.md`, `DESIGN-UI.md`, `TEST-PLAN.md`, `TODOS.md` — shared design + planning docs at the worktree root. Read these before making product, architecture, or visual decisions. Multiple agents working in parallel should keep new app code inside `demo/` (or a sibling top-level folder, e.g. `prod/` later) — never overwrite the shared docs without explicit user approval.
+
 ## gstack (REQUIRED — global install)
 
 **Before doing ANY work, verify gstack is installed:**
