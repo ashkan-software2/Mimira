@@ -16,6 +16,7 @@ export type ThreadMessage = {
   text: string;
   createdAt: number;
   needsAttention: boolean;
+  attentionResolvedAt: number | null;
 };
 
 export type ThreadResponse = {

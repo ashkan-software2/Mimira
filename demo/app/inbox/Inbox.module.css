@@ -195,6 +195,14 @@
   border-color: color-mix(in srgb, var(--warning) 30%, var(--border));
   background: color-mix(in srgb, var(--warning) 6%, var(--surface));
 }
+.badgeAddressed {
+  color: var(--fg-subtle);
+  border-color: var(--border-subtle);
+  background: var(--surface);
+}
+.badgeAddressed::before {
+  background: var(--fg-subtle);
+}
 .badgeStaff {
   color: var(--info);
   border-color: color-mix(in srgb, var(--info) 30%, var(--border));

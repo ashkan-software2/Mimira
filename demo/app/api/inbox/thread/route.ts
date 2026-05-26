@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   allMessagesForCustomer,
   getCustomerById,
+  messageAttentionResolvedAt,
   messageNeedsAttention,
 } from "@/lib/repo";
 
@@ -38,6 +39,7 @@ export async function GET(req: Request) {
       text: m.text,
       createdAt: m.created_at,
       needsAttention: messageNeedsAttention(m),
+      attentionResolvedAt: messageAttentionResolvedAt(m),
     })),
   });
 }

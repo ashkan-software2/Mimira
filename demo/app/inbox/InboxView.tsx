@@ -147,6 +147,47 @@ export function InboxView({
   const aiPaused = thread?.customer.aiPaused ?? active?.aiPaused ?? false;
   const composerMode: "ai" | "staff" = aiPaused ? "staff" : "ai";
 
+  const threadHasOpenAttention = useMemo(
+    () => (thread?.messages ?? []).some((m) => m.needsAttention),
+    [thread]
+  );
+  const [resolvingAttention, setResolvingAttention] = useState(false);
+
+  async function resolveAttention() {
+    if (!active || resolvingAttention) return;
+    const target = active.id;
+    setResolvingAttention(true);
+    const now = Date.now();
+    // Optimistic: flip every open flag in the open thread to resolved, and
+    // clear the conversation row badge.
+    setThread((t) =>
+      t && t.customer.id === target
+        ? {
+            ...t,
+            messages: t.messages.map((m) =>
+              m.needsAttention
+                ? { ...m, needsAttention: false, attentionResolvedAt: now }
+                : m
+            ),
+          }
+        : t
+    );
+    setConversations((cs) =>
+      cs.map((c) => (c.id === target ? { ...c, needsAttention: false } : c))
+    );
+    try {
+      await fetch("/api/inbox/resolve-attention", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId: target }),
+      });
+    } finally {
+      setResolvingAttention(false);
+      refreshThread(target);
+      refreshList();
+    }
+  }
+
   async function setPaused(paused: boolean) {
     if (!active) return;
     const target = active.id;
@@ -239,6 +280,16 @@ export function InboxView({
                 </div>
               </div>
               <div className={styles.threadActions}>
+                {threadHasOpenAttention && (
+                  <button
+                    className={`${styles.btn} ${styles.btnSecondary}`}
+                    onClick={resolveAttention}
+                    disabled={resolvingAttention}
+                    title="Clear the Needs attention flag on every Yuna reply in this thread."
+                  >
+                    {resolvingAttention ? "Marking…" : "Mark thread addressed"}
+                  </button>
+                )}
                 {composerMode === "ai" ? (
                   <button
                     className={`${styles.btn} ${styles.btnPrimary}`}
@@ -489,11 +540,20 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
         {message.sentBy === "ai" && (
           <span className={`${styles.badge} ${styles.badgeYuna}`}>Yuna</span>
         )}
-        {message.needsAttention && (
+        {message.needsAttention ? (
           <span className={`${styles.badge} ${styles.badgeAttention}`}>
             Needs attention
           </span>
-        )}
+        ) : message.attentionResolvedAt !== null ? (
+          <span
+            className={`${styles.badge} ${styles.badgeAddressed}`}
+            title={`Marked addressed at ${timeOnly(
+              message.attentionResolvedAt
+            )}`}
+          >
+            Addressed
+          </span>
+        ) : null}
       </div>
       <div className={`${styles.bubble} ${bubbleClass}`}>{message.text}</div>
       <div className={styles.msgMetaBottom}>

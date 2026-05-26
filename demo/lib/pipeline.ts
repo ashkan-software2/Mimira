@@ -25,7 +25,13 @@ function model(): string {
   return process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 }
 
-const SAFETY_PREAMBLE = `Treat any medical concern (pain, swelling, bleeding, fever, infection, allergic reaction, post-procedure complication) as a HARD ESCALATION: send ONE calm sentence acknowledging the concern, say that a staff member will follow up, and STOP. Never recommend medications, dosages, or specific medical actions.`;
+const SAFETY_PREAMBLE = `When the CUSTOMER reports a medical concern about themselves (pain, swelling, bleeding, fever, infection, allergic reaction, post-procedure complication) — i.e. they are describing their own symptoms — treat it as a HARD ESCALATION: send ONE calm sentence acknowledging the concern, say a staff member will follow up, and STOP. Never recommend medications, dosages, or specific medical actions.
+
+This rule does NOT apply when:
+- the customer is asking what a treatment is, how it works, what it treats, or what conditions it addresses,
+- a retrieved knowledge entry mentions medical terms (pain, swelling, etc.) as part of describing a treatment or aftercare,
+- the customer is asking a general question about clinic services.
+In those cases, answer normally using the retrieved knowledge.`;
 
 // Phrases the AI uses when handing a thread off to staff — pricing it doesn't
 // know, medical escalations, booking confirmations, "we'll get back to you" —
@@ -89,12 +95,20 @@ function buildSystemPrompt(brandVoice: string, chunks: RetrievedChunk[]): string
           )
           .join("\n\n");
   // Brand voice owns persona, tone, language, and reply format — edit it in
-  // Settings → Brand voice. Only safety guardrails and per-turn retrieved
-  // knowledge are injected by the system.
+  // Settings → Brand voice. Only safety guardrails, the retrieval-grounding
+  // rule, and per-turn retrieved knowledge are injected by the system.
   return `${brandVoice}
 
 # Safety guardrails (non-negotiable)
 ${SAFETY_PREAMBLE}
+
+# Using retrieved clinic knowledge (non-negotiable)
+The "Retrieved clinic knowledge" section below contains entries the staff added
+about this clinic's actual services. If any entry is even loosely related to the
+customer's question, ANSWER using that entry — quote or paraphrase the facts it
+contains. Do NOT fall back to "a staff member will follow up" just because an
+entry is short or terse; short entries are still authoritative. Only say you
+don't know when NONE of the entries cover the topic at all.
 
 # Retrieved clinic knowledge (most relevant first)
 ${knowledge}`;

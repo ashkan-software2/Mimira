@@ -100,14 +100,86 @@ export function insertMessage(args: {
   };
 }
 
-export function messageNeedsAttention(m: Message | null | undefined): boolean {
-  if (!m || !m.channel_meta) return false;
+type AttentionMeta = {
+  needs_attention?: unknown;
+  attention_resolved_at?: unknown;
+  attention_resolved_by?: unknown;
+};
+
+function parseAttentionMeta(m: Message | null | undefined): AttentionMeta | null {
+  if (!m || !m.channel_meta) return null;
   try {
-    const parsed = JSON.parse(m.channel_meta) as { needs_attention?: unknown };
-    return parsed.needs_attention === true;
+    return JSON.parse(m.channel_meta) as AttentionMeta;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function messageNeedsAttention(m: Message | null | undefined): boolean {
+  const meta = parseAttentionMeta(m);
+  if (!meta || meta.needs_attention !== true) return false;
+  return meta.attention_resolved_at == null;
+}
+
+export function messageAttentionResolvedAt(
+  m: Message | null | undefined
+): number | null {
+  const meta = parseAttentionMeta(m);
+  if (!meta || meta.needs_attention !== true) return null;
+  return typeof meta.attention_resolved_at === "number"
+    ? meta.attention_resolved_at
+    : null;
+}
+
+// Returns the set of customer ids that have at least one AI message flagged
+// for attention that has not been resolved. Used to drive the conversation
+// list badge without relying on "last message" state (so the badge survives
+// a customer reply on top of an unresolved escalation).
+export function customerIdsNeedingAttention(): Set<string> {
+  const rows = getDb()
+    .prepare(
+      `SELECT DISTINCT customer_id FROM messages
+       WHERE sent_by = 'ai'
+         AND channel_meta IS NOT NULL
+         AND json_extract(channel_meta, '$.needs_attention') = 1
+         AND json_extract(channel_meta, '$.attention_resolved_at') IS NULL`
+    )
+    .all() as { customer_id: string }[];
+  return new Set(rows.map((r) => r.customer_id));
+}
+
+// Mark every open "needs attention" flag on this customer's AI messages as
+// resolved. Returns the number of messages that flipped.
+export function resolveAttentionForCustomer(args: {
+  customerId: string;
+  actor: string;
+}): number {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      "SELECT id, channel_meta FROM messages WHERE customer_id = ? AND sent_by = 'ai' AND channel_meta IS NOT NULL"
+    )
+    .all(args.customerId) as { id: string; channel_meta: string }[];
+  const update = db.prepare(
+    "UPDATE messages SET channel_meta = ? WHERE id = ?"
+  );
+  const ts = now();
+  let resolved = 0;
+  for (const row of rows) {
+    let meta: AttentionMeta & Record<string, unknown>;
+    try {
+      meta = JSON.parse(row.channel_meta);
+    } catch {
+      continue;
+    }
+    if (meta.needs_attention !== true) continue;
+    if (meta.attention_resolved_at != null) continue;
+    meta.attention_resolved_at = ts;
+    meta.attention_resolved_by = args.actor;
+    update.run(JSON.stringify(meta), row.id);
+    resolved++;
+  }
+  return resolved;
 }
 
 export function lastMessagesForCustomer(

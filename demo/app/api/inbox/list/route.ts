@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { listConversations, messageNeedsAttention } from "@/lib/repo";
+import { customerIdsNeedingAttention, listConversations } from "@/lib/repo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const conversations = listConversations();
+  const attentionSet = customerIdsNeedingAttention();
   return NextResponse.json({
     conversations: conversations.map((c) => ({
       id: c.customer.id,
@@ -15,7 +16,7 @@ export async function GET() {
       lastMessageAt: c.last_message_at,
       preview: c.last_message?.text ?? "",
       lastMessageDirection: c.last_message?.direction ?? null,
-      needsAttention: messageNeedsAttention(c.last_message),
+      needsAttention: attentionSet.has(c.customer.id),
     })),
   });
 }
