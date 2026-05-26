@@ -457,7 +457,8 @@ function MessagesList({ messages }: { messages: ThreadMessage[] }) {
 }
 
 function MessageBubble({ message }: { message: ThreadMessage }) {
-  const side = message.sentBy === "staff" ? "right" : "left";
+  // Customer on the left; both Yuna and staff (the clinic's "side") on the right.
+  const side = message.sentBy === "customer" ? "left" : "right";
   const bubbleClass =
     message.sentBy === "customer"
       ? styles.bubbleCustomer

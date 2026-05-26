@@ -394,10 +394,12 @@
   border-bottom-left-radius: var(--radius-sm);
 }
 .bubbleYuna {
-  background: var(--surface);
+  /* Soft blue tint so Yuna's replies are visually distinct from staff
+     replies (black) while still living on the clinic side of the thread. */
+  background: color-mix(in srgb, var(--link) 8%, var(--surface));
   color: var(--fg);
-  border: 1px solid var(--border);
-  border-bottom-left-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--link) 22%, var(--border));
+  border-bottom-right-radius: var(--radius-sm);
 }
 .bubbleStaff {
   background: var(--cta-fill);
