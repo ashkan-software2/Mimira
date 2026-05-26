@@ -1,21 +1,20 @@
 /**
- * Seed knowledge_chunks from one or more knowledge files.
+ * Seed knowledge_chunks from pre-chunked files in demo/chunks/.
+ *
+ * Filename convention: `<source_doc>__NNNN.txt`. The part before `__` becomes
+ * the source_doc identifier in the DB; the rest is just an ordering suffix
+ * from the upstream chunker.
  *
  * Usage:
- *   npm run seed:knowledge                          # default: data/sample_clinic_knowledge
- *   npm run seed:knowledge -- path/to/file.md ...   # one or more explicit files
+ *   npm run seed:knowledge                          # default: chunks/ dir
+ *   npm run seed:knowledge -- path/to/chunks-dir    # alternative dir
  *
- * Splitting: paragraphs separated by blank lines, merged greedily into
- * ~500-character chunks. This is a deliberately dumb chunker for the demo —
- * another agent is working on a smarter outline-aware chunker that will plug
- * into the same insertKnowledgeChunk interface.
- *
- * Re-running deletes existing chunks for each source_doc and re-inserts —
- * safe to run repeatedly while iterating on knowledge files.
+ * Re-running deletes existing chunks for each source_doc before re-inserting,
+ * so it is safe to run repeatedly while iterating on the upstream chunker.
  */
 
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { config } from "dotenv";
 import { embedDocuments } from "../lib/cohere";
 import { deleteKnowledgeForSource, insertKnowledgeChunk } from "../lib/repo";
@@ -23,85 +22,83 @@ import { deleteKnowledgeForSource, insertKnowledgeChunk } from "../lib/repo";
 config({ path: join(process.cwd(), ".env.local") });
 config({ path: join(process.cwd(), ".env") });
 
-const TARGET_CHUNK_CHARS = 500;
-const DEFAULT_PATH = join(process.cwd(), "data", "sample_clinic_knowledge");
+const DEFAULT_DIR = join(process.cwd(), "chunks");
+const EMBED_BATCH_SIZE = 96; // Cohere embed-multilingual-v3 cap.
 
-function chunkText(raw: string): string[] {
-  const paragraphs = raw
-    .replace(/\r\n/g, "\n")
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  const chunks: string[] = [];
-  let buf = "";
-  for (const p of paragraphs) {
-    if (buf.length === 0) {
-      buf = p;
-      continue;
-    }
-    if (buf.length + p.length + 2 <= TARGET_CHUNK_CHARS) {
-      buf = `${buf}\n\n${p}`;
-    } else {
-      chunks.push(buf);
-      buf = p;
-    }
-  }
-  if (buf.length > 0) chunks.push(buf);
-  return chunks;
+function sourceDocFromFilename(name: string): string {
+  const sep = name.indexOf("__");
+  if (sep === -1) return name.replace(/\.[^.]+$/, "");
+  return name.slice(0, sep);
 }
 
-async function seedFile(filePath: string) {
-  const sourceDoc = basename(filePath);
-  const raw = readFileSync(filePath, "utf8");
-  const chunks = chunkText(raw);
-  if (chunks.length === 0) {
-    console.log(`SKIP   ${sourceDoc} (empty)`);
-    return;
+async function embedInBatches(texts: string[]): Promise<number[][]> {
+  const out: number[][] = [];
+  for (let i = 0; i < texts.length; i += EMBED_BATCH_SIZE) {
+    const slice = texts.slice(i, i + EMBED_BATCH_SIZE);
+    const vectors = await embedDocuments(slice);
+    if (vectors.length !== slice.length) {
+      throw new Error(
+        `Cohere returned ${vectors.length} vectors for ${slice.length} texts`
+      );
+    }
+    out.push(...vectors);
   }
-
-  const removed = deleteKnowledgeForSource(sourceDoc);
-  if (removed > 0) console.log(`CLEAR  ${sourceDoc} (${removed} old chunks)`);
-
-  process.stdout.write(`EMBED  ${sourceDoc} (${chunks.length} chunks)... `);
-  const vectors = await embedDocuments(chunks);
-  if (vectors.length !== chunks.length) {
-    throw new Error(
-      `Cohere returned ${vectors.length} vectors for ${chunks.length} chunks`
-    );
-  }
-  for (let i = 0; i < chunks.length; i++) {
-    insertKnowledgeChunk({
-      sourceDoc,
-      text: chunks[i],
-      embedding: vectors[i],
-    });
-  }
-  console.log("ok");
+  return out;
 }
 
 async function main() {
   const argv = process.argv.slice(2);
-  const targets = (argv.length > 0 ? argv : [DEFAULT_PATH]).map((p) =>
-    resolve(p)
+  const dir = resolve(argv[0] ?? DEFAULT_DIR);
+
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+    console.error(`ERROR  ${dir} is not a directory`);
+    process.exit(1);
+  }
+
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith(".txt") || f.endsWith(".md"))
+    .sort();
+
+  if (files.length === 0) {
+    console.log(`No .txt/.md files in ${dir}. Nothing to seed.`);
+    return;
+  }
+
+  // Group by source_doc and clear each one.
+  const bySource: Record<string, string[]> = {};
+  for (const f of files) {
+    const src = sourceDocFromFilename(f);
+    (bySource[src] ??= []).push(f);
+  }
+
+  for (const src of Object.keys(bySource)) {
+    const removed = deleteKnowledgeForSource(src);
+    if (removed > 0) console.log(`CLEAR  ${src} (${removed} old chunks)`);
+  }
+
+  const allTexts: string[] = [];
+  const meta: Array<{ source: string; text: string }> = [];
+  for (const f of files) {
+    const text = readFileSync(join(dir, f), "utf8").trim();
+    if (!text) continue;
+    allTexts.push(text);
+    meta.push({ source: sourceDocFromFilename(f), text });
+  }
+
+  process.stdout.write(
+    `EMBED  ${allTexts.length} chunks across ${Object.keys(bySource).length} source(s)... `
   );
+  const vectors = await embedInBatches(allTexts);
+  console.log("ok");
 
-  for (const t of targets) {
-    if (!existsSync(t)) {
-      console.error(`ERROR  ${t} does not exist`);
-      process.exit(1);
-    }
-    if (!statSync(t).isFile()) {
-      console.error(`ERROR  ${t} is not a regular file`);
-      process.exit(1);
-    }
+  for (let i = 0; i < meta.length; i++) {
+    insertKnowledgeChunk({
+      sourceDoc: meta[i].source,
+      text: meta[i].text,
+      embedding: vectors[i],
+    });
   }
-
-  for (const t of targets) {
-    await seedFile(t);
-  }
-
-  console.log("Done.");
+  console.log(`Inserted ${meta.length} chunks.`);
 }
 
 main().catch((err) => {
