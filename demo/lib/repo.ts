@@ -1,4 +1,4 @@
-import { getDb, now, uuid } from "./db";
+import { getDb, now, uuid, type SettingsBlob } from "./db";
 
 export type Customer = {
   id: string;
@@ -155,6 +155,35 @@ export function getBrandVoice(): string {
   return row?.brand_voice ?? "";
 }
 
+export function getSettings(): SettingsBlob {
+  const row = getDb()
+    .prepare("SELECT data FROM settings WHERE id = 1")
+    .get() as { data: string | null } | undefined;
+  if (!row?.data) {
+    throw new Error("settings row not initialized");
+  }
+  return JSON.parse(row.data) as SettingsBlob;
+}
+
+export function saveSettings(next: SettingsBlob): void {
+  getDb()
+    .prepare("UPDATE settings SET data = ?, updated_at = ? WHERE id = 1")
+    .run(JSON.stringify(next), now());
+}
+
+export function updateSettings<K extends keyof SettingsBlob>(
+  section: K,
+  patch: Partial<SettingsBlob[K]>
+): SettingsBlob {
+  const current = getSettings();
+  const merged: SettingsBlob = {
+    ...current,
+    [section]: { ...current[section], ...patch },
+  };
+  saveSettings(merged);
+  return merged;
+}
+
 export function insertBooking(args: {
   customerId: string;
   treatment: string | null;
@@ -218,4 +247,339 @@ export function deleteKnowledgeForSource(sourceDoc: string): number {
   return getDb()
     .prepare("DELETE FROM knowledge_chunks WHERE source_doc = ?")
     .run(sourceDoc).changes;
+}
+
+export type KnowledgeDoc = {
+  id: string;
+  title: string;
+  category: "Treatments" | "Aftercare & safety";
+  chunkCount: number;
+  body: string;
+  lastEditedAt: number;
+};
+
+// Group raw knowledge_chunks rows into "documents" for the admin Knowledge page.
+// Each chunk file starts with a title line; chunks sharing a title belong to the
+// same conceptual document. The chunker is upstream, so we re-derive doc grouping
+// at read time instead of adding another table.
+export function listKnowledgeDocs(): KnowledgeDoc[] {
+  const rows = getDb()
+    .prepare(
+      "SELECT id, source_doc, text, created_at FROM knowledge_chunks ORDER BY id ASC"
+    )
+    .all() as {
+      id: string;
+      source_doc: string;
+      text: string;
+      created_at: number;
+    }[];
+
+  const byTitle = new Map<
+    string,
+    { firstId: string; sections: string[]; lastEditedAt: number }
+  >();
+
+  for (const row of rows) {
+    const lines = row.text.split("\n");
+    const title = (lines[0] ?? "").trim();
+    if (!title) continue;
+    let rest = lines.slice(1).join("\n");
+    // Drop a leading blank line if the first content line was the title.
+    rest = rest.replace(/^\n+/, "");
+
+    const entry = byTitle.get(title);
+    if (entry) {
+      entry.sections.push(rest);
+      if (row.created_at > entry.lastEditedAt) entry.lastEditedAt = row.created_at;
+    } else {
+      byTitle.set(title, {
+        firstId: row.id,
+        sections: [rest],
+        lastEditedAt: row.created_at,
+      });
+    }
+  }
+
+  const docs: KnowledgeDoc[] = [];
+  for (const [title, entry] of byTitle) {
+    docs.push({
+      id: entry.firstId,
+      title,
+      category: categorize(title),
+      chunkCount: entry.sections.length,
+      body: entry.sections.join("\n\n").trim(),
+      lastEditedAt: entry.lastEditedAt,
+    });
+  }
+
+  docs.sort((a, b) => a.title.localeCompare(b.title));
+  return docs;
+}
+
+function categorize(title: string): KnowledgeDoc["category"] {
+  const t = title.toLowerCase();
+  if (
+    t.startsWith("post") ||
+    t.startsWith("normal temporary") ||
+    t.startsWith("when to contact") ||
+    t.includes("side effect") ||
+    t.includes("aftercare")
+  ) {
+    return "Aftercare & safety";
+  }
+  return "Treatments";
+}
+
+// ---------- Capacity rules ----------
+
+export type CapacityRule = {
+  id: string;
+  treatment: string;
+  per_day: number;
+  slot_minutes: number;
+  position: number;
+};
+
+export function listCapacityRules(): CapacityRule[] {
+  return getDb()
+    .prepare(
+      "SELECT id, treatment, per_day, slot_minutes, position FROM capacity_rules ORDER BY position ASC, treatment ASC"
+    )
+    .all() as CapacityRule[];
+}
+
+export function upsertCapacityRule(args: {
+  id?: string | null;
+  treatment: string;
+  per_day: number;
+  slot_minutes: number;
+}): CapacityRule {
+  const db = getDb();
+  if (args.id) {
+    db.prepare(
+      "UPDATE capacity_rules SET treatment = ?, per_day = ?, slot_minutes = ?, updated_at = ? WHERE id = ?"
+    ).run(args.treatment, args.per_day, args.slot_minutes, now(), args.id);
+    return db
+      .prepare(
+        "SELECT id, treatment, per_day, slot_minutes, position FROM capacity_rules WHERE id = ?"
+      )
+      .get(args.id) as CapacityRule;
+  }
+  const id = uuid();
+  const maxPos =
+    (
+      db.prepare("SELECT MAX(position) AS p FROM capacity_rules").get() as {
+        p: number | null;
+      }
+    ).p ?? -1;
+  db.prepare(
+    "INSERT INTO capacity_rules (id, treatment, per_day, slot_minutes, position, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(id, args.treatment, args.per_day, args.slot_minutes, maxPos + 1, now());
+  return {
+    id,
+    treatment: args.treatment,
+    per_day: args.per_day,
+    slot_minutes: args.slot_minutes,
+    position: maxPos + 1,
+  };
+}
+
+export function removeCapacityRule(id: string): void {
+  getDb().prepare("DELETE FROM capacity_rules WHERE id = ?").run(id);
+}
+
+// ---------- Team members ----------
+
+export type TeamMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: "Owner" | "Staff";
+  pending: number;
+  last_active_at: number | null;
+  created_at: number;
+};
+
+export function listTeamMembers(): TeamMember[] {
+  return getDb()
+    .prepare(
+      "SELECT id, name, email, role, pending, last_active_at, created_at FROM team_members ORDER BY pending ASC, role ASC, created_at ASC"
+    )
+    .all() as TeamMember[];
+}
+
+export function insertTeamMember(args: {
+  name: string;
+  email: string;
+  role: "Owner" | "Staff";
+  pending: boolean;
+}): TeamMember {
+  const id = uuid();
+  const ts = now();
+  getDb()
+    .prepare(
+      "INSERT INTO team_members (id, name, email, role, pending, last_active_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    )
+    .run(id, args.name, args.email, args.role, args.pending ? 1 : 0, null, ts);
+  return {
+    id,
+    name: args.name,
+    email: args.email,
+    role: args.role,
+    pending: args.pending ? 1 : 0,
+    last_active_at: null,
+    created_at: ts,
+  };
+}
+
+export function updateTeamMember(
+  id: string,
+  patch: { name?: string; role?: "Owner" | "Staff"; pending?: boolean }
+): void {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if (patch.name !== undefined) {
+    fields.push("name = ?");
+    values.push(patch.name);
+  }
+  if (patch.role !== undefined) {
+    fields.push("role = ?");
+    values.push(patch.role);
+  }
+  if (patch.pending !== undefined) {
+    fields.push("pending = ?");
+    values.push(patch.pending ? 1 : 0);
+    if (!patch.pending) {
+      fields.push("last_active_at = ?");
+      values.push(now());
+    }
+  }
+  if (fields.length === 0) return;
+  values.push(id);
+  getDb()
+    .prepare(`UPDATE team_members SET ${fields.join(", ")} WHERE id = ?`)
+    .run(...values);
+}
+
+export function removeTeamMember(id: string): void {
+  getDb().prepare("DELETE FROM team_members WHERE id = ?").run(id);
+}
+
+// ---------- Audit log ----------
+
+export type AuditEntry = {
+  id: string;
+  section: string;
+  actor: string;
+  summary: string;
+  created_at: number;
+};
+
+export function appendAudit(args: {
+  section: string;
+  actor: string;
+  summary: string;
+}): AuditEntry {
+  const id = uuid();
+  const ts = now();
+  getDb()
+    .prepare(
+      "INSERT INTO audit_log (id, section, actor, summary, created_at) VALUES (?, ?, ?, ?, ?)"
+    )
+    .run(id, args.section, args.actor, args.summary, ts);
+  return { id, ...args, created_at: ts };
+}
+
+export function listAuditLog(opts?: {
+  section?: string;
+  limit?: number;
+}): AuditEntry[] {
+  const limit = opts?.limit ?? 50;
+  if (opts?.section) {
+    return getDb()
+      .prepare(
+        "SELECT id, section, actor, summary, created_at FROM audit_log WHERE section = ? ORDER BY created_at DESC LIMIT ?"
+      )
+      .all(opts.section, limit) as AuditEntry[];
+  }
+  return getDb()
+    .prepare(
+      "SELECT id, section, actor, summary, created_at FROM audit_log ORDER BY created_at DESC LIMIT ?"
+    )
+    .all(limit) as AuditEntry[];
+}
+
+// ---------- Sample dialogues (brand voice) ----------
+
+export type SampleDialogue = {
+  id: string;
+  customer_text: string;
+  yuna_text: string;
+  position: number;
+};
+
+export function listSampleDialogues(): SampleDialogue[] {
+  return getDb()
+    .prepare(
+      "SELECT id, customer_text, yuna_text, position FROM sample_dialogues ORDER BY position ASC"
+    )
+    .all() as SampleDialogue[];
+}
+
+export function insertSampleDialogue(args: {
+  customer_text: string;
+  yuna_text: string;
+}): SampleDialogue {
+  const db = getDb();
+  const id = uuid();
+  const maxPos =
+    (
+      db.prepare("SELECT MAX(position) AS p FROM sample_dialogues").get() as {
+        p: number | null;
+      }
+    ).p ?? -1;
+  const pos = maxPos + 1;
+  db.prepare(
+    "INSERT INTO sample_dialogues (id, customer_text, yuna_text, position, created_at) VALUES (?, ?, ?, ?, ?)"
+  ).run(id, args.customer_text, args.yuna_text, pos, now());
+  return {
+    id,
+    customer_text: args.customer_text,
+    yuna_text: args.yuna_text,
+    position: pos,
+  };
+}
+
+export function removeSampleDialogue(id: string): void {
+  getDb().prepare("DELETE FROM sample_dialogues WHERE id = ?").run(id);
+}
+
+// ---------- DSAR export ----------
+
+export type CustomerExport = {
+  customer: Customer;
+  messages: Message[];
+  bookings: unknown[];
+};
+
+export function exportAllCustomers(): CustomerExport[] {
+  const db = getDb();
+  const customers = db
+    .prepare("SELECT * FROM customers ORDER BY created_at ASC")
+    .all() as Customer[];
+  const out: CustomerExport[] = [];
+  for (const c of customers) {
+    const messages = db
+      .prepare(
+        "SELECT * FROM messages WHERE customer_id = ? ORDER BY created_at ASC"
+      )
+      .all(c.id) as Message[];
+    const bookings = db
+      .prepare(
+        "SELECT * FROM bookings WHERE customer_id = ? ORDER BY created_at ASC"
+      )
+      .all(c.id);
+    out.push({ customer: c, messages, bookings });
+  }
+  return out;
 }

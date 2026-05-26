@@ -6,10 +6,42 @@ import {
   useRef,
   useState,
   useTransition,
+  type FormEvent,
   type ReactNode,
 } from "react";
 import styles from "./settings.module.css";
-import { saveBrandVoice } from "./actions";
+import {
+  acceptTeamMemberInvite,
+  addSampleDialogue,
+  deleteCapacityRule,
+  deleteSampleDialogue,
+  deleteTeamMember,
+  exportDsar,
+  inviteTeamMember,
+  requestEmbeddingOverride,
+  resendInvite,
+  rotateLineSecret,
+  saveAftercare,
+  saveAiBrain,
+  saveBillingCard,
+  saveBrandVoice,
+  saveCapacityRule,
+  saveClinic,
+  saveLine,
+  savePrivacy,
+  setAutoRenew,
+  setBillingPlan,
+  setKillSwitch,
+  setTeamMemberRole,
+  testLineSignature,
+} from "./actions";
+import type { SettingsBlob } from "@/lib/db";
+import type {
+  AuditEntry,
+  CapacityRule,
+  SampleDialogue,
+  TeamMember,
+} from "@/lib/repo";
 
 type SectionId =
   | "clinic"
@@ -31,7 +63,7 @@ type NavEntry = {
 
 const NAV: NavEntry[] = [
   { id: "clinic", label: "Clinic profile" },
-  { id: "line", label: "Line OA", tag: "dot" },
+  { id: "line", label: "Line OA" },
   { id: "ai-brain", label: "AI brain", tag: "ai" },
   { id: "kill-switch", label: "Kill switch", tag: "ai" },
   { id: "brand-voice", label: "Brand voice" },
@@ -42,67 +74,161 @@ const NAV: NavEntry[] = [
   { id: "billing", label: "Billing" },
 ];
 
-const TOAST_MS = 2400;
+const TOAST_MS = 2600;
 
-const DIALOGUES: { customer: string; yuna: string }[] = [
+const SECTION_LABEL: Record<string, string> = {
+  clinic: "Clinic profile",
+  line: "Line OA",
+  "ai-brain": "AI brain",
+  "kill-switch": "Kill switch",
+  "brand-voice": "Brand voice",
+  capacity: "Capacity rules",
+  aftercare: "Aftercare",
+  privacy: "Privacy & retention",
+  team: "Team",
+  billing: "Billing",
+};
+
+const MODEL_BY_PROVIDER: Record<
+  "OpenAI" | "Anthropic" | "Google",
+  { id: string; label: string }[]
+> = {
+  OpenAI: [
+    { id: "gpt-4o-mini", label: "gpt-4o-mini" },
+    { id: "gpt-4o", label: "gpt-4o" },
+    { id: "gpt-4.1", label: "gpt-4.1" },
+  ],
+  Anthropic: [
+    { id: "claude-sonnet-4-6", label: "claude-sonnet-4-6 (recommended)" },
+    { id: "claude-haiku-4-5", label: "claude-haiku-4-5" },
+    { id: "claude-opus-4-7", label: "claude-opus-4-7" },
+  ],
+  Google: [
+    { id: "gemini-1.5-flash", label: "gemini-1.5-flash" },
+    { id: "gemini-1.5-pro", label: "gemini-1.5-pro" },
+    { id: "gemini-2.0-flash", label: "gemini-2.0-flash" },
+  ],
+};
+
+const TIMEZONES = [
+  { id: "Asia/Bangkok", label: "Asia/Bangkok (UTC+7)" },
+  { id: "Asia/Singapore", label: "Asia/Singapore (UTC+8)" },
+  { id: "Asia/Tokyo", label: "Asia/Tokyo (UTC+9)" },
+];
+
+type PlanId = "starter" | "growth" | "scale";
+
+const PLANS: {
+  id: PlanId;
+  name: string;
+  price: string;
+  quota: number;
+  features: string[];
+}[] = [
   {
-    customer: "สวัสดีค่ะ ทำเลเซอร์รักแร้ราคาเท่าไหร่คะ",
-    yuna: "สวัสดีค่ะ! เลเซอร์รักแร้ที่คลินิกเรามี 2 แพ็คเกจค่ะ แบบ 6 ครั้ง ราคา 8,900 บาท เฉลี่ยครั้งละไม่ถึง 1,500 ทำต่อเนื่องผลดีกว่าค่ะ จองคิวเลยมั้ยคะ?",
+    id: "starter",
+    name: "Starter",
+    price: "฿2,490",
+    quota: 10000,
+    features: [
+      "10,000 outbound msgs / mo",
+      "1 Line OA",
+      "1 admin seat included",
+      "Email support",
+    ],
   },
   {
-    customer: "ทำแล้วเจ็บมั้ย กลัวเข็มมาก",
-    yuna: "ไม่ต้องกลัวเลยค่ะ เลเซอร์ไม่ใช้เข็มเลย เป็นแสงสั้นๆ พักผิวสักพัก ลูกค้าบอกรู้สึกเหมือนยางรัดเบาๆ เรามีเครื่องเป่าเย็นช่วยด้วยค่ะ",
+    id: "growth",
+    name: "Growth",
+    price: "฿5,990",
+    quota: 30000,
+    features: [
+      "30,000 outbound msgs / mo",
+      "Up to 3 Line OAs",
+      "5 seats included",
+      "Aftercare scheduler",
+    ],
   },
   {
-    customer: "หลังทำควรดูแลตัวเองยังไงคะ",
-    yuna: "หลังทำ 24 ชม. หลีกเลี่ยงน้ำร้อนกับการขัดถูแรงๆ นะคะ ทาครีมกันแดดทุกครั้งที่ออกแดด เดี๋ยวจะส่งไกด์ดูแลผิวฉบับเต็มให้นะคะ",
+    id: "scale",
+    name: "Scale",
+    price: "฿14,900",
+    quota: 100000,
+    features: [
+      "100,000 outbound msgs / mo",
+      "Unlimited OAs",
+      "Unlimited seats",
+      "Priority + Slack support",
+    ],
   },
 ];
 
-const CAPACITY_ROWS = [
-  { name: "Underarm laser", perDay: 8, slot: "30 min" },
-  { name: "Picosure facial", perDay: 4, slot: "60 min" },
-  { name: "HIFU", perDay: 3, slot: "90 min" },
-  { name: "Consultation", perDay: 3, slot: "20 min" },
-];
+const PLAN_NAME: Record<PlanId, string> = {
+  starter: "Starter",
+  growth: "Growth",
+  scale: "Scale",
+};
+const PLAN_PRICE_THB: Record<PlanId, number> = {
+  starter: 2490,
+  growth: 5990,
+  scale: 14900,
+};
 
-const TEAM_ROWS = [
-  {
-    name: "Dr. Anchalee P.",
-    email: "anchalee@sukhumvit-skin.com",
-    role: "Owner",
-    last: "2h ago",
-    pending: false,
-  },
-  {
-    name: "Pim (you)",
-    email: "pim@sukhumvit-skin.com",
-    role: "Staff",
-    last: "now",
-    pending: false,
-  },
-  {
-    name: "Nok",
-    email: "nok@sukhumvit-skin.com",
-    role: "Staff",
-    last: "14h ago",
-    pending: false,
-  },
-  {
-    name: "Tip",
-    email: "tip@sukhumvit-skin.com",
-    role: "Staff",
-    last: "3 days ago",
-    pending: false,
-  },
-  {
-    name: "Phak",
-    email: "phak@sukhumvit-skin.com · invite pending",
-    role: "Staff",
-    last: "—",
-    pending: true,
-  },
-];
+// ---------- Time helpers ----------
+
+const MIN = 60_000;
+const HR = 60 * MIN;
+const DAY = 24 * HR;
+
+function timeAgo(ts: number | null | undefined): string {
+  if (!ts) return "—";
+  const delta = Date.now() - ts;
+  if (delta < 30_000) return "just now";
+  if (delta < HR) return `${Math.floor(delta / MIN)}m ago`;
+  if (delta < DAY) return `${Math.floor(delta / HR)}h ago`;
+  const days = Math.floor(delta / DAY);
+  if (days < 30) return days === 1 ? "yesterday" : `${days} days ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
+function timeUntil(ts: number): string {
+  const delta = ts - Date.now();
+  if (delta <= 0) return "now";
+  const days = Math.floor(delta / DAY);
+  if (days >= 1) return `in ${days} day${days === 1 ? "" : "s"}`;
+  return `in ${Math.max(1, Math.floor(delta / HR))}h`;
+}
+
+function fmtDate(ts: number): string {
+  return new Date(ts).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function fmtDateTime(ts: number): string {
+  return new Date(ts).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function fmtClock(ts: number): string {
+  return new Date(ts).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Bangkok",
+    hour12: false,
+  });
+}
+
+// ---------- Inline icons ----------
 
 function Chevron() {
   return (
@@ -138,11 +264,13 @@ function LockIcon() {
   );
 }
 
+// ---------- Card primitive ----------
+
 type CardProps = {
   id: SectionId;
   title: ReactNode;
-  summary: string;
-  saved: string;
+  summary: ReactNode;
+  saved: ReactNode;
   open: boolean;
   onToggle: () => void;
   registerRef: (id: SectionId, el: HTMLElement | null) => void;
@@ -178,11 +306,83 @@ function Card({
   );
 }
 
-type Props = {
-  initialBrandVoice: string;
+// ---------- Modal primitive ----------
+
+type ModalProps = {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  wide?: boolean;
+  children: ReactNode;
+  footer?: ReactNode;
 };
 
-export function SettingsView({ initialBrandVoice }: Props) {
+function Modal({ title, subtitle, onClose, wide, children, footer }: ModalProps) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className={styles.modalScrim}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      onClick={onClose}
+    >
+      <div
+        className={`${styles.modal} ${wide ? styles.modalWide : ""}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={styles.modalHead}>
+          <div>
+            <h3>{title}</h3>
+            {subtitle && <div className={styles.hint}>{subtitle}</div>}
+          </div>
+          <button
+            type="button"
+            className={styles.modalClose}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div className={styles.modalBody}>{children}</div>
+        {footer && <div className={styles.modalFoot}>{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Props ----------
+
+type Props = {
+  initialBrandVoice: string;
+  initialSettings: SettingsBlob;
+  initialDialogues: SampleDialogue[];
+  initialCapacity: CapacityRule[];
+  initialTeam: TeamMember[];
+  initialAudit: AuditEntry[];
+};
+
+type ModalState =
+  | { kind: "none" }
+  | { kind: "audit"; section?: string }
+  | { kind: "invite" }
+  | { kind: "member"; member: TeamMember }
+  | { kind: "capacity"; rule: CapacityRule | null }
+  | { kind: "addDialogue" }
+  | { kind: "override" }
+  | { kind: "comparePlans" }
+  | { kind: "payment" }
+  | { kind: "dsar"; payload: { filename: string; json: string; customers: number } };
+
+export function SettingsView(props: Props) {
   const [open, setOpen] = useState<Record<SectionId, boolean>>({
     clinic: false,
     line: true,
@@ -198,24 +398,79 @@ export function SettingsView({ initialBrandVoice }: Props) {
 
   const [active, setActive] = useState<SectionId>("ai-brain");
 
-  // Brand voice — the one section that actually persists.
-  const [brandVoice, setBrandVoice] = useState(initialBrandVoice);
-  const [savedBrandVoice, setSavedBrandVoice] = useState(initialBrandVoice);
+  // ---------- Per-section state ----------
+
+  const [settings, setSettings] = useState<SettingsBlob>(props.initialSettings);
+
+  // Clinic
+  const [clinic, setClinic] = useState(settings.clinic);
+  const clinicDirty =
+    clinic.name !== settings.clinic.name ||
+    clinic.timezone !== settings.clinic.timezone ||
+    clinic.address !== settings.clinic.address ||
+    clinic.hours !== settings.clinic.hours ||
+    clinic.languages !== settings.clinic.languages;
+
+  // Line
+  const [line, setLine] = useState({
+    channel_id: settings.line.channel_id,
+    oa_name: settings.line.oa_name,
+  });
+  const lineDirty =
+    line.channel_id !== settings.line.channel_id ||
+    line.oa_name !== settings.line.oa_name;
+
+  // AI brain
+  const [ai, setAi] = useState({
+    provider: settings.ai.provider,
+    model: settings.ai.model,
+    temperature: settings.ai.temperature,
+  });
+  const aiDirty =
+    ai.provider !== settings.ai.provider ||
+    ai.model !== settings.ai.model ||
+    ai.temperature !== settings.ai.temperature;
+
+  // Kill switch
+  const [aiActive, setAiActive] = useState(!settings.kill_switch.paused);
+
+  // Brand voice
+  const [brandVoice, setBrandVoice] = useState(props.initialBrandVoice);
+  const [savedBrandVoice, setSavedBrandVoice] = useState(props.initialBrandVoice);
   const brandDirty = brandVoice !== savedBrandVoice;
-  const [isSaving, startSaveTransition] = useTransition();
+  const [dialogues, setDialogues] = useState<SampleDialogue[]>(props.initialDialogues);
 
-  // AI brain — decorative state.
-  const [provider, setProvider] = useState<"OpenAI" | "Anthropic" | "Google">(
-    "Anthropic"
-  );
-  const [temp, setTemp] = useState(0.4);
+  // Capacity
+  const [capacity, setCapacity] = useState<CapacityRule[]>(props.initialCapacity);
 
-  // Kill switch — decorative state.
-  const [aiActive, setAiActive] = useState(true);
+  // Aftercare
+  const [aftercare, setAftercare] = useState(settings.aftercare);
+  const aftercareDirty =
+    aftercare.d1 !== settings.aftercare.d1 ||
+    aftercare.d7 !== settings.aftercare.d7 ||
+    aftercare.d30 !== settings.aftercare.d30 ||
+    aftercare.send_time !== settings.aftercare.send_time ||
+    aftercare.languages !== settings.aftercare.languages;
 
-  // Aftercare — decorative toggles.
-  const [aftercare, setAftercare] = useState({ d1: true, d7: true, d30: false });
+  // Privacy
+  const [privacy, setPrivacy] = useState({
+    conversation_months: settings.privacy.conversation_months,
+    audit_months: settings.privacy.audit_months,
+  });
+  const privacyDirty =
+    privacy.conversation_months !== settings.privacy.conversation_months ||
+    privacy.audit_months !== settings.privacy.audit_months;
 
+  // Team
+  const [team, setTeam] = useState<TeamMember[]>(props.initialTeam);
+
+  // Audit log
+  const [audit, setAudit] = useState<AuditEntry[]>(props.initialAudit);
+
+  // Modal state
+  const [modal, setModal] = useState<ModalState>({ kind: "none" });
+
+  // Toast
   const [toast, setToast] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -237,18 +492,365 @@ export function SettingsView({ initialBrandVoice }: Props) {
     setOpen((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
-  function notImplemented(label: string) {
-    showToast(`${label} · not wired in the demo`);
+  // ---------- Save helper that funnels through useTransition ----------
+
+  const [isPending, startTransition] = useTransition();
+
+  function noteAudit(section: string, summary: string) {
+    setAudit((prev) =>
+      [
+        {
+          id: `local-${Math.random().toString(36).slice(2, 9)}`,
+          section,
+          actor: "Pim",
+          summary,
+          created_at: Date.now(),
+        },
+        ...prev,
+      ].slice(0, 30)
+    );
   }
 
-  // Refs to cards for nav scroll-spy and scroll-to.
+  async function doSave(label: string, fn: () => Promise<void>) {
+    try {
+      await fn();
+      showToast(`Saved · ${label}`);
+    } catch (err) {
+      console.error(err);
+      showToast(`Save failed · ${label}`);
+    }
+  }
+
+  // ---------- Section save handlers ----------
+
+  function saveClinicSection() {
+    startTransition(async () => {
+      await doSave("Clinic profile", async () => {
+        const next = await saveClinic(clinic);
+        setSettings(next);
+        noteAudit("clinic", `Clinic profile updated · ${clinic.name}`);
+      });
+    });
+  }
+  function cancelClinic() {
+    setClinic(settings.clinic);
+  }
+
+  function saveLineSection() {
+    startTransition(async () => {
+      await doSave("Line OA", async () => {
+        const next = await saveLine(line);
+        setSettings(next);
+        noteAudit("line", `Line OA updated · ${line.oa_name}`);
+      });
+    });
+  }
+  function cancelLine() {
+    setLine({
+      channel_id: settings.line.channel_id,
+      oa_name: settings.line.oa_name,
+    });
+  }
+  function rotateSecret() {
+    startTransition(async () => {
+      try {
+        const { last4, rotated_at } = await rotateLineSecret();
+        setSettings((s) => ({
+          ...s,
+          line: { ...s.line, secret_last4: last4, secret_rotated_at: rotated_at },
+        }));
+        noteAudit("line", `Channel secret rotated · ends ${last4}`);
+        showToast(`Secret rotated · ends ${last4}`);
+      } catch {
+        showToast("Rotate failed");
+      }
+    });
+  }
+  function pingLine() {
+    startTransition(async () => {
+      try {
+        const { pinged_at } = await testLineSignature();
+        setSettings((s) => ({
+          ...s,
+          line: { ...s.line, last_ping_at: pinged_at },
+        }));
+        noteAudit("line", "Test signature verified");
+        showToast(`Signature verified · ${fmtClock(pinged_at)} ICT`);
+      } catch {
+        showToast("Test failed");
+      }
+    });
+  }
+
+  function saveAiSection() {
+    startTransition(async () => {
+      await doSave("AI brain", async () => {
+        const next = await saveAiBrain(ai);
+        setSettings(next);
+        noteAudit(
+          "ai-brain",
+          `AI brain updated · ${ai.provider} ${ai.model} @ ${ai.temperature.toFixed(2)}`
+        );
+      });
+    });
+  }
+  function cancelAi() {
+    setAi({
+      provider: settings.ai.provider,
+      model: settings.ai.model,
+      temperature: settings.ai.temperature,
+    });
+  }
+
+  function toggleKillSwitch() {
+    const nextPaused = aiActive; // flipping
+    startTransition(async () => {
+      try {
+        const next = await setKillSwitch(nextPaused);
+        setSettings(next);
+        setAiActive(!nextPaused);
+        noteAudit(
+          "kill-switch",
+          nextPaused
+            ? "Yuna paused for the clinic"
+            : "Yuna re-activated for the clinic"
+        );
+        showToast(nextPaused ? "Yuna paused for this clinic" : "Yuna activated");
+      } catch {
+        showToast("Toggle failed");
+      }
+    });
+  }
+
+  function saveBrandVoiceSection() {
+    startTransition(async () => {
+      await doSave("Brand voice", async () => {
+        await saveBrandVoice(brandVoice);
+        setSavedBrandVoice(brandVoice);
+        setSettings((s) => ({
+          ...s,
+          brand_voice: { saved_at: Date.now(), saved_by: "Pim" },
+        }));
+        noteAudit(
+          "brand-voice",
+          `Brand voice updated (${brandVoice.length} chars)`
+        );
+      });
+    });
+  }
+
+  function cancelBrandVoice() {
+    setBrandVoice(savedBrandVoice);
+  }
+
+  function removeDialogue(id: string) {
+    startTransition(async () => {
+      try {
+        await deleteSampleDialogue(id);
+        setDialogues((prev) => prev.filter((d) => d.id !== id));
+        noteAudit("brand-voice", "Sample dialogue removed");
+        showToast("Sample removed");
+      } catch {
+        showToast("Remove failed");
+      }
+    });
+  }
+
+  function saveAftercareSection() {
+    startTransition(async () => {
+      await doSave("Aftercare schedule", async () => {
+        const next = await saveAftercare(aftercare);
+        setSettings(next);
+        noteAudit(
+          "aftercare",
+          `Aftercare updated · D1=${aftercare.d1 ? "on" : "off"} D7=${
+            aftercare.d7 ? "on" : "off"
+          } D30=${aftercare.d30 ? "on" : "off"} @ ${aftercare.send_time}`
+        );
+      });
+    });
+  }
+  function cancelAftercare() {
+    setAftercare(settings.aftercare);
+  }
+
+  function savePrivacySection() {
+    startTransition(async () => {
+      await doSave("Privacy & retention", async () => {
+        const next = await savePrivacy(privacy);
+        setSettings(next);
+        noteAudit(
+          "privacy",
+          `Retention updated · conv ${privacy.conversation_months}mo · audit ${privacy.audit_months}mo`
+        );
+      });
+    });
+  }
+  function cancelPrivacy() {
+    setPrivacy({
+      conversation_months: settings.privacy.conversation_months,
+      audit_months: settings.privacy.audit_months,
+    });
+  }
+
+  function deleteCapacityRow(rule: CapacityRule) {
+    if (
+      !window.confirm(`Remove "${rule.treatment}" from capacity rules?`)
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await deleteCapacityRule(rule.id, rule.treatment);
+        setCapacity((prev) => prev.filter((r) => r.id !== rule.id));
+        noteAudit("capacity", `Capacity rule removed · ${rule.treatment}`);
+        showToast(`Removed · ${rule.treatment}`);
+      } catch {
+        showToast("Remove failed");
+      }
+    });
+  }
+
+  function deleteTeamRow(member: TeamMember) {
+    if (member.role === "Owner") {
+      showToast("Can't remove the Owner");
+      return;
+    }
+    if (!window.confirm(`Remove ${member.name}?`)) return;
+    startTransition(async () => {
+      try {
+        await deleteTeamMember(member.id, member.email);
+        setTeam((prev) => prev.filter((m) => m.id !== member.id));
+        noteAudit("team", `Member removed · ${member.email}`);
+        showToast(`Removed · ${member.name}`);
+      } catch {
+        showToast("Remove failed");
+      }
+    });
+  }
+
+  function resendTeamInvite(member: TeamMember) {
+    startTransition(async () => {
+      try {
+        await resendInvite(member.id, member.email);
+        noteAudit("team", `Invite resent · ${member.email}`);
+        showToast(`Invite resent to ${member.email}`);
+      } catch {
+        showToast("Resend failed");
+      }
+    });
+  }
+
+  function changeRole(member: TeamMember, role: "Owner" | "Staff") {
+    startTransition(async () => {
+      try {
+        await setTeamMemberRole(member.id, role);
+        setTeam((prev) =>
+          prev.map((m) => (m.id === member.id ? { ...m, role } : m))
+        );
+        noteAudit("team", `Role changed · ${member.email} → ${role}`);
+        showToast(`Role set to ${role}`);
+      } catch {
+        showToast("Update failed");
+      }
+    });
+  }
+
+  function acceptInvite(member: TeamMember) {
+    startTransition(async () => {
+      try {
+        await acceptTeamMemberInvite(member.id, member.email);
+        setTeam((prev) =>
+          prev.map((m) =>
+            m.id === member.id
+              ? { ...m, pending: 0, last_active_at: Date.now() }
+              : m
+          )
+        );
+        noteAudit("team", `Invite accepted · ${member.email}`);
+        showToast(`${member.name} marked active`);
+      } catch {
+        showToast("Update failed");
+      }
+    });
+  }
+
+  function changeBillingPlan(plan: PlanId) {
+    if (plan === settings.billing.plan) {
+      setModal({ kind: "none" });
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const next = await setBillingPlan(plan);
+        setSettings(next);
+        noteAudit("billing", `Plan switched to ${plan}`);
+        showToast(`Switched to ${PLAN_NAME[plan]}`);
+        setModal({ kind: "none" });
+      } catch {
+        showToast("Update failed");
+      }
+    });
+  }
+
+  function toggleAutoRenew() {
+    const next = !settings.billing.auto_renew;
+    startTransition(async () => {
+      try {
+        const updated = await setAutoRenew(next);
+        setSettings(updated);
+        noteAudit("billing", next ? "Auto-renew on" : "Auto-renew off");
+        showToast(next ? "Auto-renew on" : "Auto-renew off");
+      } catch {
+        showToast("Toggle failed");
+      }
+    });
+  }
+
+  function downloadInvoices() {
+    const plan = settings.billing.plan;
+    const price = PLAN_PRICE_THB[plan];
+    const rows = ["Invoice #,Date,Plan,Amount THB,Status"];
+    for (let i = 0; i < 6; i++) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      d.setDate(2);
+      const inv = `YN-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
+      rows.push(
+        `${inv},${d.toISOString().slice(0, 10)},${PLAN_NAME[plan]},${price},paid`
+      );
+    }
+    triggerDownload(
+      `yuna-invoices-${new Date().toISOString().slice(0, 7)}.csv`,
+      rows.join("\n"),
+      "text/csv"
+    );
+    noteAudit("billing", "Invoices CSV downloaded");
+    showToast("Invoices downloaded");
+  }
+
+  // ---------- DSAR ----------
+
+  function startDsarExport() {
+    startTransition(async () => {
+      try {
+        const payload = await exportDsar();
+        noteAudit("privacy", `DSAR export prepared · ${payload.customers} customers`);
+        setModal({ kind: "dsar", payload });
+      } catch {
+        showToast("Export failed");
+      }
+    });
+  }
+
+  // ---------- Refs for nav scroll-spy ----------
+
   const cardRefs = useRef<Map<SectionId, HTMLElement>>(new Map());
   const registerRef = (id: SectionId, el: HTMLElement | null) => {
     if (el) cardRefs.current.set(id, el);
     else cardRefs.current.delete(id);
   };
 
-  // Find the scroll container (Shell wraps us in <main overflow:auto>).
   function findScrollContainer(start: HTMLElement | null): HTMLElement | null {
     let p = start;
     while (p) {
@@ -262,7 +864,6 @@ export function SettingsView({ initialBrandVoice }: Props) {
   function navTo(id: SectionId) {
     setActive(id);
     setOpen((prev) => ({ ...prev, [id]: true }));
-    // Wait one frame so a just-opened card has its full height before we scroll.
     requestAnimationFrame(() => {
       const el = cardRefs.current.get(id);
       if (!el) return;
@@ -280,9 +881,6 @@ export function SettingsView({ initialBrandVoice }: Props) {
     });
   }
 
-  // Scroll-spy — observe which card sits closest to the top of the viewport.
-  // Listener attaches to the scroll container, not window, because scroll
-  // events don't bubble and the Shell scrolls <main>, not the document.
   useEffect(() => {
     const first = cardRefs.current.values().next().value as
       | HTMLElement
@@ -300,7 +898,11 @@ export function SettingsView({ initialBrandVoice }: Props) {
       for (const [id, el] of cardRefs.current) {
         const rect = el.getBoundingClientRect();
         const distance = Math.abs(rect.top - refTop - 80);
-        if (rect.top < viewportBottom && rect.bottom > refTop && distance < bestDistance) {
+        if (
+          rect.top < viewportBottom &&
+          rect.bottom > refTop &&
+          distance < bestDistance
+        ) {
           bestDistance = distance;
           bestId = id;
         }
@@ -313,24 +915,41 @@ export function SettingsView({ initialBrandVoice }: Props) {
     return () => target.removeEventListener("scroll", compute);
   }, []);
 
-  function handleSaveBrandVoice() {
-    const next = brandVoice;
-    startSaveTransition(async () => {
-      await saveBrandVoice(next);
-      setSavedBrandVoice(next);
-      showToast("Saved · brand voice");
-    });
-  }
+  // ---------- Computed summaries ----------
 
   const voiceSummary = useMemo(() => {
-    const first = savedBrandVoice
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 60);
+    const first = savedBrandVoice.replace(/\s+/g, " ").trim().slice(0, 60);
+    const count = dialogues.length;
+    const suffix = `${count} sample dialogue${count === 1 ? "" : "s"}`;
     return first
-      ? `${first}${savedBrandVoice.length > 60 ? "…" : ""} · ${DIALOGUES.length} sample dialogues`
-      : `${DIALOGUES.length} sample dialogues`;
-  }, [savedBrandVoice]);
+      ? `${first}${savedBrandVoice.length > 60 ? "…" : ""} · ${suffix}`
+      : suffix;
+  }, [savedBrandVoice, dialogues.length]);
+
+  const capacitySummary = useMemo(() => {
+    const total = capacity.reduce((acc, r) => acc + r.per_day, 0);
+    return `${capacity.length} treatment${capacity.length === 1 ? "" : "s"} · ${total} bookings/day max`;
+  }, [capacity]);
+
+  const teamSummary = useMemo(() => {
+    const owners = team.filter((m) => m.role === "Owner").length;
+    const staff = team.filter((m) => m.role === "Staff").length;
+    const pending = team.filter((m) => m.pending).length;
+    return `${team.length} member${team.length === 1 ? "" : "s"} · ${owners} owner${
+      owners === 1 ? "" : "s"
+    } · ${staff} staff${pending ? ` · ${pending} pending` : ""}`;
+  }, [team]);
+
+  const billingMeterPct = Math.min(
+    100,
+    Math.round((settings.billing.msg_count / settings.billing.msg_quota) * 100)
+  );
+
+  // Has the Line OA had a recent ping?
+  const linePinged = settings.line.last_ping_at > 0;
+  const lineSummary = `${settings.line.oa_name} · channel ${settings.line.channel_id.slice(0, 4)}…${settings.line.channel_id.slice(-4)} · last ping ${
+    linePinged ? fmtClock(settings.line.last_ping_at) : "never"
+  } ✓`;
 
   return (
     <div className={styles.workspace}>
@@ -357,13 +976,6 @@ export function SettingsView({ initialBrandVoice }: Props) {
                       Yuna
                     </span>
                   )}
-                  {item.tag === "dot" && (
-                    <span
-                      className={styles.navTagDot}
-                      aria-label="action needed"
-                      title="Test signature pending"
-                    />
-                  )}
                 </button>
               </li>
             );
@@ -385,8 +997,8 @@ export function SettingsView({ initialBrandVoice }: Props) {
           <Card
             id="clinic"
             title="Clinic profile"
-            summary="Sukhumvit Skin & Laser · Bangkok · 10:00–20:00 · TH, EN"
-            saved="Saved 3 days ago"
+            summary={`${settings.clinic.name} · ${settings.clinic.timezone.split("/")[1]} · ${settings.clinic.hours}`}
+            saved={`Saved ${timeAgo(settings.clinic.saved_at)}`}
             open={open.clinic}
             onToggle={() => toggle("clinic")}
             registerRef={registerRef}
@@ -399,16 +1011,29 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 <input
                   className={styles.input}
                   id="clinic-name"
-                  defaultValue="Sukhumvit Skin & Laser"
+                  value={clinic.name}
+                  onChange={(e) =>
+                    setClinic({ ...clinic, name: e.target.value })
+                  }
                 />
               </div>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="clinic-tz">
                   Timezone
                 </label>
-                <select className={styles.select} id="clinic-tz" defaultValue="Asia/Bangkok">
-                  <option value="Asia/Bangkok">Asia/Bangkok (UTC+7)</option>
-                  <option value="Asia/Singapore">Asia/Singapore (UTC+8)</option>
+                <select
+                  className={styles.select}
+                  id="clinic-tz"
+                  value={clinic.timezone}
+                  onChange={(e) =>
+                    setClinic({ ...clinic, timezone: e.target.value })
+                  }
+                >
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz.id} value={tz.id}>
+                      {tz.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -419,7 +1044,10 @@ export function SettingsView({ initialBrandVoice }: Props) {
               <input
                 className={styles.input}
                 id="clinic-addr"
-                defaultValue="492/2 Sukhumvit Rd, Khlong Toei, Bangkok 10110"
+                value={clinic.address}
+                onChange={(e) =>
+                  setClinic({ ...clinic, address: e.target.value })
+                }
               />
             </div>
             <div className={styles.fieldRow}>
@@ -430,7 +1058,10 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 <input
                   className={styles.input}
                   id="clinic-hours"
-                  defaultValue="Mon–Sat · 10:00–20:00"
+                  value={clinic.hours}
+                  onChange={(e) =>
+                    setClinic({ ...clinic, hours: e.target.value })
+                  }
                 />
               </div>
               <div className={styles.field}>
@@ -440,25 +1071,34 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 <input
                   className={styles.input}
                   id="clinic-langs"
-                  defaultValue="Thai, English"
+                  value={clinic.languages}
+                  onChange={(e) =>
+                    setClinic({ ...clinic, languages: e.target.value })
+                  }
                 />
               </div>
             </div>
             <div className={styles.cardActions}>
-              <span className={styles.saveMeta}>Last saved 3 days ago by Pim</span>
+              <span className={styles.saveMeta}>
+                {clinicDirty
+                  ? "Unsaved changes"
+                  : `Last saved ${timeAgo(settings.clinic.saved_at)} by ${settings.clinic.saved_by}`}
+              </span>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnSecondary}`}
-                onClick={() => notImplemented("Cancel")}
+                onClick={cancelClinic}
+                disabled={!clinicDirty || isPending}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => notImplemented("Clinic profile")}
+                onClick={saveClinicSection}
+                disabled={!clinicDirty || isPending}
               >
-                Save changes
+                {isPending && clinicDirty ? "Saving…" : "Save changes"}
               </button>
             </div>
           </Card>
@@ -467,8 +1107,8 @@ export function SettingsView({ initialBrandVoice }: Props) {
           <Card
             id="line"
             title="Line OA"
-            summary="@sukhumvit-skin · channel Cf12…8a · last test 14:02 ✓"
-            saved="Saved 2 weeks ago"
+            summary={lineSummary}
+            saved={`Saved ${timeAgo(settings.line.saved_at)}`}
             open={open.line}
             onToggle={() => toggle("line")}
             registerRef={registerRef}
@@ -487,7 +1127,10 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 <input
                   className={`${styles.input} ${styles.inputMono}`}
                   id="line-id"
-                  defaultValue="Cf12a93e8b8a"
+                  value={line.channel_id}
+                  onChange={(e) =>
+                    setLine({ ...line, channel_id: e.target.value })
+                  }
                 />
               </div>
               <div className={styles.field}>
@@ -497,7 +1140,10 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 <input
                   className={styles.input}
                   id="line-oa"
-                  defaultValue="@sukhumvit-skin"
+                  value={line.oa_name}
+                  onChange={(e) =>
+                    setLine({ ...line, oa_name: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -510,19 +1156,21 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 <input
                   className={`${styles.input} ${styles.inputMono}`}
                   id="line-secret"
-                  defaultValue="••••••••••••••3f9c"
+                  value={`••••••••••••••${settings.line.secret_last4}`}
                   readOnly
                 />
                 <button
                   type="button"
                   className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                  onClick={() => notImplemented("Rotate secret")}
+                  onClick={rotateSecret}
+                  disabled={isPending}
                 >
                   Rotate
                 </button>
               </div>
               <span className={styles.hint}>
-                Stored in Supabase Vault. Last rotated 14 days ago.
+                Stored in Supabase Vault. Last rotated{" "}
+                {timeAgo(settings.line.secret_rotated_at)}.
               </span>
             </div>
 
@@ -533,7 +1181,7 @@ export function SettingsView({ initialBrandVoice }: Props) {
               <input
                 className={`${styles.input} ${styles.inputMono}`}
                 id="line-webhook"
-                defaultValue="https://api.yuna.app/v1/line/webhook/cf12a93e8b8a"
+                value={settings.line.webhook_url}
                 readOnly
               />
               <span className={styles.hint}>
@@ -547,13 +1195,20 @@ export function SettingsView({ initialBrandVoice }: Props) {
               <div className={styles.testRow}>
                 <div className={styles.status}>
                   <span className={styles.statusDot} aria-hidden="true" />
-                  <span>Last ping received</span>
+                  <span>
+                    {linePinged ? "Last ping received" : "No ping received"}
+                  </span>
                 </div>
-                <span className={styles.when}>Today · 14:02 ICT</span>
+                <span className={styles.when}>
+                  {linePinged
+                    ? `${fmtDateTime(settings.line.last_ping_at)} ICT`
+                    : "—"}
+                </span>
                 <button
                   type="button"
                   className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                  onClick={() => notImplemented("Test signature")}
+                  onClick={pingLine}
+                  disabled={isPending}
                 >
                   Test signature
                 </button>
@@ -565,20 +1220,26 @@ export function SettingsView({ initialBrandVoice }: Props) {
             </div>
 
             <div className={styles.cardActions}>
-              <span className={styles.saveMeta}>Last saved 2 weeks ago by Owner</span>
+              <span className={styles.saveMeta}>
+                {lineDirty
+                  ? "Unsaved changes"
+                  : `Last saved ${timeAgo(settings.line.saved_at)} by ${settings.line.saved_by}`}
+              </span>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnSecondary}`}
-                onClick={() => notImplemented("Cancel")}
+                onClick={cancelLine}
+                disabled={!lineDirty || isPending}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => notImplemented("Line OA")}
+                onClick={saveLineSection}
+                disabled={!lineDirty || isPending}
               >
-                Save changes
+                {isPending && lineDirty ? "Saving…" : "Save changes"}
               </button>
             </div>
           </Card>
@@ -588,32 +1249,44 @@ export function SettingsView({ initialBrandVoice }: Props) {
             id="ai-brain"
             title={
               <>
-                AI brain <span className={`${styles.badge} ${styles.badgeYuna}`}>Yuna</span>
+                AI brain{" "}
+                <span className={`${styles.badge} ${styles.badgeYuna}`}>
+                  Yuna
+                </span>
               </>
             }
-            summary={`Anthropic · claude-sonnet-4-6 · Cohere v3 · temp ${temp.toFixed(2)}`}
-            saved="Saved 4h ago"
+            summary={`${settings.ai.provider} · ${settings.ai.model} · Cohere v3 · temp ${settings.ai.temperature.toFixed(2)}`}
+            saved={`Saved ${timeAgo(settings.ai.saved_at)}`}
             open={open["ai-brain"]}
             onToggle={() => toggle("ai-brain")}
             registerRef={registerRef}
           >
             <p className={styles.help}>
               Which model writes Yuna&rsquo;s replies. Changes apply to new
-              conversations — active threads finish on the current provider. In
-              the demo build, the model is hardcoded to Claude.
+              conversations — active threads finish on the current provider.
             </p>
 
             <div className={styles.field}>
               <label className={styles.label}>Provider</label>
-              <div className={styles.segment} role="radiogroup" aria-label="LLM provider">
+              <div
+                className={styles.segment}
+                role="radiogroup"
+                aria-label="LLM provider"
+              >
                 {(["OpenAI", "Anthropic", "Google"] as const).map((p) => (
                   <button
                     key={p}
                     type="button"
                     role="radio"
-                    aria-pressed={provider === p}
-                    aria-checked={provider === p}
-                    onClick={() => setProvider(p)}
+                    aria-pressed={ai.provider === p}
+                    aria-checked={ai.provider === p}
+                    onClick={() =>
+                      setAi({
+                        provider: p,
+                        model: MODEL_BY_PROVIDER[p][0].id,
+                        temperature: ai.temperature,
+                      })
+                    }
                   >
                     {p}
                   </button>
@@ -629,10 +1302,17 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 <label className={styles.label} htmlFor="ai-model">
                   Model
                 </label>
-                <select className={styles.select} id="ai-model" defaultValue="claude-sonnet-4-6">
-                  <option value="claude-sonnet-4-6">claude-sonnet-4-6 (recommended)</option>
-                  <option value="claude-haiku-4-5">claude-haiku-4-5</option>
-                  <option value="claude-opus-4-7">claude-opus-4-7</option>
+                <select
+                  className={styles.select}
+                  id="ai-model"
+                  value={ai.model}
+                  onChange={(e) => setAi({ ...ai, model: e.target.value })}
+                >
+                  {MODEL_BY_PROVIDER[ai.provider].map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className={styles.field}>
@@ -646,11 +1326,15 @@ export function SettingsView({ initialBrandVoice }: Props) {
                     min={0}
                     max={1}
                     step={0.05}
-                    value={temp}
-                    onChange={(e) => setTemp(parseFloat(e.target.value))}
+                    value={ai.temperature}
+                    onChange={(e) =>
+                      setAi({ ...ai, temperature: parseFloat(e.target.value) })
+                    }
                     className={styles.slider}
                   />
-                  <span className={styles.sliderValue}>{temp.toFixed(2)}</span>
+                  <span className={styles.sliderValue}>
+                    {ai.temperature.toFixed(2)}
+                  </span>
                 </div>
                 <div className={styles.sliderScale}>
                   <span>Precise</span>
@@ -672,7 +1356,7 @@ export function SettingsView({ initialBrandVoice }: Props) {
                   <button
                     type="button"
                     className={styles.btnLink}
-                    onClick={() => notImplemented("Override request")}
+                    onClick={() => setModal({ kind: "override" })}
                   >
                     Request override
                   </button>
@@ -686,11 +1370,14 @@ export function SettingsView({ initialBrandVoice }: Props) {
 
             <div className={styles.cardActions}>
               <span className={styles.saveMeta}>
-                Last saved 4h ago by Owner ·{" "}
+                {aiDirty
+                  ? "Unsaved changes"
+                  : `Last saved ${timeAgo(settings.ai.saved_at)} by ${settings.ai.saved_by}`}{" "}
+                ·{" "}
                 <button
                   type="button"
                   className={styles.btnLink}
-                  onClick={() => notImplemented("Audit log")}
+                  onClick={() => setModal({ kind: "audit", section: "ai-brain" })}
                 >
                   View audit log
                 </button>
@@ -698,16 +1385,18 @@ export function SettingsView({ initialBrandVoice }: Props) {
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnSecondary}`}
-                onClick={() => notImplemented("Cancel")}
+                onClick={cancelAi}
+                disabled={!aiDirty || isPending}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => notImplemented("AI brain")}
+                onClick={saveAiSection}
+                disabled={!aiDirty || isPending}
               >
-                Save changes
+                {isPending && aiDirty ? "Saving…" : "Save changes"}
               </button>
             </div>
           </Card>
@@ -717,12 +1406,15 @@ export function SettingsView({ initialBrandVoice }: Props) {
             id="kill-switch"
             title={
               <>
-                Kill switch <span className={`${styles.badge} ${styles.badgeYuna}`}>Yuna</span>
+                Kill switch{" "}
+                <span className={`${styles.badge} ${styles.badgeYuna}`}>
+                  Yuna
+                </span>
               </>
             }
             summary={
               aiActive
-                ? "Yuna AI is active · no state change in 2 weeks"
+                ? `Yuna AI is active · no state change in ${timeAgo(settings.kill_switch.changed_at)}`
                 : "Yuna AI is paused · routing to staff"
             }
             saved="Owner-only"
@@ -763,22 +1455,20 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 className={`${styles.switch} ${
                   aiActive ? "" : styles.switchOff
                 } ${!aiActive ? styles.switchPaused : ""}`}
-                onClick={() => {
-                  setAiActive((v) => !v);
-                  showToast(
-                    aiActive ? "Yuna paused for this clinic" : "Yuna activated"
-                  );
-                }}
+                onClick={toggleKillSwitch}
+                disabled={isPending}
               />
             </div>
 
             <div className={styles.cardActions}>
               <span className={styles.saveMeta}>
-                No state change in the last 2 weeks ·{" "}
+                Last change {timeAgo(settings.kill_switch.changed_at)} ·{" "}
                 <button
                   type="button"
                   className={styles.btnLink}
-                  onClick={() => notImplemented("Audit log")}
+                  onClick={() =>
+                    setModal({ kind: "audit", section: "kill-switch" })
+                  }
                 >
                   View audit log
                 </button>
@@ -786,7 +1476,7 @@ export function SettingsView({ initialBrandVoice }: Props) {
             </div>
           </Card>
 
-          {/* BRAND VOICE — the persisted one */}
+          {/* BRAND VOICE */}
           <Card
             id="brand-voice"
             title="Brand voice"
@@ -822,36 +1512,40 @@ export function SettingsView({ initialBrandVoice }: Props) {
             <div className={styles.field}>
               <label className={styles.label}>
                 Sample dialogues{" "}
-                <span className={styles.req}>· {DIALOGUES.length} of 5</span>
+                <span className={styles.req}>
+                  · {dialogues.length} of 5
+                </span>
               </label>
               <div className={styles.dialogueList}>
-                {DIALOGUES.map((d, i) => (
-                  <div key={i} className={styles.dialogue}>
+                {dialogues.map((d) => (
+                  <div key={d.id} className={styles.dialogue}>
                     <div className={styles.turn}>
                       <span className={styles.who}>Customer</span>
-                      <div className={styles.turnText}>{d.customer}</div>
+                      <div className={styles.turnText}>{d.customer_text}</div>
                       <button
                         type="button"
                         className={styles.remove}
                         aria-label="Remove"
-                        onClick={() => notImplemented("Remove sample")}
+                        onClick={() => removeDialogue(d.id)}
                       >
                         ×
                       </button>
                     </div>
                     <div className={styles.turn}>
-                      <span className={`${styles.who} ${styles.whoYuna}`}>Yuna</span>
+                      <span className={`${styles.who} ${styles.whoYuna}`}>
+                        Yuna
+                      </span>
                       <div className={styles.turnText}>
                         <span className={`${styles.badge} ${styles.badgeYuna}`}>
                           Yuna
                         </span>
-                        {d.yuna}
+                        {d.yuna_text}
                       </div>
                       <button
                         type="button"
                         className={styles.remove}
                         aria-label="Remove"
-                        onClick={() => notImplemented("Remove sample")}
+                        onClick={() => removeDialogue(d.id)}
                       >
                         ×
                       </button>
@@ -862,7 +1556,8 @@ export function SettingsView({ initialBrandVoice }: Props) {
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnGhost} ${styles.addSample}`}
-                onClick={() => notImplemented("Add sample dialogue")}
+                onClick={() => setModal({ kind: "addDialogue" })}
+                disabled={dialogues.length >= 5}
               >
                 + Add sample dialogue
               </button>
@@ -872,23 +1567,23 @@ export function SettingsView({ initialBrandVoice }: Props) {
               <span className={styles.saveMeta}>
                 {brandDirty
                   ? "Unsaved changes"
-                  : "Last saved just now · the brand voice is the only setting that persists in the demo"}
+                  : `Last saved ${timeAgo(settings.brand_voice.saved_at)} by ${settings.brand_voice.saved_by}`}
               </span>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnSecondary}`}
-                onClick={() => setBrandVoice(savedBrandVoice)}
-                disabled={!brandDirty || isSaving}
+                onClick={cancelBrandVoice}
+                disabled={!brandDirty || isPending}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={handleSaveBrandVoice}
-                disabled={!brandDirty || isSaving}
+                onClick={saveBrandVoiceSection}
+                disabled={!brandDirty || isPending}
               >
-                {isSaving ? "Saving…" : "Save changes"}
+                {isPending && brandDirty ? "Saving…" : "Save changes"}
               </button>
             </div>
           </Card>
@@ -897,8 +1592,8 @@ export function SettingsView({ initialBrandVoice }: Props) {
           <Card
             id="capacity"
             title="Capacity rules"
-            summary="4 treatments · 18 bookings/day max"
-            saved="Saved 5 days ago"
+            summary={capacitySummary}
+            saved={`Saved ${timeAgo(settings.clinic.saved_at)}`}
             open={open.capacity}
             onToggle={() => toggle("capacity")}
             registerRef={registerRef}
@@ -917,39 +1612,50 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {CAPACITY_ROWS.map((row) => (
-                  <tr key={row.name}>
-                    <td>{row.name}</td>
-                    <td className={styles.tableNum}>{row.perDay}</td>
-                    <td className={styles.tableNum}>{row.slot}</td>
+                {capacity.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.treatment}</td>
+                    <td className={styles.tableNum}>{row.per_day}</td>
+                    <td className={styles.tableNum}>{row.slot_minutes} min</td>
                     <td>
-                      <button
-                        type="button"
-                        className={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
-                        onClick={() => notImplemented(`Edit ${row.name}`)}
-                      >
-                        Edit
-                      </button>
+                      <span className={styles.rowActions}>
+                        <button
+                          type="button"
+                          className={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
+                          onClick={() => setModal({ kind: "capacity", rule: row })}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
+                          onClick={() => deleteCapacityRow(row)}
+                        >
+                          Remove
+                        </button>
+                      </span>
                     </td>
                   </tr>
                 ))}
+                {capacity.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className={styles.auditEmpty}>
+                      No treatments yet — add one to get started.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
             <div className={styles.cardActions}>
-              <span className={styles.saveMeta}>Last saved 5 days ago by Pim</span>
+              <span className={styles.saveMeta}>
+                Capacity rules persist immediately
+              </span>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnSecondary}`}
-                onClick={() => notImplemented("Add treatment")}
+                onClick={() => setModal({ kind: "capacity", rule: null })}
               >
                 + Add treatment
-              </button>
-              <button
-                type="button"
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => notImplemented("Capacity rules")}
-              >
-                Save changes
               </button>
             </div>
           </Card>
@@ -958,8 +1664,8 @@ export function SettingsView({ initialBrandVoice }: Props) {
           <Card
             id="aftercare"
             title="Aftercare schedule"
-            summary="D1 · 10:00 ICT · D7 · 10:00 ICT · Thai + English"
-            saved="Saved 6 days ago"
+            summary={`${aftercare.d1 ? "D1" : ""}${aftercare.d1 && aftercare.d7 ? " · " : ""}${aftercare.d7 ? "D7" : ""}${aftercare.d30 ? (aftercare.d1 || aftercare.d7 ? " · D30" : "D30") : ""} · ${aftercare.send_time} ICT · ${aftercare.languages === "th+en" ? "Thai + English" : aftercare.languages === "th" ? "Thai only" : "English only"}`}
+            saved={`Saved ${timeAgo(settings.aftercare.saved_at)}`}
             open={open.aftercare}
             onToggle={() => toggle("aftercare")}
             registerRef={registerRef}
@@ -967,8 +1673,6 @@ export function SettingsView({ initialBrandVoice }: Props) {
             <p className={styles.help}>
               Day-1 and Day-7 followup messages send automatically after a
               treatment. Each reply passes a safety classifier before sending.
-              <br />
-              <em>Not wired in the demo build.</em>
             </p>
 
             {(
@@ -1002,7 +1706,9 @@ export function SettingsView({ initialBrandVoice }: Props) {
                     role="switch"
                     aria-checked={checked}
                     aria-label={`Toggle ${row.title}`}
-                    className={`${styles.switch} ${checked ? "" : styles.switchOff}`}
+                    className={`${styles.switch} ${
+                      checked ? "" : styles.switchOff
+                    }`}
                     onClick={() =>
                       setAftercare((prev) => ({ ...prev, [row.key]: !prev[row.key] }))
                     }
@@ -1020,14 +1726,27 @@ export function SettingsView({ initialBrandVoice }: Props) {
                   className={styles.input}
                   id="ac-time"
                   type="time"
-                  defaultValue="10:00"
+                  value={aftercare.send_time}
+                  onChange={(e) =>
+                    setAftercare({ ...aftercare, send_time: e.target.value })
+                  }
                 />
               </div>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="ac-langs">
                   Template languages
                 </label>
-                <select className={styles.select} id="ac-langs" defaultValue="th+en">
+                <select
+                  className={styles.select}
+                  id="ac-langs"
+                  value={aftercare.languages}
+                  onChange={(e) =>
+                    setAftercare({
+                      ...aftercare,
+                      languages: e.target.value as "th+en" | "th" | "en",
+                    })
+                  }
+                >
                   <option value="th+en">Thai + English</option>
                   <option value="th">Thai only</option>
                   <option value="en">English only</option>
@@ -1036,20 +1755,26 @@ export function SettingsView({ initialBrandVoice }: Props) {
             </div>
 
             <div className={styles.cardActions}>
-              <span className={styles.saveMeta}>Last saved 6 days ago by Owner</span>
+              <span className={styles.saveMeta}>
+                {aftercareDirty
+                  ? "Unsaved changes"
+                  : `Last saved ${timeAgo(settings.aftercare.saved_at)} by ${settings.aftercare.saved_by}`}
+              </span>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnSecondary}`}
-                onClick={() => notImplemented("Edit templates")}
+                onClick={cancelAftercare}
+                disabled={!aftercareDirty || isPending}
               >
-                Edit templates
+                Cancel
               </button>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => notImplemented("Aftercare")}
+                onClick={saveAftercareSection}
+                disabled={!aftercareDirty || isPending}
               >
-                Save changes
+                {isPending && aftercareDirty ? "Saving…" : "Save changes"}
               </button>
             </div>
           </Card>
@@ -1058,8 +1783,8 @@ export function SettingsView({ initialBrandVoice }: Props) {
           <Card
             id="privacy"
             title="Privacy & retention"
-            summary="24-month retention · 3 sub-processors · DSAR enabled"
-            saved="Saved 30 days ago"
+            summary={`${privacy.conversation_months}-month retention · 3 sub-processors · DSAR enabled`}
+            saved={`Saved ${timeAgo(settings.privacy.saved_at)}`}
             open={open.privacy}
             onToggle={() => toggle("privacy")}
             registerRef={registerRef}
@@ -1074,7 +1799,17 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 <label className={styles.label} htmlFor="ret-conv">
                   Conversation retention
                 </label>
-                <select className={styles.select} id="ret-conv" defaultValue="24">
+                <select
+                  className={styles.select}
+                  id="ret-conv"
+                  value={String(privacy.conversation_months)}
+                  onChange={(e) =>
+                    setPrivacy({
+                      ...privacy,
+                      conversation_months: Number(e.target.value),
+                    })
+                  }
+                >
                   <option value="24">24 months (default)</option>
                   <option value="12">12 months</option>
                   <option value="6">6 months</option>
@@ -1084,7 +1819,17 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 <label className={styles.label} htmlFor="ret-audit">
                   Audit log retention
                 </label>
-                <select className={styles.select} id="ret-audit" defaultValue="36">
+                <select
+                  className={styles.select}
+                  id="ret-audit"
+                  value={String(privacy.audit_months)}
+                  onChange={(e) =>
+                    setPrivacy({
+                      ...privacy,
+                      audit_months: Number(e.target.value),
+                    })
+                  }
+                >
                   <option value="36">36 months (PDPA recommended)</option>
                   <option value="24">24 months</option>
                 </select>
@@ -1098,8 +1843,9 @@ export function SettingsView({ initialBrandVoice }: Props) {
                   Auto-generated from your current AI brain selection
                 </div>
                 <div>
-                  Anthropic <code>claude-sonnet-4-6</code> generates replies.
-                  Cohere <code>embed-multilingual-v3</code> embeds Knowledge for
+                  {settings.ai.provider} <code>{settings.ai.model}</code>{" "}
+                  generates replies. Cohere{" "}
+                  <code>embed-multilingual-v3</code> embeds Knowledge for
                   retrieval. Supabase (Singapore) stores all data at rest.
                   Customer messages cross the SG–US border for the model call
                   only; no personally identifiable data is retained by
@@ -1124,7 +1870,8 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 <button
                   type="button"
                   className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                  onClick={() => notImplemented("Export customer data")}
+                  onClick={startDsarExport}
+                  disabled={isPending}
                 >
                   Export customer data
                 </button>
@@ -1136,20 +1883,26 @@ export function SettingsView({ initialBrandVoice }: Props) {
             </div>
 
             <div className={styles.cardActions}>
-              <span className={styles.saveMeta}>Last saved 30 days ago by Owner</span>
+              <span className={styles.saveMeta}>
+                {privacyDirty
+                  ? "Unsaved changes"
+                  : `Last saved ${timeAgo(settings.privacy.saved_at)} by ${settings.privacy.saved_by}`}
+              </span>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnSecondary}`}
-                onClick={() => notImplemented("Cancel")}
+                onClick={cancelPrivacy}
+                disabled={!privacyDirty || isPending}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => notImplemented("Privacy & retention")}
+                onClick={savePrivacySection}
+                disabled={!privacyDirty || isPending}
               >
-                Save changes
+                {isPending && privacyDirty ? "Saving…" : "Save changes"}
               </button>
             </div>
           </Card>
@@ -1158,8 +1911,8 @@ export function SettingsView({ initialBrandVoice }: Props) {
           <Card
             id="team"
             title="Team"
-            summary="5 members · 1 owner · 4 staff"
-            saved="Saved 2 days ago"
+            summary={teamSummary}
+            saved={`Saved ${timeAgo(settings.clinic.saved_at)}`}
             open={open.team}
             onToggle={() => toggle("team")}
             registerRef={registerRef}
@@ -1174,11 +1927,14 @@ export function SettingsView({ initialBrandVoice }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {TEAM_ROWS.map((row) => (
-                  <tr key={row.email}>
+                {team.map((row) => (
+                  <tr key={row.id}>
                     <td>
                       {row.name}
-                      <div className={styles.hint}>{row.email}</div>
+                      <div className={styles.hint}>
+                        {row.email}
+                        {row.pending ? " · invite pending" : ""}
+                      </div>
                     </td>
                     <td>
                       <span
@@ -1189,30 +1945,48 @@ export function SettingsView({ initialBrandVoice }: Props) {
                         {row.role}
                       </span>
                     </td>
-                    <td className={styles.tableNum}>{row.last}</td>
+                    <td className={styles.tableNum}>
+                      {row.pending ? "—" : timeAgo(row.last_active_at)}
+                    </td>
                     <td>
-                      <button
-                        type="button"
-                        className={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
-                        onClick={() =>
-                          notImplemented(
-                            row.pending ? "Resend invite" : `Manage ${row.name}`
-                          )
-                        }
-                      >
-                        {row.pending ? "Resend invite" : "Manage"}
-                      </button>
+                      <span className={styles.rowActions}>
+                        {row.pending && (
+                          <button
+                            type="button"
+                            className={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
+                            onClick={() => resendTeamInvite(row)}
+                          >
+                            Resend
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
+                          onClick={() => setModal({ kind: "member", member: row })}
+                        >
+                          Manage
+                        </button>
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <div className={styles.cardActions}>
-              <span className={styles.saveMeta}>Last saved 2 days ago by Owner</span>
+              <span className={styles.saveMeta}>
+                Team changes persist immediately ·{" "}
+                <button
+                  type="button"
+                  className={styles.btnLink}
+                  onClick={() => setModal({ kind: "audit", section: "team" })}
+                >
+                  View audit log
+                </button>
+              </span>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => notImplemented("Invite member")}
+                onClick={() => setModal({ kind: "invite" })}
               >
                 + Invite member
               </button>
@@ -1223,8 +1997,8 @@ export function SettingsView({ initialBrandVoice }: Props) {
           <Card
             id="billing"
             title="Billing"
-            summary="Starter · 4,247 / 10,000 msgs · renews in 8 days"
-            saved="Auto-renew on"
+            summary={`${PLAN_NAME[settings.billing.plan]} · ${settings.billing.msg_count.toLocaleString()} / ${settings.billing.msg_quota.toLocaleString()} msgs · renews ${timeUntil(settings.billing.renews_at)}`}
+            saved={settings.billing.auto_renew ? "Auto-renew on" : "Auto-renew off"}
             open={open.billing}
             onToggle={() => toggle("billing")}
             registerRef={registerRef}
@@ -1235,17 +2009,20 @@ export function SettingsView({ initialBrandVoice }: Props) {
                   Current plan
                 </div>
                 <div className={styles.price}>
-                  <span className={styles.priceAmount}>฿2,490</span>
+                  <span className={styles.priceAmount}>
+                    ฿{PLAN_PRICE_THB[settings.billing.plan].toLocaleString()}
+                  </span>
                   <span className={styles.pricePer}>/ month</span>
                 </div>
                 <div className={styles.hint} style={{ marginTop: 6 }}>
-                  Starter · up to 10,000 outbound messages
+                  {PLAN_NAME[settings.billing.plan]} · up to{" "}
+                  {settings.billing.msg_quota.toLocaleString()} outbound messages
                 </div>
                 <div style={{ marginTop: 12 }}>
                   <button
                     type="button"
                     className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                    onClick={() => notImplemented("Compare plans")}
+                    onClick={() => setModal({ kind: "comparePlans" })}
                   >
                     Compare plans
                   </button>
@@ -1253,12 +2030,12 @@ export function SettingsView({ initialBrandVoice }: Props) {
               </div>
               <div>
                 <div className={styles.hint} style={{ marginBottom: 4 }}>
-                  Message volume · May
+                  Message volume · this period
                 </div>
                 <div className={styles.meter}>
                   <div
                     className={styles.meterFill}
-                    style={{ width: "42%" }}
+                    style={{ width: `${billingMeterPct}%` }}
                     aria-hidden="true"
                   />
                 </div>
@@ -1266,7 +2043,9 @@ export function SettingsView({ initialBrandVoice }: Props) {
                   className={styles.hint}
                   style={{ marginTop: 6, fontVariantNumeric: "tabular-nums" }}
                 >
-                  4,247 / 10,000 outbound · resets in 8 days
+                  {settings.billing.msg_count.toLocaleString()} /{" "}
+                  {settings.billing.msg_quota.toLocaleString()} outbound · resets{" "}
+                  {timeUntil(settings.billing.renews_at)}
                 </div>
               </div>
             </div>
@@ -1279,34 +2058,63 @@ export function SettingsView({ initialBrandVoice }: Props) {
                     className={`${styles.statusDot} ${styles.statusDotMuted}`}
                     aria-hidden="true"
                   />
-                  <span>Visa ending in 4242</span>
+                  <span>
+                    {settings.billing.card_brand} ending in{" "}
+                    {settings.billing.card_last4}
+                  </span>
                 </div>
-                <span className={styles.when}>Expires 09/29</span>
+                <span className={styles.when}>
+                  Expires {settings.billing.card_exp}
+                </span>
                 <button
                   type="button"
                   className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                  onClick={() => notImplemented("Update payment")}
+                  onClick={() => setModal({ kind: "payment" })}
                 >
                   Update
                 </button>
               </div>
             </div>
 
+            <div className={styles.toggleRow}>
+              <div>
+                <div className={styles.label}>Auto-renew</div>
+                <div className={styles.whenText}>
+                  {settings.billing.auto_renew
+                    ? `Next charge ${fmtDate(settings.billing.renews_at)}`
+                    : "Plan will lapse at the end of the period"}
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.billing.auto_renew}
+                aria-label="Toggle auto-renew"
+                className={`${styles.switch} ${
+                  settings.billing.auto_renew ? "" : styles.switchOff
+                }`}
+                onClick={toggleAutoRenew}
+                disabled={isPending}
+              />
+            </div>
+
             <div className={styles.cardActions}>
               <span className={styles.saveMeta}>
-                Next invoice: ฿2,490 on 2 Jun 2026
+                Next invoice: ฿
+                {PLAN_PRICE_THB[settings.billing.plan].toLocaleString()} on{" "}
+                {fmtDate(settings.billing.renews_at)}
               </span>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnGhost}`}
-                onClick={() => notImplemented("Download invoices")}
+                onClick={downloadInvoices}
               >
                 Download invoices
               </button>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnSecondary}`}
-                onClick={() => notImplemented("Manage plan")}
+                onClick={() => setModal({ kind: "comparePlans" })}
               >
                 Manage plan
               </button>
@@ -1315,9 +2123,12 @@ export function SettingsView({ initialBrandVoice }: Props) {
         </div>
       </section>
 
+      {/* ---------- Toast ---------- */}
       <div
         className={
-          toastVisible ? `${styles.toast} ${styles.toastVisible}` : styles.toast
+          toastVisible
+            ? `${styles.toast} ${styles.toastVisible}`
+            : styles.toast
         }
         role="status"
         aria-live="polite"
@@ -1327,6 +2138,956 @@ export function SettingsView({ initialBrandVoice }: Props) {
         </span>
         <span>{toast}</span>
       </div>
+
+      {/* ---------- Modals ---------- */}
+
+      {modal.kind === "audit" && (
+        <AuditModal
+          entries={
+            modal.section
+              ? audit.filter((a) => a.section === modal.section)
+              : audit
+          }
+          section={modal.section}
+          onClose={() => setModal({ kind: "none" })}
+        />
+      )}
+
+      {modal.kind === "invite" && (
+        <InviteModal
+          onClose={() => setModal({ kind: "none" })}
+          onInvited={(member) => {
+            setTeam((prev) => [...prev, member]);
+            noteAudit("team", `Invite sent · ${member.email} (${member.role})`);
+            showToast(`Invite sent to ${member.email}`);
+            setModal({ kind: "none" });
+          }}
+        />
+      )}
+
+      {modal.kind === "member" && (
+        <ManageMemberModal
+          member={modal.member}
+          onClose={() => setModal({ kind: "none" })}
+          onRoleChange={(role) => {
+            changeRole(modal.member, role);
+            setModal({ kind: "none" });
+          }}
+          onRemove={() => {
+            setModal({ kind: "none" });
+            deleteTeamRow(modal.member);
+          }}
+          onAcceptInvite={() => {
+            acceptInvite(modal.member);
+            setModal({ kind: "none" });
+          }}
+        />
+      )}
+
+      {modal.kind === "capacity" && (
+        <CapacityModal
+          rule={modal.rule}
+          onClose={() => setModal({ kind: "none" })}
+          onSave={async (input) => {
+            try {
+              await saveCapacityRule(input);
+              if (input.id) {
+                setCapacity((prev) =>
+                  prev.map((r) =>
+                    r.id === input.id
+                      ? {
+                          ...r,
+                          treatment: input.treatment,
+                          per_day: input.per_day,
+                          slot_minutes: input.slot_minutes,
+                        }
+                      : r
+                  )
+                );
+                noteAudit("capacity", `Capacity rule updated · ${input.treatment}`);
+                showToast(`Updated · ${input.treatment}`);
+              } else {
+                // Re-query nothing — push a temporary row; will be refreshed next page load.
+                const fakeId = `local-${Math.random().toString(36).slice(2, 9)}`;
+                setCapacity((prev) => [
+                  ...prev,
+                  {
+                    id: fakeId,
+                    treatment: input.treatment,
+                    per_day: input.per_day,
+                    slot_minutes: input.slot_minutes,
+                    position: prev.length,
+                  },
+                ]);
+                noteAudit("capacity", `Capacity rule added · ${input.treatment}`);
+                showToast(`Added · ${input.treatment}`);
+              }
+              setModal({ kind: "none" });
+            } catch {
+              showToast("Save failed");
+            }
+          }}
+        />
+      )}
+
+      {modal.kind === "addDialogue" && (
+        <DialogueModal
+          onClose={() => setModal({ kind: "none" })}
+          onSave={async (input) => {
+            try {
+              const dialogue = await addSampleDialogue(input);
+              setDialogues((prev) => [...prev, dialogue]);
+              noteAudit("brand-voice", "Sample dialogue added");
+              showToast("Sample added");
+              setModal({ kind: "none" });
+            } catch (err) {
+              showToast(err instanceof Error ? err.message : "Save failed");
+            }
+          }}
+        />
+      )}
+
+      {modal.kind === "override" && (
+        <OverrideModal
+          onClose={() => setModal({ kind: "none" })}
+          onSubmit={async (reason) => {
+            try {
+              await requestEmbeddingOverride(reason);
+              noteAudit("ai-brain", "Embedding override requested");
+              showToast("Override request sent");
+              setModal({ kind: "none" });
+            } catch {
+              showToast("Send failed");
+            }
+          }}
+        />
+      )}
+
+      {modal.kind === "comparePlans" && (
+        <ComparePlansModal
+          current={settings.billing.plan}
+          onClose={() => setModal({ kind: "none" })}
+          onSelect={changeBillingPlan}
+        />
+      )}
+
+      {modal.kind === "payment" && (
+        <PaymentModal
+          current={{
+            card_brand: settings.billing.card_brand,
+            card_last4: settings.billing.card_last4,
+            card_exp: settings.billing.card_exp,
+          }}
+          onClose={() => setModal({ kind: "none" })}
+          onSave={async (input) => {
+            try {
+              const next = await saveBillingCard(input);
+              setSettings(next);
+              noteAudit(
+                "billing",
+                `Payment method updated · ${input.card_brand} ····${input.card_last4}`
+              );
+              showToast("Payment method updated");
+              setModal({ kind: "none" });
+            } catch (err) {
+              showToast(err instanceof Error ? err.message : "Save failed");
+            }
+          }}
+        />
+      )}
+
+      {modal.kind === "dsar" && (
+        <DsarModal
+          payload={modal.payload}
+          onClose={() => setModal({ kind: "none" })}
+          onDownload={() => {
+            triggerDownload(
+              modal.payload.filename,
+              modal.payload.json,
+              "application/json"
+            );
+            showToast("DSAR export downloaded");
+            setModal({ kind: "none" });
+          }}
+        />
+      )}
     </div>
   );
+}
+
+// ---------- Modal contents ----------
+
+function AuditModal({
+  entries,
+  section,
+  onClose,
+}: {
+  entries: AuditEntry[];
+  section?: string;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      title="Audit log"
+      subtitle={
+        section
+          ? `Recent changes · ${SECTION_LABEL[section] ?? section}`
+          : "Recent changes across all settings"
+      }
+      onClose={onClose}
+      wide
+      footer={
+        <>
+          <span className={styles.saveMeta}>
+            {entries.length} entr{entries.length === 1 ? "y" : "ies"}
+          </span>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </>
+      }
+    >
+      <div className={styles.auditList}>
+        {entries.length === 0 && (
+          <div className={styles.auditEmpty}>
+            No audit entries yet — make a change and it&rsquo;ll show up here.
+          </div>
+        )}
+        {entries.map((e) => (
+          <div key={e.id} className={styles.auditEntry}>
+            <span className={styles.auditSection}>
+              {SECTION_LABEL[e.section] ?? e.section}
+            </span>
+            <span className={styles.auditSummary}>
+              {e.summary} <span className={styles.hint}>· by {e.actor}</span>
+            </span>
+            <span className={styles.when}>{timeAgo(e.created_at)}</span>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  );
+}
+
+function InviteModal({
+  onClose,
+  onInvited,
+}: {
+  onClose: () => void;
+  onInvited: (m: TeamMember) => void;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"Owner" | "Staff">("Staff");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const member = await inviteTeamMember({ name, email, role });
+      onInvited(member);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to invite");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="Invite team member"
+      subtitle="They'll receive an email link to set their password."
+      onClose={onClose}
+      footer={
+        <>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="invite-form"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            disabled={busy}
+          >
+            {busy ? "Sending…" : "Send invite"}
+          </button>
+        </>
+      }
+    >
+      <form id="invite-form" onSubmit={onSubmit} className={styles.modalBody} style={{ padding: 0, display: "contents" }}>
+        {error && <div className={styles.modalError}>{error}</div>}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="invite-name">
+            Name
+          </label>
+          <input
+            id="invite-name"
+            className={styles.input}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            autoFocus
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="invite-email">
+            Email
+          </label>
+          <input
+            id="invite-email"
+            type="email"
+            className={styles.input}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Role</label>
+          <div className={styles.segment} role="radiogroup" aria-label="Role">
+            {(["Staff", "Owner"] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                role="radio"
+                aria-checked={role === r}
+                aria-pressed={role === r}
+                onClick={() => setRole(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <span className={styles.hint}>
+            Owners can manage billing and remove other members.
+          </span>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function ManageMemberModal({
+  member,
+  onClose,
+  onRoleChange,
+  onRemove,
+  onAcceptInvite,
+}: {
+  member: TeamMember;
+  onClose: () => void;
+  onRoleChange: (role: "Owner" | "Staff") => void;
+  onRemove: () => void;
+  onAcceptInvite: () => void;
+}) {
+  const [role, setRole] = useState<"Owner" | "Staff">(member.role);
+  const dirty = role !== member.role;
+
+  return (
+    <Modal
+      title={`Manage · ${member.name}`}
+      subtitle={member.email}
+      onClose={onClose}
+      footer={
+        <>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnGhost}`}
+            onClick={onRemove}
+            disabled={member.role === "Owner"}
+          >
+            Remove
+          </button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            onClick={() => onRoleChange(role)}
+            disabled={!dirty}
+          >
+            Save role
+          </button>
+        </>
+      }
+    >
+      <div className={styles.field}>
+        <label className={styles.label}>Role</label>
+        <div className={styles.segment} role="radiogroup" aria-label="Role">
+          {(["Staff", "Owner"] as const).map((r) => (
+            <button
+              key={r}
+              type="button"
+              role="radio"
+              aria-checked={role === r}
+              aria-pressed={role === r}
+              onClick={() => setRole(r)}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+        {member.role === "Owner" && (
+          <span className={styles.hint}>
+            Owners can&rsquo;t be removed. Demote first if you need to remove
+            this member.
+          </span>
+        )}
+      </div>
+      {member.pending ? (
+        <div className={styles.field}>
+          <label className={styles.label}>Invite status</label>
+          <div className={styles.testRow}>
+            <div className={styles.status}>
+              <span
+                className={`${styles.statusDot} ${styles.statusDotMuted}`}
+                aria-hidden="true"
+              />
+              <span>Invite pending</span>
+            </div>
+            <span className={styles.when}>not yet accepted</span>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
+              onClick={onAcceptInvite}
+            >
+              Mark accepted
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.field}>
+          <label className={styles.label}>Last active</label>
+          <div className={styles.hint}>{timeAgo(member.last_active_at)}</div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function CapacityModal({
+  rule,
+  onClose,
+  onSave,
+}: {
+  rule: CapacityRule | null;
+  onClose: () => void;
+  onSave: (input: {
+    id: string | null;
+    treatment: string;
+    per_day: number;
+    slot_minutes: number;
+  }) => Promise<void>;
+}) {
+  const [treatment, setTreatment] = useState(rule?.treatment ?? "");
+  const [perDay, setPerDay] = useState(rule?.per_day ?? 4);
+  const [slot, setSlot] = useState(rule?.slot_minutes ?? 30);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!treatment.trim()) {
+      setError("Treatment name is required");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave({
+        id: rule?.id ?? null,
+        treatment: treatment.trim(),
+        per_day: perDay,
+        slot_minutes: slot,
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title={rule ? `Edit · ${rule.treatment}` : "Add treatment"}
+      onClose={onClose}
+      footer={
+        <>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="capacity-form"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            disabled={busy}
+          >
+            {busy ? "Saving…" : "Save"}
+          </button>
+        </>
+      }
+    >
+      <form id="capacity-form" onSubmit={onSubmit} style={{ display: "contents" }}>
+        {error && <div className={styles.modalError}>{error}</div>}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="cap-name">
+            Treatment
+          </label>
+          <input
+            id="cap-name"
+            className={styles.input}
+            value={treatment}
+            onChange={(e) => setTreatment(e.target.value)}
+            required
+            autoFocus
+          />
+        </div>
+        <div className={styles.fieldRow}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="cap-day">
+              Bookings / day
+            </label>
+            <input
+              id="cap-day"
+              className={styles.input}
+              type="number"
+              min={1}
+              max={50}
+              value={perDay}
+              onChange={(e) => setPerDay(Number(e.target.value))}
+            />
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="cap-slot">
+              Slot length (min)
+            </label>
+            <input
+              id="cap-slot"
+              className={styles.input}
+              type="number"
+              min={5}
+              max={240}
+              step={5}
+              value={slot}
+              onChange={(e) => setSlot(Number(e.target.value))}
+            />
+          </div>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function DialogueModal({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (input: { customer_text: string; yuna_text: string }) => Promise<void>;
+}) {
+  const [customer, setCustomer] = useState("");
+  const [yuna, setYuna] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await onSave({ customer_text: customer, yuna_text: yuna });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="Add sample dialogue"
+      subtitle="Real example of how Yuna should respond. Tone teaches more than rules."
+      onClose={onClose}
+      footer={
+        <>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="dialogue-form"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            disabled={busy || !customer.trim() || !yuna.trim()}
+          >
+            {busy ? "Saving…" : "Add"}
+          </button>
+        </>
+      }
+    >
+      <form id="dialogue-form" onSubmit={onSubmit} style={{ display: "contents" }}>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="dlg-cust">
+            Customer message
+          </label>
+          <textarea
+            id="dlg-cust"
+            className={styles.textarea}
+            value={customer}
+            onChange={(e) => setCustomer(e.target.value)}
+            required
+            autoFocus
+            placeholder="สวัสดีค่ะ ทำเลเซอร์รักแร้ราคาเท่าไหร่คะ"
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="dlg-yuna">
+            Yuna&rsquo;s reply
+          </label>
+          <textarea
+            id="dlg-yuna"
+            className={styles.textarea}
+            value={yuna}
+            onChange={(e) => setYuna(e.target.value)}
+            required
+            placeholder="สวัสดีค่ะ! เลเซอร์รักแร้ที่คลินิกเรามี 2 แพ็คเกจค่ะ…"
+          />
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function OverrideModal({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void;
+  onSubmit: (reason: string) => Promise<void>;
+}) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await onSubmit(reason);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="Request embedding override"
+      subtitle="Tell us why you need a different embedding model. We'll reach out within 1 business day."
+      onClose={onClose}
+      footer={
+        <>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="override-form"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            disabled={busy || !reason.trim()}
+          >
+            {busy ? "Sending…" : "Send request"}
+          </button>
+        </>
+      }
+    >
+      <form id="override-form" onSubmit={submit} style={{ display: "contents" }}>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="override-reason">
+            Reason
+          </label>
+          <textarea
+            id="override-reason"
+            className={styles.textarea}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            required
+            autoFocus
+            placeholder="We need OpenAI text-embedding-3-large because…"
+          />
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function ComparePlansModal({
+  current,
+  onClose,
+  onSelect,
+}: {
+  current: PlanId;
+  onClose: () => void;
+  onSelect: (plan: PlanId) => void;
+}) {
+  return (
+    <Modal
+      title="Compare plans"
+      subtitle="Switching takes effect immediately. We'll prorate the difference on the next invoice."
+      onClose={onClose}
+      wide
+      footer={
+        <button
+          type="button"
+          className={`${styles.btn} ${styles.btnSecondary}`}
+          onClick={onClose}
+        >
+          Close
+        </button>
+      }
+    >
+      <div className={styles.planGrid}>
+        {PLANS.map((p) => {
+          const active = p.id === current;
+          return (
+            <div
+              key={p.id}
+              className={`${styles.planCard} ${active ? styles.planCardActive : ""}`}
+            >
+              <div className={styles.planName}>{p.name}</div>
+              <div className={styles.planPrice}>
+                <span className={styles.planPriceAmount}>{p.price}</span>
+                <span className={styles.pricePer}>/ mo</span>
+              </div>
+              <ul className={styles.planList}>
+                {p.features.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className={`${styles.btn} ${active ? styles.btnSecondary : styles.btnPrimary}`}
+                onClick={() => onSelect(p.id)}
+                disabled={active}
+              >
+                {active ? "Current plan" : `Switch to ${p.name}`}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </Modal>
+  );
+}
+
+function PaymentModal({
+  current,
+  onClose,
+  onSave,
+}: {
+  current: { card_brand: string; card_last4: string; card_exp: string };
+  onClose: () => void;
+  onSave: (input: {
+    card_brand: string;
+    card_last4: string;
+    card_exp: string;
+  }) => Promise<void>;
+}) {
+  const [brand, setBrand] = useState(current.card_brand);
+  const [number, setNumber] = useState("");
+  const [exp, setExp] = useState(current.card_exp);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave({
+        card_brand: brand || "Card",
+        card_last4: number.replace(/\D/g, "").slice(-4),
+        card_exp: exp,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="Update payment method"
+      subtitle="Card details are stored by Stripe — we only keep the last 4 + expiry."
+      onClose={onClose}
+      footer={
+        <>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="payment-form"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            disabled={busy}
+          >
+            {busy ? "Saving…" : "Save card"}
+          </button>
+        </>
+      }
+    >
+      <form id="payment-form" onSubmit={submit} style={{ display: "contents" }}>
+        {error && <div className={styles.modalError}>{error}</div>}
+        <div className={styles.fieldRow}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="pay-brand">
+              Brand
+            </label>
+            <select
+              id="pay-brand"
+              className={styles.select}
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+            >
+              <option>Visa</option>
+              <option>Mastercard</option>
+              <option>Amex</option>
+              <option>JCB</option>
+            </select>
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="pay-exp">
+              Expiry (MM/YY)
+            </label>
+            <input
+              id="pay-exp"
+              className={`${styles.input} ${styles.inputMono}`}
+              value={exp}
+              onChange={(e) => setExp(e.target.value)}
+              placeholder="09/29"
+              required
+            />
+          </div>
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="pay-num">
+            Card number
+          </label>
+          <input
+            id="pay-num"
+            className={`${styles.input} ${styles.inputMono}`}
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            inputMode="numeric"
+            placeholder="4242 4242 4242 4242"
+            required
+            autoFocus
+          />
+          <span className={styles.hint}>
+            For the demo we only persist the last 4 digits.
+          </span>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function DsarModal({
+  payload,
+  onClose,
+  onDownload,
+}: {
+  payload: { filename: string; json: string; customers: number };
+  onClose: () => void;
+  onDownload: () => void;
+}) {
+  const preview = useMemo(() => {
+    if (payload.json.length <= 1200) return payload.json;
+    return payload.json.slice(0, 1200) + "\n… (truncated for preview)";
+  }, [payload.json]);
+
+  return (
+    <Modal
+      title="DSAR export ready"
+      subtitle={`${payload.customers} customer record${
+        payload.customers === 1 ? "" : "s"
+      } · ${payload.filename}`}
+      onClose={onClose}
+      wide
+      footer={
+        <>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={onClose}
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            onClick={onDownload}
+          >
+            Download JSON
+          </button>
+        </>
+      }
+    >
+      <div className={styles.field}>
+        <label className={styles.label}>Preview</label>
+        <pre
+          className={`${styles.input} ${styles.inputMono}`}
+          style={{
+            maxHeight: "40vh",
+            overflow: "auto",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
+          {preview}
+        </pre>
+        <span className={styles.hint}>
+          PDPA: deliver this within 30 days of the customer&rsquo;s request.
+        </span>
+      </div>
+    </Modal>
+  );
+}
+
+// ---------- Helpers ----------
+
+function triggerDownload(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

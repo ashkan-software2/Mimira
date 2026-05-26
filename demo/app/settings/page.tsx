@@ -1,9 +1,24 @@
-import { getBrandVoice } from "@/lib/repo";
+import {
+  getBrandVoice,
+  getSettings,
+  listAuditLog,
+  listCapacityRules,
+  listSampleDialogues,
+  listTeamMembers,
+} from "@/lib/repo";
 import { SettingsView } from "./SettingsView";
 
 export const dynamic = "force-dynamic";
 
 export default function SettingsPage() {
-  const brandVoice = getBrandVoice();
-  return <SettingsView initialBrandVoice={brandVoice} />;
+  return (
+    <SettingsView
+      initialBrandVoice={getBrandVoice()}
+      initialSettings={getSettings()}
+      initialDialogues={listSampleDialogues()}
+      initialCapacity={listCapacityRules()}
+      initialTeam={listTeamMembers()}
+      initialAudit={listAuditLog({ limit: 30 })}
+    />
+  );
 }
