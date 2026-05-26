@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Knowledge · Yuna</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #fafbfc;
+      --surface: #ffffff;
+      --surface-2: #f7f8fa;
+      --fg: #0a0a0a;
+      --fg-muted: #6b7280;
+      --fg-subtle: #9ca3af;
+      --border: #e5e7eb;
+      --border-subtle: #f1f3f5;
+      --cta-fill: #0a0a0a;
+      --cta-fg: #ffffff;
+      --ai-accent: #0a7c7c;
+      --ai-accent-bg: #ecf6f6;
+      --link: #2563eb;
+      --success: #16a34a;
+      --warning: #d97706;
+      --error: #dc2626;
+      --info: #2563eb;
+
+      --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Thai Looped', system-ui, sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+      --space-2xs: 2px;
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 12px;
+      --space-lg: 16px;
+      --space-xl: 24px;
+      --space-2xl: 32px;
+      --space-3xl: 48px;
+
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+
+      --shadow-modal: 0 4px 20px rgba(0,0,0,0.08);
+
+      --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+      --ease-move: cubic-bezier(0.45, 0, 0.55, 1);
+      --dur-micro: 80ms;
+      --dur-short: 160ms;
+      --dur-medium: 240ms;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0a0a0a;
+        --surface: #141414;
+        --surface-2: #1a1a1a;
+        --fg: #fafafa;
+        --fg-muted: #a1a1aa;
+        --fg-subtle: #71717a;
+        --border: #27272a;
+        --border-subtle: #1f1f23;
+        --cta-fill: #fafafa;
+        --cta-fg: #0a0a0a;
+        --ai-accent: #2dd4bf;
+        --ai-accent-bg: #0e2a2a;
+        --link: #60a5fa;
+        --info: #60a5fa;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    button { font-family: inherit; }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0);
+      white-space: nowrap; border: 0;
+    }
+
+    /* ---------- App shell ---------- */
+
+    .app {
+      display: grid;
+      grid-template-rows: 52px 1fr;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    /* ---------- Top bar (identical to other admin tabs) ---------- */
+
+    .topbar {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: var(--space-xl);
+      padding: 0 var(--space-xl);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+    .brand-mark {
+      width: 22px; height: 22px;
+      border-radius: var(--radius-sm);
+      background: var(--fg);
+      color: var(--bg);
+      display: grid; place-items: center;
+      font-size: 13px; font-weight: 600;
+    }
+    .brand-name { color: var(--fg); }
+    .brand-clinic { color: var(--fg-muted); font-weight: 400; }
+    .brand-sep { color: var(--fg-subtle); }
+
+    .tabs {
+      display: flex;
+      gap: var(--space-2xs);
+      justify-self: start;
+    }
+    .tab {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg-muted);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: color var(--dur-micro) var(--ease-move), background var(--dur-micro) var(--ease-move);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab:hover { color: var(--fg); background: var(--surface-2); }
+    .tab[aria-current="page"] { color: var(--fg); background: var(--surface-2); }
+    .tab .count {
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      color: var(--fg-muted);
+      background: var(--border-subtle);
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      min-width: 18px;
+      text-align: center;
+    }
+    .tab[aria-current="page"] .count { color: var(--fg); background: var(--surface); border: 1px solid var(--border); }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+    }
+    .avatar {
+      width: 28px; height: 28px;
+      border-radius: var(--radius-full);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: grid; place-items: center;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    /* ---------- Two-column grid (no right rail) ---------- */
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      min-height: 0;
+    }
+    @media (max-width: 1024px) {
+      .workspace { grid-template-columns: 280px 1fr; }
+    }
+    @media (max-width: 768px) {
+      .workspace { grid-template-columns: 1fr; }
+      .col-tree { display: none; }
+    }
+
+    .col {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+    }
+    .col-tree { border-right: 1px solid var(--border); }
+    .col-editor { background: var(--bg); }
+
+    /* ============================================
+       LEFT RAIL — KNOWLEDGE TREE
+       ============================================ */
+
+    .tree-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-md) var(--space-lg) var(--space-sm);
+    }
+    .tree-header h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg-muted);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .tree-search {
+      padding: 0 var(--space-lg) var(--space-md);
+    }
+    .tree-search input {
+      width: 100%;
+      padding: 8px 12px 8px 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      font: inherit;
+      font-size: 14px;
+      color: var(--fg);
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>");
+      background-repeat: no-repeat;
+      background-position: 10px center;
+    }
+    .tree-search input::placeholder { color: var(--fg-subtle); }
+    .tree-search input:focus {
+      outline: none;
+      border-color: var(--link);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--link) 18%, transparent);
+    }
+
+    .add-doc {
+      margin: 0 var(--space-lg) var(--space-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: calc(100% - var(--space-lg) * 2);
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--cta-fill);
+      color: var(--cta-fg);
+      border: 1px solid var(--cta-fill);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background var(--dur-micro);
+    }
+    .add-doc:hover { background: #1f1f1f; }
+    .add-doc:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--link);
+    }
+    .add-doc svg { width: 14px; height: 14px; }
+
+    .tree {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 0 var(--space-lg);
+    }
+
+    .tree-group {
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .tree-group:last-child { border-bottom: 0; }
+
+    .tree-group-head {
+      display: grid;
+      grid-template-columns: 12px 1fr auto;
+      gap: var(--space-sm);
+      align-items: center;
+      padding: 10px var(--space-lg);
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      color: var(--fg);
+      transition: background var(--dur-micro);
+    }
+    .tree-group-head:hover { background: var(--surface-2); }
+    .tree-group-head .caret {
+      width: 12px; height: 12px;
+      color: var(--fg-subtle);
+      transition: transform var(--dur-short) var(--ease-move);
+    }
+    .tree-group[data-expanded="false"] .caret { transform: rotate(-90deg); }
+    .tree-group[data-expanded="false"] .tree-list { display: none; }
+
+    .tree-group-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+    .tree-group-count {
+      font-size: 11px;
+      color: var(--fg-subtle);
+      font-variant-numeric: tabular-nums;
+      padding: 0 6px;
+    }
+
+    .tree-list {
+      list-style: none;
+      margin: 0;
+      padding: 0 0 var(--space-sm);
+    }
+    .tree-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: baseline;
+      gap: var(--space-sm);
+      padding: 8px var(--space-lg) 8px 36px;
+      cursor: pointer;
+      position: relative;
+      transition: background var(--dur-micro);
+    }
+    .tree-item:hover { background: var(--surface-2); }
+    .tree-item[aria-current="true"] { background: var(--surface-2); }
+    .tree-item[aria-current="true"]::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--fg);
+    }
+
+    .tree-item-name {
+      font-size: 14px;
+      color: var(--fg);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tree-item[aria-current="true"] .tree-item-name { font-weight: 500; }
+
+    .tree-item-meta {
+      font-size: 11px;
+      color: var(--fg-subtle);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* ============================================
+       CENTER — EDITOR
+       ============================================ */
+
+    .editor-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: var(--space-md);
+      align-items: center;
+      padding: var(--space-md) var(--space-xl);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .editor-title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .editor-crumbs {
+      font-size: 12px;
+      color: var(--fg-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .editor-crumbs .sep { color: var(--fg-subtle); }
+    .editor-title h1 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.005em;
+    }
+
+    .editor-title-input {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      padding: 0;
+      margin: 0;
+      font: inherit;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.005em;
+      width: 100%;
+      outline: none;
+      border-radius: 4px;
+    }
+    .editor-title-input:hover { background: var(--surface-2); padding: 0 4px; margin: 0 -4px; }
+    .editor-title-input:focus { background: var(--surface-2); padding: 0 4px; margin: 0 -4px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--link) 20%, transparent); }
+
+    .editor-actions {
+      display: inline-flex;
+      gap: var(--space-sm);
+      align-items: center;
+    }
+
+    .save-state {
+      font-size: 12px;
+      color: var(--fg-muted);
+      font-variant-numeric: tabular-nums;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding-right: var(--space-sm);
+    }
+    .save-state .dot {
+      width: 6px; height: 6px;
+      border-radius: var(--radius-full);
+      background: var(--warning);
+    }
+    .save-state[data-state="saved"] .dot { background: var(--success); }
+
+    .btn {
+      appearance: none;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background var(--dur-micro) var(--ease-move), border-color var(--dur-micro), color var(--dur-micro);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary { background: var(--cta-fill); color: var(--cta-fg); border-color: var(--cta-fill); }
+    .btn-primary:hover { background: #1f1f1f; border-color: #1f1f1f; }
+    .btn-secondary { background: var(--surface); color: var(--fg); border-color: var(--border); }
+    .btn-secondary:hover { border-color: var(--fg-muted); }
+    .btn-ghost { background: transparent; color: var(--fg-muted); }
+    .btn-ghost:hover { color: var(--fg); background: var(--surface-2); }
+    .btn-danger-ghost { background: transparent; color: var(--fg-muted); }
+    .btn-danger-ghost:hover { color: var(--error); background: color-mix(in srgb, var(--error) 6%, var(--surface)); }
+    .btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--link);
+    }
+    .btn[disabled] { opacity: 0.5; pointer-events: none; }
+
+    /* Plain-text editor area. No preview, no markdown rendering, no toolbar.
+       Line doesn't render formatting so neither do we. */
+    .editor-body {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+      padding: var(--space-2xl) var(--space-xl) var(--space-3xl);
+      min-height: 0;
+    }
+    .editor-paper {
+      width: 100%;
+      max-width: 720px;
+    }
+
+    .editor-textarea {
+      width: 100%;
+      min-height: 60vh;
+      border: 0;
+      background: transparent;
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.7;
+      resize: none;
+      outline: none;
+      padding: 0;
+      white-space: pre-wrap;
+    }
+    .editor-textarea::placeholder { color: var(--fg-subtle); }
+
+    /* Empty state (no doc selected) */
+    .editor-empty {
+      flex: 1;
+      display: grid;
+      place-items: center;
+      padding: var(--space-2xl);
+      color: var(--fg-muted);
+      font-size: 14px;
+    }
+    .editor-empty p {
+      margin: 0;
+      text-align: center;
+      max-width: 320px;
+    }
+
+    /* ---------- Confirm modal (Delete) ---------- */
+
+    .modal-scrim {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 10, 0.32);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 80;
+      animation: fadeIn var(--dur-short) var(--ease-enter);
+    }
+    .modal-scrim[data-open="true"] { display: flex; }
+
+    .modal {
+      width: 100%;
+      max-width: 380px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-modal);
+      padding: var(--space-xl);
+      animation: modalIn var(--dur-medium) var(--ease-enter);
+    }
+    .modal h2 {
+      margin: 0 0 var(--space-sm);
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.005em;
+    }
+    .modal p {
+      margin: 0 0 var(--space-lg);
+      font-size: 14px;
+      color: var(--fg-muted);
+      line-height: 1.55;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-sm);
+    }
+    .btn-danger {
+      background: var(--error);
+      color: #fff;
+      border-color: var(--error);
+    }
+    .btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(4px) scale(0.99); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ---------- Toasts ---------- */
+
+    .toast-stack {
+      position: fixed;
+      bottom: var(--space-xl);
+      right: var(--space-xl);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      z-index: 50;
+      pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto;
+      padding: 10px var(--space-md);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-modal);
+      font-size: 13px;
+      color: var(--fg);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 240px;
+      animation: toastIn var(--dur-medium) var(--ease-enter);
+    }
+    .toast .dot {
+      width: 8px; height: 8px;
+      border-radius: var(--radius-full);
+      flex-shrink: 0;
+    }
+    .toast[data-kind="success"] .dot { background: var(--success); }
+    .toast[data-kind="ai"] .dot { background: var(--ai-accent); }
+    .toast[data-kind="danger"] .dot { background: var(--error); }
+    .toast .toast-meta { color: var(--fg-muted); margin-left: auto; font-size: 11px; font-variant-numeric: tabular-nums; }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .subtle { color: var(--fg-subtle); font-size: 11px; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar" role="banner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">Y</div>
+      <div>
+        <span class="brand-name">Yuna</span>
+        <span class="brand-sep">·</span>
+        <span class="brand-clinic">Sukhumvit Skin &amp; Laser</span>
+      </div>
+    </div>
+
+    <nav class="tabs" aria-label="Primary">
+      <button class="tab">Inbox <span class="count">7</span></button>
+      <button class="tab" aria-current="page">Knowledge <span class="count">42</span></button>
+      <button class="tab">Bookings <span class="count">3</span></button>
+      <button class="tab">Broadcasts</button>
+      <button class="tab">Settings</button>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="avatar" title="Pim · staff">ภ</div>
+    </div>
+  </header>
+
+  <!-- ============ WORKSPACE ============ -->
+  <div class="workspace">
+
+    <!-- ===== LEFT RAIL — TREE ===== -->
+    <aside class="col col-tree" aria-label="Knowledge tree">
+      <div class="tree-header">
+        <h2>Knowledge · 42</h2>
+      </div>
+
+      <div class="tree-search">
+        <label class="visually-hidden" for="tree-q">Search documents</label>
+        <input id="tree-q" type="search" placeholder="Search documents…" />
+      </div>
+
+      <button class="add-doc" id="add-doc-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add document
+      </button>
+
+      <nav class="tree" role="tree" aria-label="Documents by category">
+
+        <!-- Treatments -->
+        <div class="tree-group" data-expanded="true">
+          <button class="tree-group-head" aria-expanded="true">
+            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <span class="tree-group-name">Treatments</span>
+            <span class="tree-group-count">14</span>
+          </button>
+          <ul class="tree-list" role="group">
+            <li class="tree-item" role="treeitem" aria-current="true">
+              <span class="tree-item-name">Underarm Laser Hair Removal</span>
+              <span class="tree-item-meta">8m ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">PicoSure Laser</span>
+              <span class="tree-item-meta">2d ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">HydraFacial</span>
+              <span class="tree-item-meta">4d ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">Botox &amp; Dysport</span>
+              <span class="tree-item-meta">1w ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">Filler · Restylane / Juvederm</span>
+              <span class="tree-item-meta">1w ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">Thermage FLX</span>
+              <span class="tree-item-meta">2w ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">Ulthera</span>
+              <span class="tree-item-meta">2w ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">Brow Shape · Lamination</span>
+              <span class="tree-item-meta">3w ago</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Aftercare -->
+        <div class="tree-group" data-expanded="true">
+          <button class="tree-group-head" aria-expanded="true">
+            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <span class="tree-group-name">Aftercare</span>
+            <span class="tree-group-count">9</span>
+          </button>
+          <ul class="tree-list" role="group">
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">Post-laser redness · 24–72h</span>
+              <span class="tree-item-meta">5d ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">Sun exposure rules</span>
+              <span class="tree-item-meta">1w ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">D1 followup template (TH)</span>
+              <span class="tree-item-meta">1w ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">D7 followup template (TH)</span>
+              <span class="tree-item-meta">1w ago</span>
+            </li>
+            <li class="tree-item" role="treeitem">
+              <span class="tree-item-name">When to call the clinic</span>
+              <span class="tree-item-meta">2w ago</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- FAQ -->
+        <div class="tree-group" data-expanded="false">
+          <button class="tree-group-head" aria-expanded="false">
+            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <span class="tree-group-name">FAQ</span>
+            <span class="tree-group-count">11</span>
+          </button>
+          <ul class="tree-list" role="group">
+            <li class="tree-item" role="treeitem"><span class="tree-item-name">Hours &amp; holiday closures</span><span class="tree-item-meta">3d ago</span></li>
+            <li class="tree-item" role="treeitem"><span class="tree-item-name">Payment methods</span><span class="tree-item-meta">1w ago</span></li>
+          </ul>
+        </div>
+
+        <!-- Brand stories -->
+        <div class="tree-group" data-expanded="false">
+          <button class="tree-group-head" aria-expanded="false">
+            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <span class="tree-group-name">Brand stories</span>
+            <span class="tree-group-count">5</span>
+          </button>
+          <ul class="tree-list" role="group"></ul>
+        </div>
+
+        <!-- Pricing -->
+        <div class="tree-group" data-expanded="false">
+          <button class="tree-group-head" aria-expanded="false">
+            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <span class="tree-group-name">Pricing</span>
+            <span class="tree-group-count">3</span>
+          </button>
+          <ul class="tree-list" role="group"></ul>
+        </div>
+
+      </nav>
+    </aside>
+
+    <!-- ===== CENTER — EDITOR ===== -->
+    <main class="col col-editor" aria-label="Document editor">
+      <header class="editor-header">
+        <div class="editor-title">
+          <div class="editor-crumbs">
+            <span>Treatments</span><span class="sep">/</span><span class="subtle">last edited 8 minutes ago by Pim</span>
+          </div>
+          <input class="editor-title-input" id="doc-title" value="Underarm Laser Hair Removal" spellcheck="false" />
+        </div>
+        <div class="editor-actions">
+          <span class="save-state" id="save-state" data-state="dirty">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="label">Unsaved</span>
+          </span>
+          <button class="btn btn-danger-ghost" type="button" id="delete-btn">Delete</button>
+          <button class="btn btn-primary" type="button" id="save-btn">Save</button>
+        </div>
+      </header>
+
+      <div class="editor-body">
+        <div class="editor-paper">
+          <textarea id="doc-body" class="editor-textarea" spellcheck="false">Underarm laser hair removal at Sukhumvit Skin &amp; Laser uses a diode 810 nm platform suitable for Asian skin (Fitzpatrick III–V). Sessions take about 15 minutes in-room. Expect 6 to 8 sessions spaced 4 to 6 weeks apart for full clearance.
+
+Pricing
+
+Per session: 1,800 THB (member: 1,500 THB).
+Package of 6: 9,600 THB (saves 1,200 THB).
+Package of 8: 12,000 THB (saves 2,400 THB).
+Pricing is per area. Includes pre-cooling, post-aloe gel, and an SPF sample. Quoted in THB, inclusive of VAT.
+
+Who is it for
+
+Suitable for adults with dark, coarse underarm hair. Not recommended during pregnancy, on broken skin, or within 2 weeks of waxing.
+
+If the customer mentions melasma, recent isotretinoin (within 6 months), or active eczema in the area, escalate to staff. Do not quote.
+
+What to expect
+
+1. Shave the area 24 hours before the session. Do not wax or pluck.
+2. Avoid sun and self-tanner for 1 week prior.
+3. In session: cooling gel applied, 4 to 6 minute pass. Mild snapping sensation.
+4. After: light redness for 6 to 24 hours. Aloe and SPF for 48 hours.
+
+Aftercare in the first 72 hours
+
+No hot showers, sauna, gym, or swimming for 24 hours.
+Apply aloe gel 3 times per day.
+Apply SPF 50+ on the area if exposed to sun.
+Light redness is normal. Painful or swelling redness past 48 hours: call the clinic.
+
+Common questions
+
+Is it permanent? Significant long-term reduction (80 to 90 percent) after the full package. Touch-ups every 12 to 18 months keep it clear.
+
+Can I book back-to-back with another area? Yes. Bikini and underarm can be done same visit, 30 minutes total.
+
+What if I am on my period? Underarm is fine. Bikini sessions are rescheduled.</textarea>
+        </div>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<!-- ============ DELETE CONFIRM MODAL ============ -->
+<div class="modal-scrim" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+  <div class="modal">
+    <h2 id="delete-title">Delete this document?</h2>
+    <p>Yuna will stop using <strong id="delete-doc-name">Underarm Laser Hair Removal</strong> in customer replies within 30 seconds. This can&rsquo;t be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" type="button" data-modal-close>Cancel</button>
+      <button class="btn btn-danger" type="button" id="delete-confirm">Delete document</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TOAST STACK ============ -->
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script type="module">
+  // ============ STATE ============
+
+  const ta = document.getElementById('doc-body');
+  const titleInput = document.getElementById('doc-title');
+  const saveState = document.getElementById('save-state');
+  const saveStateLabel = saveState.querySelector('.label');
+  const saveBtn = document.getElementById('save-btn');
+
+  function markDirty() {
+    saveState.dataset.state = 'dirty';
+    saveStateLabel.textContent = 'Unsaved';
+    saveBtn.disabled = false;
+  }
+
+  function markSaved() {
+    saveState.dataset.state = 'saved';
+    saveStateLabel.textContent = 'Saved · just now';
+  }
+
+  ta.addEventListener('input', markDirty);
+  titleInput.addEventListener('input', markDirty);
+
+  // ============ SAVE ============
+
+  saveBtn.addEventListener('click', () => {
+    markSaved();
+    toast({ kind: 'success', text: 'Saved.', meta: '' });
+    setTimeout(() => {
+      toast({ kind: 'ai', text: 'Yuna is using this.', meta: 'live in 30s' });
+    }, 1400);
+  });
+
+  // ============ DELETE ============
+
+  const deleteBtn = document.getElementById('delete-btn');
+  const deleteModal = document.getElementById('delete-modal');
+  const deleteConfirm = document.getElementById('delete-confirm');
+  const deleteDocName = document.getElementById('delete-doc-name');
+
+  function openDelete() {
+    deleteDocName.textContent = titleInput.value || 'this document';
+    deleteModal.dataset.open = 'true';
+    deleteConfirm.focus();
+  }
+  function closeDelete() { deleteModal.dataset.open = 'false'; }
+
+  deleteBtn.addEventListener('click', openDelete);
+  deleteModal.addEventListener('click', (e) => {
+    if (e.target === deleteModal) closeDelete();
+    if (e.target.matches('[data-modal-close]')) closeDelete();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && deleteModal.dataset.open === 'true') closeDelete();
+  });
+
+  deleteConfirm.addEventListener('click', () => {
+    closeDelete();
+    toast({ kind: 'danger', text: 'Document deleted.', meta: 'undo within 10s' });
+  });
+
+  // ============ ADD ============
+
+  document.getElementById('add-doc-btn').addEventListener('click', () => {
+    toast({ kind: 'success', text: 'New document modal would open here.', meta: 'mockup' });
+  });
+
+  // ============ TREE ============
+
+  document.querySelectorAll('.tree-group-head').forEach((head) => {
+    head.addEventListener('click', () => {
+      const group = head.closest('.tree-group');
+      const expanded = group.dataset.expanded === 'true';
+      group.dataset.expanded = expanded ? 'false' : 'true';
+      head.setAttribute('aria-expanded', String(!expanded));
+    });
+  });
+
+  document.querySelectorAll('.tree-item').forEach((item) => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.tree-item[aria-current]').forEach((r) => r.removeAttribute('aria-current'));
+      item.setAttribute('aria-current', 'true');
+    });
+  });
+
+  // ============ TOASTS ============
+
+  function toast({ kind = 'success', text, meta }) {
+    const stack = document.getElementById('toasts');
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.dataset.kind = kind;
+    el.innerHTML = `<span class="dot"></span><span>${text}</span>${meta ? `<span class="toast-meta">${meta}</span>` : ''}`;
+    stack.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = 'opacity 240ms cubic-bezier(0.7,0,0.84,0), transform 240ms cubic-bezier(0.7,0,0.84,0)';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(6px)';
+      setTimeout(() => el.remove(), 280);
+    }, 2400);
+  }
+</script>
+
+</body>
+</html>

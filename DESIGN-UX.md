@@ -23,12 +23,13 @@ The admin app has 5 tabs. Each screen below lists purpose, what the user sees fi
 
 ### Knowledge
 **Purpose:** Owner/staff uploads, structures, and edits the clinic-specific content Yuna grounds its replies on.
-**Information hierarchy:**
-1. **Knowledge tree** (left rail) — hierarchical: Treatments / Aftercare / FAQ / Brand stories / Pricing. Each node shows chunk count and last-edited date.
-2. **Editor** (center column) — Markdown editor with live preview. "Reindex" button appears when content is dirty.
-3. **Metadata panel** (right rail) — language(s), tags, "active in chat" toggle (lets owner stage drafts without affecting live replies), embedding model + dim (read-only).
+**Information hierarchy (two columns, no right rail):**
+1. **Knowledge tree** (left rail) — hierarchical: Treatments / Aftercare / FAQ / Brand stories / Pricing. Each node shows last-edited date. Chunk counts, embedding model, audit log, and tags are server-side concerns — clinic admins don't read them.
+2. **Editor** (center column) — plain-text textarea. Line doesn't render markdown, so a preview pane would lie about what customers see. What the admin types is what Yuna grounds on, modulo prose chunking on the server.
 
-**Primary CTA:** "Add document" (top-left, prominent). Modal asks for category, language, optional tags, then drops user into the editor.
+**Primary CTA:** "Add document" (top-left of the tree). Modal asks for category, then drops user into the editor.
+
+**Document controls (in editor header):** Save (primary) · Delete (ghost). No draft/live toggle in v0 — saving makes a doc live; re-indexing runs in the background and a toast confirms when it's available in chat. If a clinic later asks for staged edits, add the toggle then.
 
 **Empty state (critical):** A clinic with zero documents sees a 3-step starter: "1. Upload your treatment menu. 2. Upload your top 10 FAQs. 3. Upload one brand-voice sample." Each step has an upload button. **No Yuna replies will go live until step 1 completes — hard gate, not a suggestion.**
 
@@ -84,7 +85,7 @@ Every feature ships with all five states designed. Missing states = engineer shi
 |---|---|---|---|---|---|
 | Inbox — escalated chats list | Skeleton rows (3 placeholders, exact row height, subtle shimmer) | "No escalations. Yuna is handling everything." + sparkline of replies/hour today | "Couldn't reach chat service. Retrying in 5s..." + manual retry | New escalation slides in from top with a brief amber pulse | If only some chats load: show what loaded + "5 more queued, retrying" sticky at top |
 | Inbox — active thread | Skeleton message bubbles (5 placeholders) | "Pick a chat from the left to view" + small illustration of the side rail | "Couldn't load this thread. Try refreshing." | Sent staff reply appears immediately with a subtle "sending…" tag; replaces with checkmark on confirm | Loaded most messages + spinner at top for older history |
-| Knowledge — tree | Skeleton tree (5 placeholder leaves) | 3-step starter (see Knowledge empty state above) | "Couldn't load knowledge base. Retry." | Document saved → toast "Saved. Reindexing 14 chunks…" → "Reindex complete. Live in 30s." | "8 of 12 documents loaded — loading remaining" with progress |
+| Knowledge — tree | Skeleton tree (5 placeholder leaves) | 3-step starter (see Knowledge empty state above) | "Couldn't load knowledge base. Retry." | Save → toast "Saved." → follow-up toast "Yuna is using this · live in 30s" | "8 of 12 documents loaded — loading remaining" with progress |
 | Knowledge — editor | Editor placeholder shimmer | "Pick a document from the tree or click Add Document." | "Failed to save — your edits are kept locally. Retry." | Save → "Saved" → fades to "Saved 8s ago" | Auto-saved draft toast every 30s |
 | Bookings — queue | Skeleton cards (3) | "No pending bookings. New requests appear here when a customer commits in chat." + link to a sample chat | "Couldn't load bookings. Retry." | Confirm → card slides to Confirmed section with a green check | Missing-fields cards highlighted yellow with "needs phone" badge |
 | Broadcasts — composer | n/a (instant) | n/a (always usable) | If image upload fails: inline below image area "Couldn't upload. Try a smaller image or paste a Line CDN URL." | Send → progress bar (recipients reached / total) → toast "Sent to 4,210 / 4,210 customers" | Line stopped the send mid-flight (quota / OA suspended / API error): broadcast appears in the log as `Stopped early` with the partial count (e.g. `3,400 / 4,210`) and a tooltip showing the Line error response. No in-app quota readout; the owner's source of truth for remaining quota is Line OA Manager. |
