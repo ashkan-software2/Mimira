@@ -17,6 +17,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { config } from "dotenv";
 import { embedDocuments } from "../lib/cohere";
+import { closeDb } from "../lib/db";
 import { deleteKnowledgeForSource, insertKnowledgeChunk } from "../lib/repo";
 
 config({ path: join(process.cwd(), ".env.local") });
@@ -101,7 +102,11 @@ async function main() {
   console.log(`Inserted ${meta.length} chunks.`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+main()
+  .catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await closeDb();
+  });

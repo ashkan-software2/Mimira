@@ -40,6 +40,13 @@ export async function getDb(): Promise<Sql> {
   return _sql;
 }
 
+export async function closeDb(): Promise<void> {
+  if (!_sql) return;
+  await _sql.end();
+  _sql = null;
+  _seedPromise = null;
+}
+
 // Idempotent default-row seeder. Safe to call repeatedly; only inserts rows
 // that don't already exist. Schema migrations live in db/schema.sql and run
 // via `npm run db:migrate` against DIRECT_URL — they are NOT performed here.
