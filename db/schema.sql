@@ -107,3 +107,20 @@ CREATE TABLE IF NOT EXISTS sample_dialogues (
   position      INTEGER NOT NULL DEFAULT 0,
   created_at    BIGINT NOT NULL
 );
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'sample_dialogues'
+      AND column_name = 'yuna_text'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'sample_dialogues'
+      AND column_name = 'assistant_text'
+  ) THEN
+    ALTER TABLE sample_dialogues RENAME COLUMN yuna_text TO assistant_text;
+  END IF;
+END $$;
