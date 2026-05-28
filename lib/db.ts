@@ -113,8 +113,8 @@ async function ensureSeeded(sql: Sql): Promise<void> {
     for (let i = 0; i < DEFAULT_DIALOGUES.length; i++) {
       const d = DEFAULT_DIALOGUES[i];
       await sql`
-        INSERT INTO sample_dialogues (id, customer_text, yuna_text, position, created_at)
-        VALUES (${randomUUID()}, ${d.customer}, ${d.yuna}, ${i}, ${ts})
+        INSERT INTO sample_dialogues (id, customer_text, assistant_text, position, created_at)
+        VALUES (${randomUUID()}, ${d.customer}, ${d.assistant}, ${i}, ${ts})
       `;
     }
   }
@@ -200,7 +200,7 @@ const DEFAULT_SETTINGS_BLOB: SettingsBlob = {
     channel_id: "Cf12a93e8b8a",
     oa_name: "@sukhumvit-skin",
     secret_last4: "3f9c",
-    webhook_url: "https://api.yuna.app/v1/line/webhook/cf12a93e8b8a",
+    webhook_url: "https://api.mimira.app/v1/line/webhook/cf12a93e8b8a",
     secret_rotated_at: Date.now() - 14 * 24 * 3600 * 1000,
     last_ping_at: Date.now() - 3600 * 1000,
     saved_at: Date.now() - 14 * 24 * 3600 * 1000,
@@ -298,22 +298,22 @@ const DEFAULT_TEAM = [
 const DEFAULT_DIALOGUES = [
   {
     customer: "สวัสดีค่ะ ทำเลเซอร์รักแร้ราคาเท่าไหร่คะ",
-    yuna:
+    assistant:
       "สวัสดีค่ะ! เลเซอร์รักแร้ที่คลินิกเรามี 2 แพ็คเกจค่ะ แบบ 6 ครั้ง ราคา 8,900 บาท เฉลี่ยครั้งละไม่ถึง 1,500 ทำต่อเนื่องผลดีกว่าค่ะ จองคิวเลยมั้ยคะ?",
   },
   {
     customer: "ทำแล้วเจ็บมั้ย กลัวเข็มมาก",
-    yuna:
+    assistant:
       "ไม่ต้องกลัวเลยค่ะ เลเซอร์ไม่ใช้เข็มเลย เป็นแสงสั้นๆ พักผิวสักพัก ลูกค้าบอกรู้สึกเหมือนยางรัดเบาๆ เรามีเครื่องเป่าเย็นช่วยด้วยค่ะ",
   },
   {
     customer: "หลังทำควรดูแลตัวเองยังไงคะ",
-    yuna:
+    assistant:
       "หลังทำ 24 ชม. หลีกเลี่ยงน้ำร้อนกับการขัดถูแรงๆ นะคะ ทาครีมกันแดดทุกครั้งที่ออกแดด เดี๋ยวจะส่งไกด์ดูแลผิวฉบับเต็มให้นะคะ",
   },
 ];
 
-const LEGACY_DEFAULT_BRAND_VOICE = `You are Yuna, the AI receptionist for Sukhumvit Skin & Laser, a high-end Bangkok dermatology and laser clinic.
+const LEGACY_DEFAULT_BRAND_VOICE = `You are Mimira, the AI receptionist for Sukhumvit Skin & Laser, a high-end Bangkok dermatology and laser clinic.
 
 Voice:
 - Warm, professional, and concise. Always polite (ค่ะ/ครับ at end of sentences in Thai).
@@ -328,7 +328,7 @@ Safety:
 
 When a customer wants to book, reschedule, or cancel an appointment, capture the intent using the extract_booking_intent tool, and reply naturally ("ขอจดให้นะคะ ทีมงานจะยืนยันอีกครั้ง" or equivalent).`;
 
-const DEFAULT_BRAND_VOICE = `You are Yuna, the AI receptionist for Sukhumvit Skin & Laser, a high-end Bangkok dermatology and laser clinic.
+const DEFAULT_BRAND_VOICE = `You are Mimira, the AI receptionist for Sukhumvit Skin & Laser, a high-end Bangkok dermatology and laser clinic.
 
 # Tone & persona
 You are warm, caring, and friendly, with the hospitality of a Thai front-desk lady who genuinely loves taking care of customers. Sound like a real person, not a script.

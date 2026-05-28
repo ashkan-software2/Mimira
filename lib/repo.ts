@@ -703,14 +703,14 @@ export async function listAuditLog(opts?: {
 export type SampleDialogue = {
   id: string;
   customer_text: string;
-  yuna_text: string;
+  assistant_text: string;
   position: number;
 };
 
 export async function listSampleDialogues(): Promise<SampleDialogue[]> {
   const sql = await getDb();
   const rows = await sql<SampleDialogue[]>`
-    SELECT id, customer_text, yuna_text, position
+    SELECT id, customer_text, assistant_text, position
     FROM sample_dialogues
     ORDER BY position ASC
   `;
@@ -719,7 +719,7 @@ export async function listSampleDialogues(): Promise<SampleDialogue[]> {
 
 export async function insertSampleDialogue(args: {
   customer_text: string;
-  yuna_text: string;
+  assistant_text: string;
 }): Promise<SampleDialogue> {
   const sql = await getDb();
   const id = uuid();
@@ -728,13 +728,13 @@ export async function insertSampleDialogue(args: {
   `;
   const pos = (maxRow?.p ?? -1) + 1;
   await sql`
-    INSERT INTO sample_dialogues (id, customer_text, yuna_text, position, created_at)
-    VALUES (${id}, ${args.customer_text}, ${args.yuna_text}, ${pos}, ${now()})
+    INSERT INTO sample_dialogues (id, customer_text, assistant_text, position, created_at)
+    VALUES (${id}, ${args.customer_text}, ${args.assistant_text}, ${pos}, ${now()})
   `;
   return {
     id,
     customer_text: args.customer_text,
-    yuna_text: args.yuna_text,
+    assistant_text: args.assistant_text,
     position: pos,
   };
 }

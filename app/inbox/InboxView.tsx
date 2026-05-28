@@ -377,7 +377,7 @@ export function InboxView({
                     className={`${styles.btn} ${styles.btnSecondary}`}
                     onClick={() => setPaused(false)}
                   >
-                    Return to Yuna
+                    Return to Mimira
                   </button>
                 )}
               </div>
@@ -400,7 +400,7 @@ export function InboxView({
                 <div className={styles.composerAi}>
                   <div className={styles.composerAiLabel}>
                     <span className={styles.pulse} aria-hidden="true"></span>
-                    Yuna is replying on this thread.
+                    Mimira is replying on this thread.
                   </div>
                   <button
                     className={`${styles.btn} ${styles.btnPrimary}`}
@@ -458,13 +458,13 @@ export function InboxView({
                     </div>
                   )}
                   <div className={styles.composerStaffToolbar}>
-                    <span>Yuna is paused for this thread.</span>
+                    <span>Mimira is paused for this thread.</span>
                     <span>·</span>
                     <button
                       className={`${styles.btn} ${styles.btnGhost} ${styles.btnGhostSmall}`}
                       onClick={() => setPaused(false)}
                     >
-                      Resolve &amp; return to Yuna
+                      Resolve &amp; return to Mimira
                     </button>
                     {sendError && (
                       <>
@@ -583,7 +583,7 @@ function RightRail({
               <dd>
                 <span className="mono">{conversation.lineUserId}</span>
               </dd>
-              <dt>Yuna</dt>
+              <dt>Mimira</dt>
               <dd>{conversation.aiPaused ? "paused" : "active"}</dd>
             </dl>
           ) : (
@@ -615,7 +615,7 @@ function MessagesList({ messages }: { messages: ThreadMessage[] }) {
 }
 
 function MessageBubble({ message }: { message: ThreadMessage }) {
-  // Customer on the left; both Yuna and staff (the clinic's "side") on the right.
+  // Customer on the left; both Mimira and staff (the clinic's "side") on the right.
   const side = message.sentBy === "customer" ? "left" : "right";
   const bubbleClass =
     message.sentBy === "customer"
@@ -628,7 +628,7 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
     message.sentBy === "customer"
       ? "Customer"
       : message.sentBy === "ai"
-        ? "Yuna"
+        ? "Mimira"
         : "You";
 
   return (
@@ -640,7 +640,7 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
       <div className={styles.msgMetaTop}>
         <span className={styles.msgAuthor}>{author}</span>
         {message.sentBy === "ai" && (
-          <span className={`${styles.badge} ${styles.badgeYuna}`}>Yuna</span>
+          <span className={`${styles.badge} ${styles.badgeYuna}`}>Mimira</span>
         )}
         {message.needsAttention ? (
           <span className={`${styles.badge} ${styles.badgeAttention}`}>

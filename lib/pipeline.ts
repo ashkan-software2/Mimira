@@ -11,7 +11,7 @@ import { retrieve, type RetrievedChunk } from "./rag";
 import { pushText, replyText } from "./line";
 
 const PAUSED_REPLY_TH =
-  "ขอบคุณที่ทักมานะคะ ขณะนี้ Yuna ถูกพักไว้ชั่วคราว ทีมงานจะตอบกลับเร็วๆ นี้ค่ะ 🙏";
+  "ขอบคุณที่ทักมานะคะ ขณะนี้ Mimira ถูกพักไว้ชั่วคราว ทีมงานจะตอบกลับเร็วๆ นี้ค่ะ 🙏";
 
 const OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "google/gemini-2.0-flash-exp:free";
@@ -167,8 +167,8 @@ async function callModel(
       Authorization: `Bearer ${openRouterKey()}`,
       "Content-Type": "application/json",
       // Optional but recommended by OpenRouter for app-level analytics.
-      "HTTP-Referer": process.env.OPENROUTER_REFERRER ?? "https://github.com/ashkan-software2/Yuna",
-      "X-Title": "Yuna Admin",
+      "HTTP-Referer": process.env.OPENROUTER_REFERRER ?? "https://github.com/ashkan-software2/Mimira",
+      "X-Title": "Mimira Admin",
     },
     body: JSON.stringify(body),
   });
@@ -200,7 +200,7 @@ export async function runChatPipeline(args: {
   const customer = await getCustomerById(args.customerId);
   if (!customer) throw new Error(`customer ${args.customerId} not found`);
 
-  // Clinic-wide kill switch — Yuna stays silent until staff turns her back on.
+  // Clinic-wide kill switch — Mimira stays silent until staff turns her back on.
   const settings = await getSettings();
   if (settings.kill_switch.paused) {
     if (args.replyToken) {

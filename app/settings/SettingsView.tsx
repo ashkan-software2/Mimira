@@ -636,10 +636,10 @@ export function SettingsView(props: Props) {
         noteAudit(
           "kill-switch",
           nextPaused
-            ? "Yuna paused for the clinic"
-            : "Yuna re-activated for the clinic"
+            ? "Mimira paused for the clinic"
+            : "Mimira re-activated for the clinic"
         );
-        showToast(nextPaused ? "Yuna paused for this clinic" : "Yuna activated");
+        showToast(nextPaused ? "Mimira paused for this clinic" : "Mimira activated");
       } catch {
         showToast("Toggle failed");
       }
@@ -845,7 +845,7 @@ export function SettingsView(props: Props) {
       );
     }
     triggerDownload(
-      `yuna-invoices-${new Date().toISOString().slice(0, 7)}.csv`,
+      `mimira-invoices-${new Date().toISOString().slice(0, 7)}.csv`,
       rows.join("\n"),
       "text/csv"
     );
@@ -997,7 +997,7 @@ export function SettingsView(props: Props) {
                   <span>{item.label}</span>
                   {item.tag === "ai" && (
                     <span className={`${styles.navTag} ${styles.navTagAi}`}>
-                      Yuna
+                      Mimira
                     </span>
                   )}
                 </button>
@@ -1238,7 +1238,7 @@ export function SettingsView(props: Props) {
                 </button>
               </div>
               <span className={styles.hint}>
-                Sends a signed test event from Yuna. Your webhook should respond
+                Sends a signed test event from Mimira. Your webhook should respond
                 within 1s.
               </span>
             </div>
@@ -1275,7 +1275,7 @@ export function SettingsView(props: Props) {
               <>
                 AI brain{" "}
                 <span className={`${styles.badge} ${styles.badgeYuna}`}>
-                  Yuna
+                  Mimira
                 </span>
               </>
             }
@@ -1286,7 +1286,7 @@ export function SettingsView(props: Props) {
             registerRef={registerRef}
           >
             <p className={styles.help}>
-              Which model writes Yuna&rsquo;s replies. Changes apply to new
+              Which model writes Mimira&rsquo;s replies. Changes apply to new
               conversations — active threads finish on the current provider.
             </p>
 
@@ -1432,14 +1432,14 @@ export function SettingsView(props: Props) {
               <>
                 Kill switch{" "}
                 <span className={`${styles.badge} ${styles.badgeYuna}`}>
-                  Yuna
+                  Mimira
                 </span>
               </>
             }
             summary={
               aiActive
-                ? `Yuna AI is active · no state change in ${timeAgo(settings.kill_switch.changed_at)}`
-                : "Yuna AI is paused · routing to staff"
+                ? `Mimira AI is active · no state change in ${timeAgo(settings.kill_switch.changed_at)}`
+                : "Mimira AI is paused · routing to staff"
             }
             saved="Owner-only"
             open={open["kill-switch"]}
@@ -1447,16 +1447,16 @@ export function SettingsView(props: Props) {
             registerRef={registerRef}
           >
             <p className={styles.help}>
-              One toggle to pause Yuna for this clinic. Inbound messages route
+              One toggle to pause Mimira for this clinic. Inbound messages route
               straight to the staff inbox until you turn her back on. Use this
-              for off-hours, trainings, or if a customer flags Yuna&rsquo;s
+              for off-hours, trainings, or if a customer flags Mimira&rsquo;s
               reply as wrong.
             </p>
 
             <div className={styles.killSwitch}>
               <div className={styles.labelBlock}>
                 <span className={styles.label}>
-                  Yuna AI is{" "}
+                  Mimira AI is{" "}
                   <span
                     className={
                       aiActive ? styles.stateActive : styles.statePaused
@@ -1467,7 +1467,7 @@ export function SettingsView(props: Props) {
                 </span>
                 <span className={styles.hint}>
                   {aiActive
-                    ? "All inbound messages currently flow through Yuna with staff escalation as needed."
+                    ? "All inbound messages currently flow through Mimira with staff escalation as needed."
                     : "All inbound messages are routing directly to the staff inbox."}
                 </span>
               </div>
@@ -1475,7 +1475,7 @@ export function SettingsView(props: Props) {
                 type="button"
                 role="switch"
                 aria-checked={aiActive}
-                aria-label="Pause Yuna for this clinic"
+                aria-label="Pause Mimira for this clinic"
                 className={`${styles.switch} ${
                   aiActive ? "" : styles.switchOff
                 } ${!aiActive ? styles.switchPaused : ""}`}
@@ -1511,7 +1511,7 @@ export function SettingsView(props: Props) {
             registerRef={registerRef}
           >
             <p className={styles.help}>
-              Tell Yuna how she should sound. This free-form prompt feeds the
+              Tell Mimira how she should sound. This free-form prompt feeds the
               system prompt on every reply. Sample dialogues show, don&rsquo;t
               tell — they have the largest effect on tone.
             </p>
@@ -1557,13 +1557,13 @@ export function SettingsView(props: Props) {
                     </div>
                     <div className={styles.turn}>
                       <span className={`${styles.who} ${styles.whoYuna}`}>
-                        Yuna
+                        Mimira
                       </span>
                       <div className={styles.turnText}>
                         <span className={`${styles.badge} ${styles.badgeYuna}`}>
-                          Yuna
+                          Mimira
                         </span>
-                        {d.yuna_text}
+                        {d.assistant_text}
                       </div>
                       <button
                         type="button"
@@ -1623,7 +1623,7 @@ export function SettingsView(props: Props) {
             registerRef={registerRef}
           >
             <p className={styles.help}>
-              Informational only in v0. Yuna mentions these when customers ask
+              Informational only in v0. Mimira mentions these when customers ask
               about availability, but doesn&rsquo;t auto-block bookings.
             </p>
             <table className={styles.table}>
@@ -2725,17 +2725,17 @@ function DialogueModal({
   onSave,
 }: {
   onClose: () => void;
-  onSave: (input: { customer_text: string; yuna_text: string }) => Promise<void>;
+  onSave: (input: { customer_text: string; assistant_text: string }) => Promise<void>;
 }) {
   const [customer, setCustomer] = useState("");
-  const [yuna, setYuna] = useState("");
+  const [assistant, setAssistant] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      await onSave({ customer_text: customer, yuna_text: yuna });
+      await onSave({ customer_text: customer, assistant_text: assistant });
     } finally {
       setBusy(false);
     }
@@ -2744,7 +2744,7 @@ function DialogueModal({
   return (
     <Modal
       title="Add sample dialogue"
-      subtitle="Real example of how Yuna should respond. Tone teaches more than rules."
+      subtitle="Real example of how Mimira should respond. Tone teaches more than rules."
       onClose={onClose}
       footer={
         <>
@@ -2759,7 +2759,7 @@ function DialogueModal({
             type="submit"
             form="dialogue-form"
             className={`${styles.btn} ${styles.btnPrimary}`}
-            disabled={busy || !customer.trim() || !yuna.trim()}
+            disabled={busy || !customer.trim() || !assistant.trim()}
           >
             {busy ? "Saving…" : "Add"}
           </button>
@@ -2782,14 +2782,14 @@ function DialogueModal({
           />
         </div>
         <div className={styles.field}>
-          <label className={styles.label} htmlFor="dlg-yuna">
-            Yuna&rsquo;s reply
+          <label className={styles.label} htmlFor="dlg-assistant">
+            Mimira&rsquo;s reply
           </label>
           <textarea
-            id="dlg-yuna"
+            id="dlg-assistant"
             className={styles.textarea}
-            value={yuna}
-            onChange={(e) => setYuna(e.target.value)}
+            value={assistant}
+            onChange={(e) => setAssistant(e.target.value)}
             required
             placeholder="สวัสดีค่ะ! เลเซอร์รักแร้ที่คลินิกเรามี 2 แพ็คเกจค่ะ…"
           />

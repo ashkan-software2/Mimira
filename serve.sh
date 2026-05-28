@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Serve the Yuna admin Next.js dev server and print a URL that opens in a browser.
+# Serve the Mimira admin Next.js dev server and print a URL that opens in a browser.
 # Mirrors mockups/serve.sh: idempotent — kill prior dev server on the port, restart
 # bound to 0.0.0.0, discover EC2 public IP via IMDSv2, self-test reachability.
 #
@@ -7,7 +7,7 @@
 # Override port:              PORT=4000 bash serve.sh
 #
 # Output:
-#   SERVER     http://127.0.0.1:<port>/  (PID N, log /tmp/yuna-dev-<port>.log)
+#   SERVER     http://127.0.0.1:<port>/  (PID N, log /tmp/mimira-dev-<port>.log)
 #   PUBLIC     <ip-or-NONE>
 #   SELF-TEST  HTTP <code> in <time>s  →  <verdict>
 #   URL        http://<ip>:<port>/inbox
@@ -17,7 +17,7 @@ set -u
 PORT="${PORT:-3042}"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 LANDING="/inbox"
-LOG="/tmp/yuna-dev-${PORT}.log"
+LOG="/tmp/mimira-dev-${PORT}.log"
 
 cd "$ROOT"
 

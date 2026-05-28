@@ -1,4 +1,4 @@
--- Yuna demo schema. Idempotent — safe to re-run.
+-- Mimira demo schema. Idempotent — safe to re-run.
 --
 -- Apply with `npm run db:migrate`, which connects via DIRECT_URL (session-mode,
 -- not the transaction pooler) so DDL behaves predictably. Runtime queries go
@@ -102,8 +102,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_section_created
 
 CREATE TABLE IF NOT EXISTS sample_dialogues (
   id            TEXT PRIMARY KEY,
-  customer_text TEXT NOT NULL,
-  yuna_text     TEXT NOT NULL,
+  customer_text  TEXT NOT NULL,
+  assistant_text TEXT NOT NULL,
   position      INTEGER NOT NULL DEFAULT 0,
   created_at    BIGINT NOT NULL
 );

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Settings · Yuna</title>
+  <title>Settings · Mimira</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -740,7 +740,7 @@
     <div class="brand">
       <div class="brand-mark" aria-hidden="true">Y</div>
       <div>
-        <span class="brand-name">Yuna</span>
+        <span class="brand-name">Mimira</span>
         <span class="brand-sep">·</span>
         <span class="brand-clinic">Sukhumvit Skin &amp; Laser</span>
       </div>
@@ -770,8 +770,8 @@
       <ul class="nav-list">
         <li><a class="nav-item" href="#clinic" data-target="clinic">Clinic profile</a></li>
         <li><a class="nav-item" href="#line" data-target="line"><span>Line OA</span><span class="nav-tag-dot" aria-label="action needed" title="Test signature pending"></span></a></li>
-        <li><a class="nav-item" href="#ai-brain" data-target="ai-brain" aria-current="true"><span>AI brain</span><span class="nav-tag nav-tag-ai">Yuna</span></a></li>
-        <li><a class="nav-item" href="#kill-switch" data-target="kill-switch"><span>Kill switch</span><span class="nav-tag nav-tag-ai">Yuna</span></a></li>
+        <li><a class="nav-item" href="#ai-brain" data-target="ai-brain" aria-current="true"><span>AI brain</span><span class="nav-tag nav-tag-ai">Mimira</span></a></li>
+        <li><a class="nav-item" href="#kill-switch" data-target="kill-switch"><span>Kill switch</span><span class="nav-tag nav-tag-ai">Mimira</span></a></li>
         <li><a class="nav-item" href="#brand-voice" data-target="brand-voice">Brand voice</a></li>
         <li><a class="nav-item" href="#capacity" data-target="capacity">Capacity rules</a></li>
         <li><a class="nav-item" href="#aftercare" data-target="aftercare">Aftercare</a></li>
@@ -871,7 +871,7 @@
 
             <div class="field">
               <label class="label" for="line-webhook">Webhook URL <span class="req">· read-only</span></label>
-              <input class="input input-mono" id="line-webhook" value="https://api.yuna.app/v1/line/webhook/cf12a93e8b8a" readonly />
+              <input class="input input-mono" id="line-webhook" value="https://api.mimira.app/v1/line/webhook/cf12a93e8b8a" readonly />
               <span class="hint">Paste this into the Line Developers Console → Messaging API → Webhook URL.</span>
             </div>
 
@@ -885,7 +885,7 @@
                 <span class="when">Today · 14:02 ICT</span>
                 <button class="btn btn-secondary btn-sm">Test signature</button>
               </div>
-              <span class="hint">Sends a signed test event from Yuna. Your webhook should respond within 1s.</span>
+              <span class="hint">Sends a signed test event from Mimira. Your webhook should respond within 1s.</span>
             </div>
 
             <div class="card-actions">
@@ -902,12 +902,12 @@
             <span class="chev" aria-hidden="true">
               <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
             </span>
-            <h2>AI brain <span class="badge badge-yuna">Yuna</span></h2>
+            <h2>AI brain <span class="badge badge-yuna">Mimira</span></h2>
             <span class="summary">Anthropic · claude-sonnet-4-7 · Cohere v3 · temp 0.4</span>
             <span class="saved">Saved 4h ago</span>
           </header>
           <div class="card-body">
-            <p class="help" data-pretext>Which model writes Yuna's replies. Changes apply to new conversations — active threads finish on the current provider. All changes are written to the audit log.</p>
+            <p class="help" data-pretext>Which model writes Mimira's replies. Changes apply to new conversations — active threads finish on the current provider. All changes are written to the audit log.</p>
 
             <div class="field">
               <label class="label">Provider</label>
@@ -964,19 +964,19 @@
             <span class="chev" aria-hidden="true">
               <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 2 8 6 4 10"/></svg>
             </span>
-            <h2>Kill switch <span class="badge badge-yuna">Yuna</span></h2>
-            <span class="summary">Yuna AI is active · no state change in 2 weeks</span>
+            <h2>Kill switch <span class="badge badge-yuna">Mimira</span></h2>
+            <span class="summary">Mimira AI is active · no state change in 2 weeks</span>
             <span class="saved">Owner-only</span>
           </header>
           <div class="card-body">
-            <p class="help" data-pretext>One toggle to pause Yuna for this clinic. Inbound messages route straight to the staff inbox until you turn her back on. Use this for off-hours, trainings, or if a customer flags Yuna's reply as wrong.</p>
+            <p class="help" data-pretext>One toggle to pause Mimira for this clinic. Inbound messages route straight to the staff inbox until you turn her back on. Use this for off-hours, trainings, or if a customer flags Mimira's reply as wrong.</p>
 
             <div class="kill-switch">
               <div class="label-block">
-                <span class="label">Yuna AI is <span style="color:var(--ai-accent)">active</span></span>
-                <span class="hint">All inbound messages currently flow through Yuna with staff escalation as needed.</span>
+                <span class="label">Mimira AI is <span style="color:var(--ai-accent)">active</span></span>
+                <span class="hint">All inbound messages currently flow through Mimira with staff escalation as needed.</span>
               </div>
-              <button class="switch" role="switch" aria-checked="true" data-kill-switch aria-label="Pause Yuna for this clinic"></button>
+              <button class="switch" role="switch" aria-checked="true" data-kill-switch aria-label="Pause Mimira for this clinic"></button>
             </div>
 
             <div class="card-actions">
@@ -996,7 +996,7 @@
             <span class="saved">Saved yesterday</span>
           </header>
           <div class="card-body">
-            <p class="help" data-pretext>Tell Yuna how she should sound. Free-form prompt sets the register; sample dialogues show, don't tell — they have the largest effect on tone.</p>
+            <p class="help" data-pretext>Tell Mimira how she should sound. Free-form prompt sets the register; sample dialogues show, don't tell — they have the largest effect on tone.</p>
 
             <div class="field">
               <label class="label" for="voice-prompt">Voice prompt</label>
@@ -1015,8 +1015,8 @@
                     <button class="remove" aria-label="Remove">×</button>
                   </div>
                   <div class="turn">
-                    <span class="who yuna">Yuna</span>
-                    <div class="text" data-pretext><span class="badge badge-yuna">Yuna</span>สวัสดีค่ะ! เลเซอร์รักแร้ที่คลินิกเรามี 2 แพ็คเกจค่ะ แบบ 6 ครั้ง ราคา 8,900 บาท เฉลี่ยครั้งละไม่ถึง 1,500 ทำต่อเนื่องผลดีกว่าค่ะ จองคิวเลยมั้ยคะ?</div>
+                    <span class="who yuna">Mimira</span>
+                    <div class="text" data-pretext><span class="badge badge-yuna">Mimira</span>สวัสดีค่ะ! เลเซอร์รักแร้ที่คลินิกเรามี 2 แพ็คเกจค่ะ แบบ 6 ครั้ง ราคา 8,900 บาท เฉลี่ยครั้งละไม่ถึง 1,500 ทำต่อเนื่องผลดีกว่าค่ะ จองคิวเลยมั้ยคะ?</div>
                     <button class="remove" aria-label="Remove">×</button>
                   </div>
                 </div>
@@ -1028,8 +1028,8 @@
                     <button class="remove" aria-label="Remove">×</button>
                   </div>
                   <div class="turn">
-                    <span class="who yuna">Yuna</span>
-                    <div class="text" data-pretext><span class="badge badge-yuna">Yuna</span>ไม่ต้องกลัวเลยค่ะ เลเซอร์ไม่ใช้เข็มเลย เป็นแสงสั้นๆ พักผิวสักพัก ลูกค้าบอกรู้สึกเหมือนยางรัดเบาๆ เรามีเครื่องเป่าเย็นช่วยด้วยค่ะ</div>
+                    <span class="who yuna">Mimira</span>
+                    <div class="text" data-pretext><span class="badge badge-yuna">Mimira</span>ไม่ต้องกลัวเลยค่ะ เลเซอร์ไม่ใช้เข็มเลย เป็นแสงสั้นๆ พักผิวสักพัก ลูกค้าบอกรู้สึกเหมือนยางรัดเบาๆ เรามีเครื่องเป่าเย็นช่วยด้วยค่ะ</div>
                     <button class="remove" aria-label="Remove">×</button>
                   </div>
                 </div>
@@ -1041,8 +1041,8 @@
                     <button class="remove" aria-label="Remove">×</button>
                   </div>
                   <div class="turn">
-                    <span class="who yuna">Yuna</span>
-                    <div class="text" data-pretext><span class="badge badge-yuna">Yuna</span>หลังทำ 24 ชม. หลีกเลี่ยงน้ำร้อนกับการขัดถูแรงๆ นะคะ ทาครีมกันแดดทุกครั้งที่ออกแดด เดี๋ยวจะส่งไกด์ดูแลผิวฉบับเต็มให้นะคะ</div>
+                    <span class="who yuna">Mimira</span>
+                    <div class="text" data-pretext><span class="badge badge-yuna">Mimira</span>หลังทำ 24 ชม. หลีกเลี่ยงน้ำร้อนกับการขัดถูแรงๆ นะคะ ทาครีมกันแดดทุกครั้งที่ออกแดด เดี๋ยวจะส่งไกด์ดูแลผิวฉบับเต็มให้นะคะ</div>
                     <button class="remove" aria-label="Remove">×</button>
                   </div>
                 </div>
@@ -1070,7 +1070,7 @@
             <span class="saved">Saved 5 days ago</span>
           </header>
           <div class="card-body">
-            <p class="help" data-pretext>Informational only in v0. Yuna mentions these when customers ask about availability, but doesn't auto-block bookings.</p>
+            <p class="help" data-pretext>Informational only in v0. Mimira mentions these when customers ask about availability, but doesn't auto-block bookings.</p>
             <table class="table">
               <thead><tr><th>Treatment</th><th class="num">Bookings / day</th><th class="num">Slot length</th><th></th></tr></thead>
               <tbody>

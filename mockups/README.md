@@ -1,6 +1,6 @@
 # Mockups
 
-Design references for the Yuna admin app. Open any `.html` file directly in a browser, or serve the directory:
+Design references for the Mimira admin app. Open any `.html` file directly in a browser, or serve the directory:
 
 ```bash
 cd mockups && python3 -m http.server 8042
@@ -52,7 +52,7 @@ The VM-side server still has to be running; run `serve.sh` on the VM first.
 |---|---|---|
 | `inbox.html` | `DESIGN-UI.md` + `DESIGN-UX.md` (Inbox section) | Three-column shell, peak-hours tripwire case, contenteditable bubbles, Pretext-driven layout. Composer has AI-paused and staff-typing states. |
 | `bookings.html` | `DESIGN-UI.md` + `DESIGN-UX.md` (Bookings section) | Single-pane card stream: Pending (full cards) → Confirmed (compact rows, last 30d) → Declined/no-show (collapsed). Ambiguous intents get a warning-toned card border + `needs time` / `needs phone` badges. Confirm slides a card into the Confirmed list with a brief flourish. |
-| `settings.html` | `DESIGN-UI.md` + `DESIGN-UX.md` (Settings section) | Ten collapsible cards, each saves independently. Line OA, AI brain, Kill switch, and Brand voice are open by default. Kill switch is its own card next to AI brain — both carry the teal AI accent and the only `Yuna` badges in the page. Section nav with scroll-spy on the left. |
+| `settings.html` | `DESIGN-UI.md` + `DESIGN-UX.md` (Settings section) | Ten collapsible cards, each saves independently. Line OA, AI brain, Kill switch, and Brand voice are open by default. Kill switch is its own card next to AI brain — both carry the teal AI accent and the only `Mimira` badges in the page. Section nav with scroll-spy on the left. |
 | `broadcasts.html` | `DESIGN-UI.md` + `DESIGN-UX.md` (Broadcasts section) | Composer with two segment cards (All customers · Last 90 days) + a third tag-picker card that's disabled with a `Pro` badge, message body with character counter, schedule toggle, Line phone preview (Pretext bubble that re-wraps as you type), past broadcasts list (delivered · scheduled · stopped-early). v0 does not surface Line push quota in the admin — Line enforces server-side; partial sends show post-hoc. |
 
 ## Pretext

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Bookings · Yuna</title>
+  <title>Bookings · Mimira</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -692,7 +692,7 @@
     <div class="brand">
       <div class="brand-mark" aria-hidden="true">Y</div>
       <div>
-        <span class="brand-name">Yuna</span>
+        <span class="brand-name">Mimira</span>
         <span class="brand-sep">·</span>
         <span class="brand-clinic">Sukhumvit Skin &amp; Laser</span>
       </div>
@@ -833,7 +833,7 @@
               <span class="name">Aey · เอ๋</span>
               <span class="treatment">Picosure (pigmentation)</span>
               <span class="when">Sat 24 May · 15:00</span>
-              <span class="status"><span class="check">✓</span> Yuna confirmed · sent by Pim · 22 May</span>
+              <span class="status"><span class="check">✓</span> Mimira confirmed · sent by Pim · 22 May</span>
               <button class="open" aria-label="Open in inbox">›</button>
             </div>
 
@@ -841,7 +841,7 @@
               <span class="name">Thida W. · ธิดา</span>
               <span class="treatment">Brow shape + tint</span>
               <span class="when">Fri 23 May · 11:00</span>
-              <span class="status"><span class="check">✓</span> Yuna confirmed · sent by Pim · 21 May</span>
+              <span class="status"><span class="check">✓</span> Mimira confirmed · sent by Pim · 21 May</span>
               <button class="open" aria-label="Open in inbox">›</button>
             </div>
 
@@ -849,7 +849,7 @@
               <span class="name">คุณปุ๊ก · Puk S.</span>
               <span class="treatment">HIFU full face</span>
               <span class="when">Thu 22 May · 16:30</span>
-              <span class="status"><span class="check">✓</span> Yuna confirmed · sent by Mod · 20 May</span>
+              <span class="status"><span class="check">✓</span> Mimira confirmed · sent by Mod · 20 May</span>
               <button class="open" aria-label="Open in inbox">›</button>
             </div>
 
@@ -857,7 +857,7 @@
               <span class="name">คุณฝน · Fon</span>
               <span class="treatment">Consultation</span>
               <span class="when">Wed 21 May · 10:00</span>
-              <span class="status"><span class="check">✓</span> Yuna confirmed · sent by Pim · 19 May</span>
+              <span class="status"><span class="check">✓</span> Mimira confirmed · sent by Pim · 19 May</span>
               <button class="open" aria-label="Open in inbox">›</button>
             </div>
 
@@ -865,7 +865,7 @@
               <span class="name">Nat · ณัฏฐ์</span>
               <span class="treatment">Underarm laser</span>
               <span class="when">Tue 20 May · 14:00</span>
-              <span class="status"><span class="check">✓</span> Yuna confirmed · sent by Mod · 18 May</span>
+              <span class="status"><span class="check">✓</span> Mimira confirmed · sent by Mod · 18 May</span>
               <button class="open" aria-label="Open in inbox">›</button>
             </div>
 
@@ -873,7 +873,7 @@
               <span class="name">คุณแก้ว · Kaew P.</span>
               <span class="treatment">HIFU jawline</span>
               <span class="when">Mon 19 May · 11:30</span>
-              <span class="status"><span class="check">✓</span> Yuna confirmed · sent by Pim · 17 May</span>
+              <span class="status"><span class="check">✓</span> Mimira confirmed · sent by Pim · 17 May</span>
               <button class="open" aria-label="Open in inbox">›</button>
             </div>
 
@@ -881,7 +881,7 @@
               <span class="name">Bee · บี</span>
               <span class="treatment">Picosure (freckles)</span>
               <span class="when">Sat 17 May · 13:00</span>
-              <span class="status"><span class="check">✓</span> Yuna confirmed · sent by Pim · 15 May</span>
+              <span class="status"><span class="check">✓</span> Mimira confirmed · sent by Pim · 15 May</span>
               <button class="open" aria-label="Open in inbox">›</button>
             </div>
 
@@ -889,7 +889,7 @@
               <span class="name">คุณนุช · Noot J.</span>
               <span class="treatment">Underarm laser</span>
               <span class="when">Sat 24 May · 14:00</span>
-              <span class="status"><span class="check">✓</span> Yuna confirmed · sent by Mod · 22 May</span>
+              <span class="status"><span class="check">✓</span> Mimira confirmed · sent by Mod · 22 May</span>
               <button class="open" aria-label="Open in inbox">›</button>
             </div>
 
@@ -1018,11 +1018,11 @@
         <span class="name">${escapeHtml(customer)}</span>
         <span class="treatment">${escapeHtml(treatment)}</span>
         <span class="when">${escapeHtml(when)}</span>
-        <span class="status"><span class="check">✓</span> Yuna confirmed · sent by Pim · now</span>
+        <span class="status"><span class="check">✓</span> Mimira confirmed · sent by Pim · now</span>
         <button class="open" aria-label="Open in inbox">›</button>
       `;
       confirmedList.prepend(row);
-      showToast(`Yuna messaged ${shortName} on Line — confirmation sent`);
+      showToast(`Mimira messaged ${shortName} on Line — confirmation sent`);
     }, 240);
   }
 
@@ -1041,10 +1041,10 @@
     if (action === 'confirm' || action === 'confirm-anyway') {
       moveToConfirmed(card);
     } else if (action === 'reschedule') {
-      showToast(`Yuna messaged ${customer} on Line — reschedule options sent`);
+      showToast(`Mimira messaged ${customer} on Line — reschedule options sent`);
     } else if (action === 'ask') {
       const need = card.querySelector('.badge-warning')?.textContent || 'details';
-      showToast(`Yuna messaged ${customer} on Line — asking for ${need.toLowerCase().replace('needs ', '')}`);
+      showToast(`Mimira messaged ${customer} on Line — asking for ${need.toLowerCase().replace('needs ', '')}`);
     } else if (action === 'manual') {
       showToast(`Opened manual entry for ${customer}`);
     } else if (action === 'open') {

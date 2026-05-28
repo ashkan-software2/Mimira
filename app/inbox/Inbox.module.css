@@ -484,7 +484,7 @@
   border-bottom-left-radius: var(--radius-sm);
 }
 .bubbleYuna {
-  /* Soft blue tint so Yuna's replies are visually distinct from staff
+  /* Soft blue tint so Mimira's replies are visually distinct from staff
      replies (black) while still living on the clinic side of the thread. */
   background: color-mix(in srgb, var(--link) 8%, var(--surface));
   color: var(--fg);

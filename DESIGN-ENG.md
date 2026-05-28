@@ -109,7 +109,7 @@ Measurement gate: during clinic #1 shadowing (week 0) + first week live, log pho
 
 ### Env separation (D12)
 
-**Two Supabase projects (yuna-prod, yuna-staging) + Vercel preview branches → staging in week 1.** Synthetic test clinic + test customers seeded in staging. Migrations run staging-first, then prod via CI gate. ~half day setup.
+**Two Supabase projects (mimira-prod, mimira-staging) + Vercel preview branches → staging in week 1.** Synthetic test clinic + test customers seeded in staging. Migrations run staging-first, then prod via CI gate. ~half day setup.
 
 ### Test stack (D15)
 
@@ -141,7 +141,7 @@ Each test is a CI-blocking deliverable in its named week.
 
 ### Hosting / region (D22c)
 
-**Stay on Supabase + Vercel + Inngest in Singapore region for v0.** Plan explicitly commits to Bangkok migration when EITHER (a) a clinic's lawyer formally requires Thailand-resident patient data, OR (b) Supabase opens a Bangkok region, OR (c) Yuna revenue exceeds the cost of self-hosting on AWS Bangkok. DPA template addresses cross-border transfer (Singapore↔Thailand) — PDPA adequacy is well-established. Honest framing in clinic conversations: "patient data in Singapore now, with documented migration trigger." Note: Bangkok was preferred but no managed-vendor combo offers it today (May 2026); LLM/Cohere are US-hosted regardless and surfaced via sub-processor disclosure.
+**Stay on Supabase + Vercel + Inngest in Singapore region for v0.** Plan explicitly commits to Bangkok migration when EITHER (a) a clinic's lawyer formally requires Thailand-resident patient data, OR (b) Supabase opens a Bangkok region, OR (c) Mimira revenue exceeds the cost of self-hosting on AWS Bangkok. DPA template addresses cross-border transfer (Singapore↔Thailand) — PDPA adequacy is well-established. Honest framing in clinic conversations: "patient data in Singapore now, with documented migration trigger." Note: Bangkok was preferred but no managed-vendor combo offers it today (May 2026); LLM/Cohere are US-hosted regardless and surfaced via sub-processor disclosure.
 
 ### AI kill-switch (outside-voice add)
 
@@ -339,7 +339,7 @@ The following outside-voice findings surfaced during /plan-eng-review but did no
 1. **Cofounder agreement as week-0 blocker** — plan still has it as "Assignment" afterthought (see [DESIGN.md](DESIGN.md) §The Assignment). Recommend elevating to a hard precondition before week 1 schema work.
 2. **Reframe "≤1 day onboarding" metric** to "≤1 day of OUR work after clinic delivers creds + knowledge" (see [DESIGN.md](DESIGN.md) §Success Criteria).
 3. **PDPA consent UX** — append-to-first-reply (with link to clinic privacy notice) vs the current standalone-wall consent message (see [DESIGN.md](DESIGN.md) §PDPA Compliance). Lawyer review before week 6.
-4. ~~**Pre-send quota hard-block** for aftercare + broadcast~~ — **RESOLVED 2026-05-25: no in-app quota awareness in v0.** Pulling per-OA quota from Line in real time is operationally awkward, and the clinic already sees the canonical number in Line OA Manager. v0 ships no pre-send guard and no readout; Line server-side enforces, and Yuna surfaces partial sends in the broadcast log as `Stopped early` with the partial recipient count. The Line adapter still exposes `getQuotaStatus()` for server-side use (rate-limit guard around aftercare bursts) but no UI consumes it in v0. See [DESIGN.md](DESIGN.md) §Line API Constraints and [DESIGN-UX.md](DESIGN-UX.md) Unresolved #8.
+4. ~~**Pre-send quota hard-block** for aftercare + broadcast~~ — **RESOLVED 2026-05-25: no in-app quota awareness in v0.** Pulling per-OA quota from Line in real time is operationally awkward, and the clinic already sees the canonical number in Line OA Manager. v0 ships no pre-send guard and no readout; Line server-side enforces, and Mimira surfaces partial sends in the broadcast log as `Stopped early` with the partial recipient count. The Line adapter still exposes `getQuotaStatus()` for server-side use (rate-limit guard around aftercare bursts) but no UI consumes it in v0. See [DESIGN.md](DESIGN.md) §Line API Constraints and [DESIGN-UX.md](DESIGN-UX.md) Unresolved #8.
 5. **Front-desk shadowing as week-0 HARD GATE** (vs week-0 nice-to-have) — plan currently has the shadowing recommendation in [DESIGN.md](DESIGN.md) §The Assignment but doesn't gate week 1 schema work on it.
 
 > See **TODOS.md** for the full list of unresolved + deferred items.

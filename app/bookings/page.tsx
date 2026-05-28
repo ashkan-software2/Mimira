@@ -343,7 +343,7 @@ export default function BookingsPage() {
             onOpenDay={openDay}
             onSelectEvent={(e) => setSelectedEventId(e.id)}
             onAskUnscheduled={(name) =>
-              showToast(`Yuna messaged ${shortName(name)} on Line — asking for time`)
+              showToast(`Mimira messaged ${shortName(name)} on Line — asking for time`)
             }
           />
         ) : (

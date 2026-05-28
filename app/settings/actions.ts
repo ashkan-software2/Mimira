@@ -46,16 +46,16 @@ export async function saveBrandVoice(brandVoice: string): Promise<void> {
 
 export async function addSampleDialogue(args: {
   customer_text: string;
-  yuna_text: string;
+  assistant_text: string;
 }): Promise<SampleDialogue> {
   const trimmedCustomer = args.customer_text.trim();
-  const trimmedYuna = args.yuna_text.trim();
-  if (!trimmedCustomer || !trimmedYuna) {
-    throw new Error("Both customer and Yuna lines are required");
+  const trimmedAssistant = args.assistant_text.trim();
+  if (!trimmedCustomer || !trimmedAssistant) {
+    throw new Error("Both customer and assistant lines are required");
   }
   const dialogue = await insertSampleDialogue({
     customer_text: trimmedCustomer,
-    yuna_text: trimmedYuna,
+    assistant_text: trimmedAssistant,
   });
   await appendAudit({
     section: "brand-voice",
@@ -190,8 +190,8 @@ export async function setKillSwitch(paused: boolean): Promise<SettingsBlob> {
     section: "kill-switch",
     actor: ACTOR,
     summary: paused
-      ? "Yuna paused for the clinic"
-      : "Yuna re-activated for the clinic",
+      ? "Mimira paused for the clinic"
+      : "Mimira re-activated for the clinic",
   });
   bump();
   return next;
@@ -262,7 +262,7 @@ export async function exportDsar(): Promise<{
   });
   bump();
   return {
-    filename: `yuna-dsar-${new Date().toISOString().slice(0, 10)}.json`,
+    filename: `mimira-dsar-${new Date().toISOString().slice(0, 10)}.json`,
     json: JSON.stringify(payload, null, 2),
     customers: data.length,
   };

@@ -21,9 +21,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <div className={styles.app}>
       <header className={styles.topbar} role="banner">
         <Link href="/inbox" className={styles.brand}>
-          <span className={styles.brandMark} aria-hidden="true">Y</span>
+          <span className={styles.brandMark} aria-hidden="true">M</span>
           <span>
-            <span className={styles.brandName}>Yuna</span>
+            <span className={styles.brandName}>Mimira</span>
             <span className={styles.brandSep}> · </span>
             <span className={styles.brandClinic}>Sukhumvit Skin &amp; Laser</span>
           </span>

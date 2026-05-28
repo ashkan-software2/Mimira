@@ -38,7 +38,7 @@ onboards.
 ### Knowledge grounding eval
 
 - **What:** A 20-turn eval measuring whether the AI uses retrieved RAG chunks vs hallucinates answers from training data.
-- **Why:** RAG grounding is what differentiates Yuna from a generic Thai chatbot. If the model frequently bypasses the retrieved chunks, the knowledge upload is theater.
+- **Why:** RAG grounding is what differentiates Mimira from a generic Thai chatbot. If the model frequently bypasses the retrieved chunks, the knowledge upload is theater.
 - **Pros:** Catches hallucination; supports retrieval-tuning iterations.
 - **Cons:** ~1 day to build; needs labeled "in-corpus / out-of-corpus" question pairs.
 - **Context:** Plan assumes RAG correctness; outside voice flagged this should be measured.
@@ -58,7 +58,7 @@ These five decisions surfaced during /plan-eng-review on 2026-05-25 but did not 
 
 - **Multimodal image understanding LLM** — fast-follow in week 8 buffer if photo-first inbound > 40% during clinic #1 shadowing.
 - **KMS-based wrapping key (AWS KMS or GCP KMS)** — v1 upgrade from Supabase Vault built-in.
-- **Bangkok hosting migration** — trigger: clinic lawyer requires TH residency OR Supabase opens BKK region OR Yuna revenue justifies AWS Bangkok self-host.
+- **Bangkok hosting migration** — trigger: clinic lawyer requires TH residency OR Supabase opens BKK region OR Mimira revenue justifies AWS Bangkok self-host.
 - **Streaming LLM responses, tool use, function calling in LLM** — explicitly out of v0 Provider interface.
 - **Channels beyond Line (FB / WA / IG)** — adapter interface is defined; first concrete second adapter is a v1 item.
 - **Manager role** — only `owner` + `staff` in v0.

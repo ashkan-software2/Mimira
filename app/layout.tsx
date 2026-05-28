@@ -3,8 +3,8 @@ import { Shell } from "./_components/Shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Yuna",
-  description: "Yuna admin — calm Line concierge for Thai skin clinics.",
+  title: "Mimira",
+  description: "Mimira admin — calm Line concierge for Thai skin clinics.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

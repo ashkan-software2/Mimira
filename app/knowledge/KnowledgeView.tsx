@@ -194,7 +194,7 @@ export function KnowledgeView({ docs: initialDocs }: Props) {
     setTimeout(() => {
       pushToast({
         kind: "ai",
-        text: "Yuna is using this.",
+        text: "Mimira is using this.",
         meta: "live in 30s",
       });
     }, 1400);
@@ -249,7 +249,7 @@ export function KnowledgeView({ docs: initialDocs }: Props) {
         setTimeout(() => {
           pushToast({
             kind: "ai",
-            text: "Yuna is using this.",
+            text: "Mimira is using this.",
             meta: "live in 30s",
           });
         }, 1400);
@@ -449,7 +449,7 @@ export function KnowledgeView({ docs: initialDocs }: Props) {
           <div className={styles.modal}>
             <h2 id="delete-title">Delete this document?</h2>
             <p>
-              Yuna will stop using <strong>{draft.title}</strong> in customer
+              Mimira will stop using <strong>{draft.title}</strong> in customer
               replies within 30 seconds. This can&rsquo;t be undone.
             </p>
             <div className={styles.modalActions}>
@@ -492,7 +492,7 @@ export function KnowledgeView({ docs: initialDocs }: Props) {
           >
             <h2 id="add-title">Add a document</h2>
             <p>
-              Yuna will start using it in customer replies within 30 seconds of
+              Mimira will start using it in customer replies within 30 seconds of
               creation.
             </p>
 
@@ -537,7 +537,7 @@ export function KnowledgeView({ docs: initialDocs }: Props) {
                 className={styles.formTextarea}
                 value={newBody}
                 onChange={(e) => setNewBody(e.target.value)}
-                placeholder="What should Yuna know about this topic? Plain Thai or English. Avoid prices Yuna shouldn't quote."
+                placeholder="What should Mimira know about this topic? Plain Thai or English. Avoid prices Mimira shouldn't quote."
                 spellCheck={false}
                 rows={8}
               />
