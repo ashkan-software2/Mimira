@@ -204,9 +204,12 @@
   margin-top: 2px;
 }
 .eventChip {
+  appearance: none;
   display: flex;
   align-items: center;
   gap: 4px;
+  width: 100%;
+  font-family: inherit;
   font-size: 11px;
   line-height: 1.3;
   padding: 2px 6px;
@@ -217,6 +220,18 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--dur-micro), background var(--dur-micro),
+    transform var(--dur-micro);
+}
+.eventChip:hover {
+  border-color: var(--fg-muted);
+  background: var(--surface);
+}
+.eventChip:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 1px;
 }
 .eventChipTime {
   color: var(--fg-subtle);
@@ -412,24 +427,50 @@
 
 .event {
   position: absolute;
-  left: 8px;
-  right: 8px;
+  /* left + width set inline per-event by layoutDayEvents() so overlapping
+     bookings can sit side-by-side. */
+  appearance: none;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--fg-muted);
   border-radius: var(--radius-sm);
-  padding: 6px 10px;
+  padding: 4px 10px;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   overflow: hidden;
+  white-space: nowrap;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   z-index: 1;
+  cursor: pointer;
+  transition: border-color var(--dur-micro), box-shadow var(--dur-micro),
+    transform var(--dur-micro);
+}
+.event:hover {
+  border-color: var(--fg-muted);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  z-index: 2;
+}
+.event:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 1px;
+  z-index: 2;
 }
 .eventTime {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--fg-subtle);
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.eventSep {
+  color: var(--fg-subtle);
+  font-size: 12px;
+  flex-shrink: 0;
+  user-select: none;
 }
 .eventCustomer {
   font-size: 13px;
@@ -437,21 +478,36 @@
   color: var(--fg);
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
 }
 .eventTreatment {
   font-size: 12px;
   color: var(--fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  flex-shrink: 2;
+  min-width: 0;
 }
+.eventStatusTag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fg-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.eventConfirmed {
+  border-left-color: var(--success);
+}
+.eventConfirmed .eventStatusTag { color: var(--success); }
 .eventPending {
   border-color: color-mix(in srgb, var(--warning) 35%, var(--border));
   border-left-color: var(--warning);
   background: color-mix(in srgb, var(--warning) 5%, var(--surface));
 }
 .eventPending .eventTime { color: var(--warning); }
+.eventPending .eventStatusTag { color: var(--warning); }
 .eventNoShow {
   border-left-color: var(--fg-subtle);
   background: var(--surface-2);
@@ -459,6 +515,28 @@
 .eventNoShow .eventCustomer {
   text-decoration: line-through;
   color: var(--fg-muted);
+}
+.eventNoShow .eventStatusTag { color: var(--fg-subtle); }
+
+/* Compact variant — applied when bookings overlap and a single track
+   column is split across 2+ columns. Drops the time/treatment to keep the
+   customer name + status readable in a narrow box. */
+.eventCompact {
+  padding: 2px 6px;
+  gap: 4px;
+}
+.eventCompact .eventTime { font-size: 11px; }
+.eventCompact .eventCustomer { font-size: 12px; }
+.eventCompact .eventTreatment,
+.eventCompact .eventStatusTag {
+  /* Tag still visible; treatment is the first thing to disappear */
+  font-size: 11px;
+}
+/* When events are squeezed into 3+ side-by-side columns, the treatment
+   eats too much room — hide it and the sep that follows it. */
+.eventCompactTight .eventTreatment,
+.eventCompactTight .eventTreatment + .eventSep {
+  display: none;
 }
 
 .emptyDay {
@@ -490,6 +568,164 @@
 }
 .legendDotPending { background: var(--warning); }
 .legendDotNoShow { background: var(--fg-subtle); }
+
+/* ---------- Event details modal ---------- */
+
+.modalScrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  z-index: 80;
+  animation: bookingFadeIn var(--dur-short) var(--ease-enter);
+}
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  padding: var(--space-lg) var(--space-xl) var(--space-xl);
+  animation: bookingModalIn var(--dur-medium) var(--ease-enter);
+}
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--success) 12%, var(--surface));
+  color: color-mix(in srgb, var(--success) 80%, var(--fg));
+  border: 1px solid color-mix(in srgb, var(--success) 30%, var(--border));
+}
+.statusPillPending {
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 35%, var(--border));
+}
+.statusPillNoShow {
+  background: var(--surface-2);
+  color: var(--fg-subtle);
+  border-color: var(--border);
+}
+.modalClose {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--fg-muted);
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  font-family: inherit;
+  transition: background var(--dur-micro), color var(--dur-micro);
+}
+.modalClose:hover {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+.modalCustomer {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: -0.005em;
+}
+.modalTreatment {
+  margin: 0 0 var(--space-lg);
+  font-size: 14px;
+  color: var(--fg-muted);
+}
+.modalMeta {
+  margin: 0 0 var(--space-lg);
+  padding: var(--space-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.modalMetaRow {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: var(--space-md);
+  align-items: baseline;
+  font-size: 13px;
+}
+.modalMetaRow dt {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-subtle);
+}
+.modalMetaRow dd {
+  margin: 0;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+.modalMetaMuted {
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+.modalBtn {
+  appearance: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+  transition: border-color var(--dur-micro), background var(--dur-micro);
+}
+.modalBtn:hover { border-color: var(--fg-muted); }
+.modalBtnPrimary {
+  background: var(--cta-fill);
+  color: var(--cta-fg);
+  border-color: var(--cta-fill);
+}
+.modalBtnPrimary:hover {
+  background: color-mix(in srgb, var(--cta-fill) 85%, #000);
+  border-color: color-mix(in srgb, var(--cta-fill) 85%, #000);
+}
+
+@keyframes bookingFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes bookingModalIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 /* ---------- Toast ---------- */
 

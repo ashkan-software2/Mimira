@@ -17,12 +17,12 @@ export async function GET(req: Request) {
     return new NextResponse("missing customerId", { status: 400 });
   }
 
-  const customer = getCustomerById(customerId);
+  const customer = await getCustomerById(customerId);
   if (!customer) {
     return new NextResponse("not found", { status: 404 });
   }
 
-  const messages = allMessagesForCustomer(customerId);
+  const messages = await allMessagesForCustomer(customerId);
 
   return NextResponse.json({
     customer: {
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
       lineUserId: customer.line_user_id,
       displayName: customer.display_name,
       phone: customer.phone,
-      aiPaused: customer.ai_paused === 1,
+      aiPaused: customer.ai_paused,
       createdAt: customer.created_at,
       flags: parseFlags(customer.flags),
     },

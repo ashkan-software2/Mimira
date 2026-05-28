@@ -13,7 +13,12 @@ import {
 
 const TOAST_MS = 2200;
 
-type EventStatus = "pending" | "confirmed" | "noshow";
+type EventStatus =
+  | "pending"
+  | "confirmed"
+  | "declined"
+  | "cancelled"
+  | "noshow";
 
 type CalEvent = {
   id: string;
@@ -23,6 +28,26 @@ type CalEvent = {
   treatment: string;
   status: EventStatus;
 };
+
+const STATUS_TAG: Record<EventStatus, string> = {
+  pending: "pending",
+  confirmed: "confirmed",
+  declined: "declined",
+  cancelled: "cancelled",
+  noshow: "no-show",
+};
+
+const STATUS_PILL_LABEL: Record<EventStatus, string> = {
+  pending: "Pending confirmation",
+  confirmed: "Confirmed",
+  declined: "Declined",
+  cancelled: "Cancelled",
+  noshow: "No-show",
+};
+
+function isEndedStatus(s: EventStatus): boolean {
+  return s === "declined" || s === "cancelled" || s === "noshow";
+}
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DAY_NAMES = [
@@ -52,6 +77,11 @@ const MONTH_NAMES = [
 const TIMELINE_START_HOUR = 8;
 const TIMELINE_END_HOUR = 20;
 const TIMELINE_HOUR_HEIGHT = 56;
+
+// Day-view layout: gutter at the track edges + gap between side-by-side
+// columns when bookings overlap.
+const TRACK_PAD = 8;
+const COL_GAP = 4;
 
 function shortName(customer: string): string {
   return customer.split("·")[0].trim();
@@ -117,10 +147,53 @@ function toEvent(
   };
 }
 
+type Placement = { event: CalEvent; column: number; columns: number };
+
+/** Lay out same-day events into the minimum number of side-by-side columns
+ *  so that overlapping bookings don't stack on top of each other. */
+function layoutDayEvents(events: CalEvent[]): Placement[] {
+  const sorted = [...events].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const placements: Placement[] = [];
+
+  type Active = { event: CalEvent; column: number; end: number };
+  let cluster: Active[] = [];
+  let clusterEnd = 0;
+
+  function flush() {
+    if (cluster.length === 0) return;
+    const columns = Math.max(...cluster.map((a) => a.column)) + 1;
+    for (const a of cluster) {
+      placements.push({ event: a.event, column: a.column, columns });
+    }
+    cluster = [];
+    clusterEnd = 0;
+  }
+
+  for (const event of sorted) {
+    const startMs = event.start.getTime();
+    const endMs = startMs + event.durationMin * 60_000;
+    if (cluster.length > 0 && startMs >= clusterEnd) flush();
+
+    const used = new Set<number>();
+    for (const a of cluster) if (a.end > startMs) used.add(a.column);
+    let col = 0;
+    while (used.has(col)) col++;
+
+    cluster.push({ event, column: col, end: endMs });
+    if (endMs > clusterEnd) clusterEnd = endMs;
+  }
+  flush();
+  return placements;
+}
+
 export default function BookingsPage() {
   const today = useMemo(() => new Date(TODAY_ISO), []);
   const [monthAnchor, setMonthAnchor] = useState<Date>(() => startOfMonth(today));
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [statusOverrides, setStatusOverrides] = useState<
+    Map<string, EventStatus>
+  >(new Map());
 
   const [toast, setToast] = useState<string>("");
   const [toastVisible, setToastVisible] = useState(false);
@@ -131,6 +204,15 @@ export default function BookingsPage() {
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedEventId) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setSelectedEventId(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedEventId]);
 
   function showToast(text: string) {
     setToast(text);
@@ -153,8 +235,26 @@ export default function BookingsPage() {
       const e = toEvent(d, "noshow");
       if (e) list.push(e);
     }
-    return list.sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, []);
+    return list
+      .map((e) => {
+        const override = statusOverrides.get(e.id);
+        return override ? { ...e, status: override } : e;
+      })
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+  }, [statusOverrides]);
+
+  const selectedEvent = useMemo(
+    () => (selectedEventId ? events.find((e) => e.id === selectedEventId) ?? null : null),
+    [selectedEventId, events],
+  );
+
+  function updateStatus(id: string, status: EventStatus) {
+    setStatusOverrides((prev) => {
+      const next = new Map(prev);
+      next.set(id, status);
+      return next;
+    });
+  }
 
   const eventsByDay = useMemo<Map<string, CalEvent[]>>(() => {
     const map = new Map<string, CalEvent[]>();
@@ -241,6 +341,7 @@ export default function BookingsPage() {
             eventsByDay={eventsByDay}
             unscheduled={unscheduled}
             onOpenDay={openDay}
+            onSelectEvent={(e) => setSelectedEventId(e.id)}
             onAskUnscheduled={(name) =>
               showToast(`Yuna messaged ${shortName(name)} on Line — asking for time`)
             }
@@ -251,9 +352,24 @@ export default function BookingsPage() {
             events={eventsByDay.get(dayKey(selectedDay)) ?? []}
             today={today}
             onBack={backToMonth}
+            onSelectEvent={(e) => setSelectedEventId(e.id)}
           />
         )}
       </div>
+
+      {selectedEvent && (
+        <EventDetailsModal
+          event={selectedEvent}
+          onClose={() => setSelectedEventId(null)}
+          onAction={(label, name, newStatus) => {
+            if (newStatus && selectedEvent) {
+              updateStatus(selectedEvent.id, newStatus);
+            }
+            setSelectedEventId(null);
+            showToast(`${label} · ${shortName(name)}`);
+          }}
+        />
+      )}
 
       <div
         className={
@@ -279,6 +395,7 @@ function MonthView({
   eventsByDay,
   unscheduled,
   onOpenDay,
+  onSelectEvent,
   onAskUnscheduled,
 }: {
   monthAnchor: Date;
@@ -287,6 +404,7 @@ function MonthView({
   eventsByDay: Map<string, CalEvent[]>;
   unscheduled: PendingBooking[];
   onOpenDay: (d: Date) => void;
+  onSelectEvent: (e: CalEvent) => void;
   onAskUnscheduled: (customer: string) => void;
 }) {
   const currentMonth = monthAnchor.getMonth();
@@ -343,11 +461,18 @@ function MonthView({
               .join(" ");
 
             return (
-              <button
+              <div
                 key={dayKey(d)}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className={cls}
                 onClick={() => onOpenDay(d)}
+                onKeyDown={(ev) => {
+                  if (ev.key === "Enter" || ev.key === " ") {
+                    ev.preventDefault();
+                    onOpenDay(d);
+                  }
+                }}
                 aria-label={`${d.getDate()} ${MONTH_NAMES[d.getMonth()]}, ${
                   dayEvents.length
                 } booking${dayEvents.length === 1 ? "" : "s"}`}
@@ -360,27 +485,35 @@ function MonthView({
                 </div>
                 <div className={styles.eventList}>
                   {shown.map((e) => (
-                    <div
+                    <button
                       key={e.id}
+                      type="button"
                       className={[
                         styles.eventChip,
                         e.status === "pending" ? styles.eventChipPending : "",
-                        e.status === "noshow" ? styles.eventChipNoShow : "",
+                        isEndedStatus(e.status) ? styles.eventChipNoShow : "",
                       ]
                         .filter(Boolean)
                         .join(" ")}
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        onSelectEvent(e);
+                      }}
+                      aria-label={`Booking · ${shortName(e.customer)} · ${fmtHour(
+                        e.start,
+                      )} · ${e.treatment}`}
                     >
                       <span className={styles.eventChipTime}>{fmtHour(e.start)}</span>
                       <span className={styles.eventChipName}>
                         {shortName(e.customer)}
                       </span>
-                    </div>
+                    </button>
                   ))}
                   {extra > 0 && (
                     <div className={styles.eventMore}>+{extra} more</div>
                   )}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -396,11 +529,13 @@ function DayView({
   events,
   today,
   onBack,
+  onSelectEvent,
 }: {
   day: Date;
   events: CalEvent[];
   today: Date;
   onBack: () => void;
+  onSelectEvent: (e: CalEvent) => void;
 }) {
   const hours: number[] = [];
   for (let h = TIMELINE_START_HOUR; h <= TIMELINE_END_HOUR; h++) hours.push(h);
@@ -411,6 +546,8 @@ function DayView({
 
   const showNowLine = isSameDay(day, today);
   const nowTop = positionPx(today);
+
+  const placements = useMemo(() => layoutDayEvents(events), [events]);
 
   return (
     <div className={styles.dayView}>
@@ -470,7 +607,7 @@ function DayView({
             />
           )}
 
-          {events.map((e) => {
+          {placements.map(({ event: e, column, columns }) => {
             const top = positionPx(e.start);
             if (top === null) return null;
             const height = Math.max(
@@ -481,20 +618,45 @@ function DayView({
             const cls = [
               styles.event,
               e.status === "pending" ? styles.eventPending : "",
-              e.status === "noshow" ? styles.eventNoShow : "",
+              isEndedStatus(e.status) ? styles.eventNoShow : "",
+              e.status === "confirmed" ? styles.eventConfirmed : "",
+              columns > 1 ? styles.eventCompact : "",
+              columns >= 3 ? styles.eventCompactTight : "",
             ]
               .filter(Boolean)
               .join(" ");
+            const widthStyle = `calc((100% - ${
+              2 * TRACK_PAD + (columns - 1) * COL_GAP
+            }px) / ${columns})`;
+            const leftStyle = `calc(${TRACK_PAD}px + (((100% - ${
+              2 * TRACK_PAD + (columns - 1) * COL_GAP
+            }px) / ${columns}) + ${COL_GAP}px) * ${column})`;
             return (
-              <div key={e.id} className={cls} style={{ top: `${top}px`, height }}>
+              <button
+                key={e.id}
+                type="button"
+                className={cls}
+                style={{
+                  top: `${top}px`,
+                  height,
+                  width: widthStyle,
+                  left: leftStyle,
+                }}
+                onClick={() => onSelectEvent(e)}
+                aria-label={`Open booking · ${e.customer} · ${e.treatment} · ${fmtHour(
+                  e.start,
+                )}`}
+              >
                 <span className={styles.eventTime}>
                   {fmtHour(e.start)} – {fmtHour(endTime)}
-                  {e.status === "pending" && " · pending"}
-                  {e.status === "noshow" && " · no-show"}
                 </span>
+                <span className={styles.eventSep} aria-hidden="true">·</span>
                 <span className={styles.eventCustomer}>{e.customer}</span>
+                <span className={styles.eventSep} aria-hidden="true">·</span>
                 <span className={styles.eventTreatment}>{e.treatment}</span>
-              </div>
+                <span className={styles.eventSep} aria-hidden="true">·</span>
+                <span className={styles.eventStatusTag}>{STATUS_TAG[e.status]}</span>
+              </button>
             );
           })}
 
@@ -511,4 +673,151 @@ function positionPx(d: Date): number | null {
   const hour = d.getHours() + d.getMinutes() / 60;
   if (hour < TIMELINE_START_HOUR || hour > TIMELINE_END_HOUR) return null;
   return (hour - TIMELINE_START_HOUR) * TIMELINE_HOUR_HEIGHT;
+}
+
+/* ---------- Event details modal ---------- */
+
+function EventDetailsModal({
+  event,
+  onClose,
+  onAction,
+}: {
+  event: CalEvent;
+  onClose: () => void;
+  onAction: (label: string, customer: string, newStatus?: EventStatus) => void;
+}) {
+  const endTime = new Date(event.start.getTime() + event.durationMin * 60_000);
+  const dateLabel = `${DAY_NAMES[event.start.getDay()]}, ${event.start.getDate()} ${
+    MONTH_NAMES[event.start.getMonth()]
+  } ${event.start.getFullYear()}`;
+  const timeLabel = `${fmtHour(event.start)} – ${fmtHour(endTime)}`;
+  const durationLabel =
+    event.durationMin >= 60
+      ? `${Math.floor(event.durationMin / 60)}h${
+          event.durationMin % 60 ? ` ${event.durationMin % 60}m` : ""
+        }`
+      : `${event.durationMin}m`;
+
+  return (
+    <div
+      className={styles.modalScrim}
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Booking details · ${event.customer}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={styles.modalHeader}>
+          <span
+            className={[
+              styles.statusPill,
+              event.status === "pending" ? styles.statusPillPending : "",
+              isEndedStatus(event.status) ? styles.statusPillNoShow : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {STATUS_PILL_LABEL[event.status]}
+          </span>
+          <button
+            type="button"
+            className={styles.modalClose}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        <h2 className={styles.modalCustomer}>{event.customer}</h2>
+        <p className={styles.modalTreatment}>{event.treatment}</p>
+
+        <dl className={styles.modalMeta}>
+          <div className={styles.modalMetaRow}>
+            <dt>When</dt>
+            <dd>
+              {dateLabel}
+              <br />
+              <span className={styles.modalMetaMuted}>
+                {timeLabel} · {durationLabel}
+              </span>
+            </dd>
+          </div>
+        </dl>
+
+        <div className={styles.modalActions}>
+          {event.status === "pending" && (
+            <>
+              <button
+                type="button"
+                className={styles.modalBtn}
+                onClick={() =>
+                  onAction("Declined booking", event.customer, "declined")
+                }
+              >
+                Decline
+              </button>
+              <button
+                type="button"
+                className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                onClick={() =>
+                  onAction("Confirmed booking", event.customer, "confirmed")
+                }
+              >
+                Confirm
+              </button>
+            </>
+          )}
+          {event.status === "confirmed" && (
+            <>
+              <button
+                type="button"
+                className={styles.modalBtn}
+                onClick={() =>
+                  onAction("Cancelled booking", event.customer, "cancelled")
+                }
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                onClick={() =>
+                  onAction("Reschedule sent on Line", event.customer)
+                }
+              >
+                Reschedule
+              </button>
+            </>
+          )}
+          {isEndedStatus(event.status) && (
+            <>
+              <button
+                type="button"
+                className={styles.modalBtn}
+                onClick={() =>
+                  onAction("Booking restored to pending", event.customer, "pending")
+                }
+              >
+                Restore
+              </button>
+              <button
+                type="button"
+                className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                onClick={() =>
+                  onAction("Follow-up sent on Line", event.customer)
+                }
+              >
+                Follow up
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

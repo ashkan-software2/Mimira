@@ -197,11 +197,11 @@ export async function runChatPipeline(args: {
   inboundText: string;
   replyToken?: string | null;
 }): Promise<PipelineResult> {
-  const customer = getCustomerById(args.customerId);
+  const customer = await getCustomerById(args.customerId);
   if (!customer) throw new Error(`customer ${args.customerId} not found`);
 
   // Clinic-wide kill switch — Yuna stays silent until staff turns her back on.
-  const settings = getSettings();
+  const settings = await getSettings();
   if (settings.kill_switch.paused) {
     if (args.replyToken) {
       try {
@@ -210,7 +210,7 @@ export async function runChatPipeline(args: {
         console.error("LINE reply failed during paused state", err);
       }
     }
-    insertMessage({
+    await insertMessage({
       customerId: args.customerId,
       direction: "out",
       text: PAUSED_REPLY_TH,
@@ -220,8 +220,8 @@ export async function runChatPipeline(args: {
     return { replyText: PAUSED_REPLY_TH, bookingId: null };
   }
 
-  const brandVoice = getBrandVoice();
-  const history = lastMessagesForCustomer(args.customerId, 10);
+  const brandVoice = await getBrandVoice();
+  const history = await lastMessagesForCustomer(args.customerId, 10);
   // Drop the inbound text from history because we add it as the final user turn.
   const trimmed = history.slice(0, -1).filter((m) => m.sent_by !== "staff");
 
@@ -253,7 +253,7 @@ export async function runChatPipeline(args: {
     } catch (err) {
       console.error("[pipeline] failed to parse tool arguments", err);
     }
-    bookingId = insertBooking({
+    bookingId = await insertBooking({
       customerId: args.customerId,
       treatment: parsed.treatment ?? null,
       requestedDate: parsed.requested_date ?? null,
@@ -312,10 +312,10 @@ export async function runChatPipeline(args: {
   const handoff = detectHandoff(replyTextBody);
   if (handoff) {
     meta.needs_attention = true;
-    addFlagToCustomer(args.customerId, "Needs review");
+    await addFlagToCustomer(args.customerId, "Needs review");
   }
 
-  insertMessage({
+  await insertMessage({
     customerId: args.customerId,
     direction: "out",
     text: replyTextBody,

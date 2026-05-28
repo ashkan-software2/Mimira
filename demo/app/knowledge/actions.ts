@@ -40,7 +40,7 @@ export async function createKnowledgeDoc(
   if (!embedding) throw new Error("Embedding failed");
 
   const sourceDoc = `doc:${randomUUID()}`;
-  const id = insertKnowledgeChunk({ sourceDoc, text, embedding });
+  const id = await insertKnowledgeChunk({ sourceDoc, text, embedding });
   revalidatePath("/knowledge");
   return { id, lastEditedAt: Date.now() };
 }

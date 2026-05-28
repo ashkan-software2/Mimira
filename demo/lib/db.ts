@@ -1,208 +1,115 @@
-import Database from "better-sqlite3";
-import { mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import postgres from "postgres";
 
-const DB_PATH = process.env.YUNA_DB_PATH ?? join(process.cwd(), "data", "yuna.db");
+// Singleton postgres client. We use the porsager/postgres library directly
+// (no ORM, no pg pool wrapper) and target Supabase's transaction-mode pooler
+// at runtime, so prepared statements MUST be disabled.
+type Sql = ReturnType<typeof postgres>;
+let _sql: Sql | null = null;
+let _seededOnce = false;
+let _seedPromise: Promise<void> | null = null;
 
-let _db: Database.Database | null = null;
-
-export function getDb(): Database.Database {
-  if (_db) return _db;
-  mkdirSync(dirname(DB_PATH), { recursive: true });
-  const db = new Database(DB_PATH);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  migrate(db);
-  seedSettings(db);
-  _db = db;
-  return db;
-}
-
-function migrate(db: Database.Database) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS customers (
-      id            TEXT PRIMARY KEY,
-      line_user_id  TEXT UNIQUE NOT NULL,
-      display_name  TEXT,
-      phone         TEXT,
-      ai_paused     INTEGER NOT NULL DEFAULT 0,
-      created_at    INTEGER NOT NULL
+function buildClient(): Sql {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL is not set. Point it at your Supabase transaction pooler connection string (the one ending in :6543/postgres). See .env.local.example."
     );
-
-    CREATE TABLE IF NOT EXISTS messages (
-      id            TEXT PRIMARY KEY,
-      customer_id   TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-      direction     TEXT NOT NULL CHECK (direction IN ('in','out')),
-      text          TEXT NOT NULL,
-      sent_by       TEXT NOT NULL CHECK (sent_by IN ('customer','ai','staff')),
-      channel_meta  TEXT,
-      created_at    INTEGER NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_messages_customer_created
-      ON messages(customer_id, created_at);
-
-    CREATE TABLE IF NOT EXISTS knowledge_chunks (
-      id          TEXT PRIMARY KEY,
-      source_doc  TEXT NOT NULL,
-      text        TEXT NOT NULL,
-      embedding   TEXT NOT NULL,
-      created_at  INTEGER NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_knowledge_source ON knowledge_chunks(source_doc);
-
-    CREATE TABLE IF NOT EXISTS bookings (
-      id              TEXT PRIMARY KEY,
-      customer_id     TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-      treatment       TEXT,
-      requested_date  TEXT,
-      requested_time  TEXT,
-      notes           TEXT,
-      status          TEXT NOT NULL DEFAULT 'new'
-                          CHECK (status IN ('new','confirmed','cancelled')),
-      created_at      INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS broadcasts (
-      id           TEXT PRIMARY KEY,
-      title        TEXT,
-      body         TEXT,
-      status       TEXT NOT NULL DEFAULT 'draft'
-                       CHECK (status IN ('draft','sending','sent','failed')),
-      sent_count   INTEGER NOT NULL DEFAULT 0,
-      total_count  INTEGER,
-      created_at   INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS settings (
-      id            INTEGER PRIMARY KEY CHECK (id = 1),
-      brand_voice   TEXT,
-      updated_at    INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS capacity_rules (
-      id            TEXT PRIMARY KEY,
-      treatment     TEXT NOT NULL,
-      per_day       INTEGER NOT NULL,
-      slot_minutes  INTEGER NOT NULL,
-      position      INTEGER NOT NULL DEFAULT 0,
-      updated_at    INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS team_members (
-      id              TEXT PRIMARY KEY,
-      name            TEXT NOT NULL,
-      email           TEXT NOT NULL UNIQUE,
-      role            TEXT NOT NULL CHECK (role IN ('Owner','Staff')),
-      pending         INTEGER NOT NULL DEFAULT 0,
-      last_active_at  INTEGER,
-      created_at      INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS audit_log (
-      id          TEXT PRIMARY KEY,
-      section     TEXT NOT NULL,
-      actor       TEXT NOT NULL,
-      summary     TEXT NOT NULL,
-      created_at  INTEGER NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_audit_log_section_created
-      ON audit_log(section, created_at);
-
-    CREATE TABLE IF NOT EXISTS sample_dialogues (
-      id            TEXT PRIMARY KEY,
-      customer_text TEXT NOT NULL,
-      yuna_text     TEXT NOT NULL,
-      position      INTEGER NOT NULL DEFAULT 0,
-      created_at    INTEGER NOT NULL
-    );
-  `);
-
-  // settings rich blob (added 2026-05-26)
-  if (!hasColumn(db, "settings", "data")) {
-    db.exec("ALTER TABLE settings ADD COLUMN data TEXT");
   }
+  // pgbouncer transaction-mode pooler is incompatible with prepared
+  // statements. Disable them at the client level.
+  return postgres(url, { prepare: false });
+}
 
-  // Per-conversation flag set (added 2026-05-26). Stored as JSON-encoded
-  // string array on the customer row; NULL means "no flags". Drives the
-  // inbox Actions menu + conversation pills.
-  if (!hasColumn(db, "customers", "flags")) {
-    db.exec("ALTER TABLE customers ADD COLUMN flags TEXT");
+export async function getDb(): Promise<Sql> {
+  if (!_sql) _sql = buildClient();
+  if (!_seededOnce) {
+    if (!_seedPromise) {
+      _seedPromise = ensureSeeded(_sql)
+        .then(() => {
+          _seededOnce = true;
+        })
+        .catch((err) => {
+          // Reset so a later call can retry the seed.
+          _seedPromise = null;
+          throw err;
+        });
+    }
+    await _seedPromise;
   }
+  return _sql;
 }
 
-function hasColumn(db: Database.Database, table: string, column: string): boolean {
-  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
-  return rows.some((r) => r.name === column);
-}
+// Idempotent default-row seeder. Safe to call repeatedly; only inserts rows
+// that don't already exist. Schema migrations live in db/schema.sql and run
+// via `npm run db:migrate` against DIRECT_URL — they are NOT performed here.
+async function ensureSeeded(sql: Sql): Promise<void> {
+  const ts = now();
 
-function seedSettings(db: Database.Database) {
-  const now = Date.now();
-  const row = db
-    .prepare("SELECT id, brand_voice, data FROM settings WHERE id = 1")
-    .get() as { id: number; brand_voice: string | null; data: string | null } | undefined;
-
-  if (!row) {
-    db.prepare(
-      "INSERT INTO settings (id, brand_voice, data, updated_at) VALUES (1, ?, ?, ?)"
-    ).run(DEFAULT_BRAND_VOICE, JSON.stringify(DEFAULT_SETTINGS_BLOB), now);
+  const settingsRows = await sql<
+    { brand_voice: string | null; data: string | null }[]
+  >`SELECT brand_voice, data FROM settings WHERE id = 1`;
+  if (settingsRows.length === 0) {
+    await sql`
+      INSERT INTO settings (id, brand_voice, data, updated_at)
+      VALUES (1, ${DEFAULT_BRAND_VOICE}, ${JSON.stringify(
+        DEFAULT_SETTINGS_BLOB
+      )}, ${ts})
+    `;
   } else {
+    const row = settingsRows[0];
     if (!row.data) {
-      db.prepare("UPDATE settings SET data = ? WHERE id = 1").run(
-        JSON.stringify(DEFAULT_SETTINGS_BLOB)
-      );
+      await sql`
+        UPDATE settings
+        SET data = ${JSON.stringify(DEFAULT_SETTINGS_BLOB)}
+        WHERE id = 1
+      `;
     }
-    // One-shot migration: clinics still on the seeded legacy default get the
-    // refreshed default. Anyone who edited their brand voice is left alone.
     if (row.brand_voice === LEGACY_DEFAULT_BRAND_VOICE) {
-      db.prepare(
-        "UPDATE settings SET brand_voice = ?, updated_at = ? WHERE id = 1"
-      ).run(DEFAULT_BRAND_VOICE, now);
+      await sql`
+        UPDATE settings
+        SET brand_voice = ${DEFAULT_BRAND_VOICE}, updated_at = ${ts}
+        WHERE id = 1
+      `;
     }
   }
 
-  const capacityCount = (
-    db.prepare("SELECT COUNT(*) AS n FROM capacity_rules").get() as { n: number }
-  ).n;
-  if (capacityCount === 0) {
-    const stmt = db.prepare(
-      "INSERT INTO capacity_rules (id, treatment, per_day, slot_minutes, position, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-    );
-    DEFAULT_CAPACITY.forEach((r, i) => {
-      stmt.run(randomUUID(), r.treatment, r.per_day, r.slot_minutes, i, now);
-    });
+  const [capacityCount] = await sql<{ n: number }[]>`
+    SELECT COUNT(*)::int AS n FROM capacity_rules
+  `;
+  if (capacityCount.n === 0) {
+    for (let i = 0; i < DEFAULT_CAPACITY.length; i++) {
+      const r = DEFAULT_CAPACITY[i];
+      await sql`
+        INSERT INTO capacity_rules (id, treatment, per_day, slot_minutes, position, updated_at)
+        VALUES (${randomUUID()}, ${r.treatment}, ${r.per_day}, ${r.slot_minutes}, ${i}, ${ts})
+      `;
+    }
   }
 
-  const teamCount = (
-    db.prepare("SELECT COUNT(*) AS n FROM team_members").get() as { n: number }
-  ).n;
-  if (teamCount === 0) {
-    const stmt = db.prepare(
-      "INSERT INTO team_members (id, name, email, role, pending, last_active_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    );
-    DEFAULT_TEAM.forEach((m) => {
-      stmt.run(
-        randomUUID(),
-        m.name,
-        m.email,
-        m.role,
-        m.pending ? 1 : 0,
-        m.last_active_at,
-        now
-      );
-    });
+  const [teamCount] = await sql<{ n: number }[]>`
+    SELECT COUNT(*)::int AS n FROM team_members
+  `;
+  if (teamCount.n === 0) {
+    for (const m of DEFAULT_TEAM) {
+      await sql`
+        INSERT INTO team_members (id, name, email, role, pending, last_active_at, created_at)
+        VALUES (${randomUUID()}, ${m.name}, ${m.email}, ${m.role}, ${m.pending}, ${m.last_active_at}, ${ts})
+      `;
+    }
   }
 
-  const dialoguesCount = (
-    db.prepare("SELECT COUNT(*) AS n FROM sample_dialogues").get() as { n: number }
-  ).n;
-  if (dialoguesCount === 0) {
-    const stmt = db.prepare(
-      "INSERT INTO sample_dialogues (id, customer_text, yuna_text, position, created_at) VALUES (?, ?, ?, ?, ?)"
-    );
-    DEFAULT_DIALOGUES.forEach((d, i) => {
-      stmt.run(randomUUID(), d.customer, d.yuna, i, now);
-    });
+  const [dialoguesCount] = await sql<{ n: number }[]>`
+    SELECT COUNT(*)::int AS n FROM sample_dialogues
+  `;
+  if (dialoguesCount.n === 0) {
+    for (let i = 0; i < DEFAULT_DIALOGUES.length; i++) {
+      const d = DEFAULT_DIALOGUES[i];
+      await sql`
+        INSERT INTO sample_dialogues (id, customer_text, yuna_text, position, created_at)
+        VALUES (${randomUUID()}, ${d.customer}, ${d.yuna}, ${i}, ${ts})
+      `;
+    }
   }
 }
 

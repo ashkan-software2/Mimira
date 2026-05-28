@@ -17,11 +17,11 @@ export async function POST(req: Request) {
     return new NextResponse("missing customerId or paused", { status: 400 });
   }
 
-  const customer = getCustomerById(customerId);
+  const customer = await getCustomerById(customerId);
   if (!customer) {
     return new NextResponse("not found", { status: 404 });
   }
 
-  setAiPaused(customer.id, body.paused);
+  await setAiPaused(customer.id, body.paused);
   return NextResponse.json({ ok: true, aiPaused: body.paused });
 }

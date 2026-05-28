@@ -3,8 +3,8 @@ import { KnowledgeView, type KnowledgeDocDto } from "./KnowledgeView";
 
 export const dynamic = "force-dynamic";
 
-export default function KnowledgePage() {
-  const docs: KnowledgeDocDto[] = listKnowledgeDocs().map((d) => ({
+export default async function KnowledgePage() {
+  const docs: KnowledgeDocDto[] = (await listKnowledgeDocs()).map((d) => ({
     id: d.id,
     title: d.title,
     category: d.category,

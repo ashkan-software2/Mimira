@@ -72,7 +72,7 @@ async function main() {
   }
 
   for (const src of Object.keys(bySource)) {
-    const removed = deleteKnowledgeForSource(src);
+    const removed = await deleteKnowledgeForSource(src);
     if (removed > 0) console.log(`CLEAR  ${src} (${removed} old chunks)`);
   }
 
@@ -92,7 +92,7 @@ async function main() {
   console.log("ok");
 
   for (let i = 0; i < meta.length; i++) {
-    insertKnowledgeChunk({
+    await insertKnowledgeChunk({
       sourceDoc: meta[i].source,
       text: meta[i].text,
       embedding: vectors[i],

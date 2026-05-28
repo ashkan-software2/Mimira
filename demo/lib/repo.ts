@@ -1,3 +1,4 @@
+import { toSql as pgvectorToSql } from "pgvector";
 import { getDb, now, uuid, type SettingsBlob } from "./db";
 
 export type Customer = {
@@ -5,7 +6,7 @@ export type Customer = {
   line_user_id: string;
   display_name: string | null;
   phone: string | null;
-  ai_paused: number;
+  ai_paused: boolean;
   flags: string | null;
   created_at: number;
 };
@@ -37,77 +38,74 @@ export type ConversationSummary = {
   last_message_at: number;
 };
 
-export function upsertCustomer(
+export async function upsertCustomer(
   lineUserId: string,
   displayName: string | null
-): Customer {
-  const db = getDb();
-  const existing = db
-    .prepare("SELECT * FROM customers WHERE line_user_id = ?")
-    .get(lineUserId) as Customer | undefined;
+): Promise<Customer> {
+  const sql = await getDb();
+  const existingRows = await sql<Customer[]>`
+    SELECT * FROM customers WHERE line_user_id = ${lineUserId}
+  `;
+  const existing = existingRows[0];
 
   if (existing) {
     if (displayName && displayName !== existing.display_name) {
-      db.prepare("UPDATE customers SET display_name = ? WHERE id = ?").run(
-        displayName,
-        existing.id
-      );
+      await sql`
+        UPDATE customers SET display_name = ${displayName} WHERE id = ${existing.id}
+      `;
       return { ...existing, display_name: displayName };
     }
     return existing;
   }
 
   const id = uuid();
-  db.prepare(
-    "INSERT INTO customers (id, line_user_id, display_name, ai_paused, created_at) VALUES (?, ?, ?, 0, ?)"
-  ).run(id, lineUserId, displayName, now());
+  await sql`
+    INSERT INTO customers (id, line_user_id, display_name, ai_paused, created_at)
+    VALUES (${id}, ${lineUserId}, ${displayName}, FALSE, ${now()})
+  `;
 
-  return db
-    .prepare("SELECT * FROM customers WHERE id = ?")
-    .get(id) as Customer;
+  const [row] = await sql<Customer[]>`SELECT * FROM customers WHERE id = ${id}`;
+  return row;
 }
 
-export function getCustomerById(id: string): Customer | null {
-  return (getDb()
-    .prepare("SELECT * FROM customers WHERE id = ?")
-    .get(id) as Customer | undefined) ?? null;
+export async function getCustomerById(id: string): Promise<Customer | null> {
+  const sql = await getDb();
+  const rows = await sql<Customer[]>`SELECT * FROM customers WHERE id = ${id}`;
+  return rows[0] ?? null;
 }
 
-export function getCustomerByLineId(lineUserId: string): Customer | null {
-  return (getDb()
-    .prepare("SELECT * FROM customers WHERE line_user_id = ?")
-    .get(lineUserId) as Customer | undefined) ?? null;
+export async function getCustomerByLineId(
+  lineUserId: string
+): Promise<Customer | null> {
+  const sql = await getDb();
+  const rows = await sql<Customer[]>`
+    SELECT * FROM customers WHERE line_user_id = ${lineUserId}
+  `;
+  return rows[0] ?? null;
 }
 
-export function insertMessage(args: {
+export async function insertMessage(args: {
   customerId: string;
   direction: "in" | "out";
   text: string;
   sentBy: "customer" | "ai" | "staff";
   channelMeta?: Record<string, unknown>;
-}): Message {
+}): Promise<Message> {
+  const sql = await getDb();
   const id = uuid();
   const ts = now();
-  getDb()
-    .prepare(
-      "INSERT INTO messages (id, customer_id, direction, text, sent_by, channel_meta, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(
-      id,
-      args.customerId,
-      args.direction,
-      args.text,
-      args.sentBy,
-      args.channelMeta ? JSON.stringify(args.channelMeta) : null,
-      ts
-    );
+  const channelMeta = args.channelMeta ? JSON.stringify(args.channelMeta) : null;
+  await sql`
+    INSERT INTO messages (id, customer_id, direction, text, sent_by, channel_meta, created_at)
+    VALUES (${id}, ${args.customerId}, ${args.direction}, ${args.text}, ${args.sentBy}, ${channelMeta}, ${ts})
+  `;
   return {
     id,
     customer_id: args.customerId,
     direction: args.direction,
     text: args.text,
     sent_by: args.sentBy,
-    channel_meta: args.channelMeta ? JSON.stringify(args.channelMeta) : null,
+    channel_meta: channelMeta,
     created_at: ts,
   };
 }
@@ -147,34 +145,33 @@ export function messageAttentionResolvedAt(
 // for attention that has not been resolved. Used to drive the conversation
 // list badge without relying on "last message" state (so the badge survives
 // a customer reply on top of an unresolved escalation).
-export function customerIdsNeedingAttention(): Set<string> {
-  const rows = getDb()
-    .prepare(
-      `SELECT DISTINCT customer_id FROM messages
-       WHERE sent_by = 'ai'
-         AND channel_meta IS NOT NULL
-         AND json_extract(channel_meta, '$.needs_attention') = 1
-         AND json_extract(channel_meta, '$.attention_resolved_at') IS NULL`
-    )
-    .all() as { customer_id: string }[];
+export async function customerIdsNeedingAttention(): Promise<Set<string>> {
+  const sql = await getDb();
+  // channel_meta is TEXT; cast to JSONB to use JSON operators. The query is
+  // equivalent to the old SQLite `json_extract(..., '$.needs_attention') = 1`.
+  const rows = await sql<{ customer_id: string }[]>`
+    SELECT DISTINCT customer_id FROM messages
+    WHERE sent_by = 'ai'
+      AND channel_meta IS NOT NULL
+      AND (channel_meta::jsonb)->>'needs_attention' = 'true'
+      AND (channel_meta::jsonb)->>'attention_resolved_at' IS NULL
+  `;
   return new Set(rows.map((r) => r.customer_id));
 }
 
 // Mark every open "needs attention" flag on this customer's AI messages as
 // resolved. Returns the number of messages that flipped.
-export function resolveAttentionForCustomer(args: {
+export async function resolveAttentionForCustomer(args: {
   customerId: string;
   actor: string;
-}): number {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      "SELECT id, channel_meta FROM messages WHERE customer_id = ? AND sent_by = 'ai' AND channel_meta IS NOT NULL"
-    )
-    .all(args.customerId) as { id: string; channel_meta: string }[];
-  const update = db.prepare(
-    "UPDATE messages SET channel_meta = ? WHERE id = ?"
-  );
+}): Promise<number> {
+  const sql = await getDb();
+  const rows = await sql<{ id: string; channel_meta: string }[]>`
+    SELECT id, channel_meta FROM messages
+    WHERE customer_id = ${args.customerId}
+      AND sent_by = 'ai'
+      AND channel_meta IS NOT NULL
+  `;
   const ts = now();
   let resolved = 0;
   for (const row of rows) {
@@ -188,44 +185,54 @@ export function resolveAttentionForCustomer(args: {
     if (meta.attention_resolved_at != null) continue;
     meta.attention_resolved_at = ts;
     meta.attention_resolved_by = args.actor;
-    update.run(JSON.stringify(meta), row.id);
+    await sql`
+      UPDATE messages SET channel_meta = ${JSON.stringify(meta)} WHERE id = ${row.id}
+    `;
     resolved++;
   }
   return resolved;
 }
 
-export function lastMessagesForCustomer(
+export async function lastMessagesForCustomer(
   customerId: string,
   limit: number
-): Message[] {
-  const rows = getDb()
-    .prepare(
-      "SELECT * FROM messages WHERE customer_id = ? ORDER BY created_at DESC LIMIT ?"
-    )
-    .all(customerId, limit) as Message[];
-  return rows.reverse();
+): Promise<Message[]> {
+  const sql = await getDb();
+  const rows = await sql<Message[]>`
+    SELECT * FROM messages
+    WHERE customer_id = ${customerId}
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
+  return [...rows].reverse();
 }
 
-export function allMessagesForCustomer(customerId: string): Message[] {
-  return getDb()
-    .prepare(
-      "SELECT * FROM messages WHERE customer_id = ? ORDER BY created_at ASC"
-    )
-    .all(customerId) as Message[];
+export async function allMessagesForCustomer(
+  customerId: string
+): Promise<Message[]> {
+  const sql = await getDb();
+  const rows = await sql<Message[]>`
+    SELECT * FROM messages
+    WHERE customer_id = ${customerId}
+    ORDER BY created_at ASC
+  `;
+  return [...rows];
 }
 
-export function listConversations(): ConversationSummary[] {
-  const db = getDb();
-  const customers = db
-    .prepare("SELECT * FROM customers ORDER BY created_at DESC")
-    .all() as Customer[];
+export async function listConversations(): Promise<ConversationSummary[]> {
+  const sql = await getDb();
+  const customers = await sql<Customer[]>`
+    SELECT * FROM customers ORDER BY created_at DESC
+  `;
 
   const result: ConversationSummary[] = [];
-  const lastStmt = db.prepare(
-    "SELECT * FROM messages WHERE customer_id = ? ORDER BY created_at DESC LIMIT 1"
-  );
   for (const c of customers) {
-    const last = lastStmt.get(c.id) as Message | undefined;
+    const [last] = await sql<Message[]>`
+      SELECT * FROM messages
+      WHERE customer_id = ${c.id}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
     result.push({
       customer: c,
       last_message: last ?? null,
@@ -236,20 +243,22 @@ export function listConversations(): ConversationSummary[] {
   return result;
 }
 
-export function setAiPaused(customerId: string, paused: boolean): void {
-  getDb()
-    .prepare("UPDATE customers SET ai_paused = ? WHERE id = ?")
-    .run(paused ? 1 : 0, customerId);
+export async function setAiPaused(
+  customerId: string,
+  paused: boolean
+): Promise<void> {
+  const sql = await getDb();
+  await sql`UPDATE customers SET ai_paused = ${paused} WHERE id = ${customerId}`;
 }
 
-export function getFlagsForCustomer(customerId: string): string[] {
-  return parseFlags(
-    (
-      getDb()
-        .prepare("SELECT flags FROM customers WHERE id = ?")
-        .get(customerId) as { flags: string | null } | undefined
-    )?.flags ?? null
-  );
+export async function getFlagsForCustomer(
+  customerId: string
+): Promise<string[]> {
+  const sql = await getDb();
+  const rows = await sql<{ flags: string | null }[]>`
+    SELECT flags FROM customers WHERE id = ${customerId}
+  `;
+  return parseFlags(rows[0]?.flags ?? null);
 }
 
 export function parseFlags(raw: string | null | undefined): string[] {
@@ -263,32 +272,35 @@ export function parseFlags(raw: string | null | undefined): string[] {
   }
 }
 
-export function setFlagsForCustomer(
+export async function setFlagsForCustomer(
   customerId: string,
   flags: string[]
-): string[] {
+): Promise<string[]> {
   const cleaned = Array.from(
     new Set(flags.map((f) => f.trim()).filter(Boolean))
   );
-  getDb()
-    .prepare("UPDATE customers SET flags = ? WHERE id = ?")
-    .run(cleaned.length > 0 ? JSON.stringify(cleaned) : null, customerId);
+  const sql = await getDb();
+  const value = cleaned.length > 0 ? JSON.stringify(cleaned) : null;
+  await sql`UPDATE customers SET flags = ${value} WHERE id = ${customerId}`;
   return cleaned;
 }
 
 // Idempotent — used by the pipeline to auto-flag conversations the AI
 // handed off, without clobbering anything staff has already toggled.
-export function addFlagToCustomer(customerId: string, flag: string): string[] {
-  const current = getFlagsForCustomer(customerId);
+export async function addFlagToCustomer(
+  customerId: string,
+  flag: string
+): Promise<string[]> {
+  const current = await getFlagsForCustomer(customerId);
   if (current.includes(flag)) return current;
   return setFlagsForCustomer(customerId, [...current, flag]);
 }
 
-export function removeFlagFromCustomer(
+export async function removeFlagFromCustomer(
   customerId: string,
   flag: string
-): string[] {
-  const current = getFlagsForCustomer(customerId);
+): Promise<string[]> {
+  const current = await getFlagsForCustomer(customerId);
   if (!current.includes(flag)) return current;
   return setFlagsForCustomer(
     customerId,
@@ -296,63 +308,59 @@ export function removeFlagFromCustomer(
   );
 }
 
-export function getBrandVoice(): string {
-  const row = getDb()
-    .prepare("SELECT brand_voice FROM settings WHERE id = 1")
-    .get() as { brand_voice: string | null } | undefined;
-  return row?.brand_voice ?? "";
+export async function getBrandVoice(): Promise<string> {
+  const sql = await getDb();
+  const rows = await sql<{ brand_voice: string | null }[]>`
+    SELECT brand_voice FROM settings WHERE id = 1
+  `;
+  return rows[0]?.brand_voice ?? "";
 }
 
-export function getSettings(): SettingsBlob {
-  const row = getDb()
-    .prepare("SELECT data FROM settings WHERE id = 1")
-    .get() as { data: string | null } | undefined;
-  if (!row?.data) {
-    throw new Error("settings row not initialized");
-  }
-  return JSON.parse(row.data) as SettingsBlob;
+export async function getSettings(): Promise<SettingsBlob> {
+  const sql = await getDb();
+  const rows = await sql<{ data: string | null }[]>`
+    SELECT data FROM settings WHERE id = 1
+  `;
+  const data = rows[0]?.data;
+  if (!data) throw new Error("settings row not initialized");
+  return JSON.parse(data) as SettingsBlob;
 }
 
-export function saveSettings(next: SettingsBlob): void {
-  getDb()
-    .prepare("UPDATE settings SET data = ?, updated_at = ? WHERE id = 1")
-    .run(JSON.stringify(next), now());
+export async function saveSettings(next: SettingsBlob): Promise<void> {
+  const sql = await getDb();
+  await sql`
+    UPDATE settings
+    SET data = ${JSON.stringify(next)}, updated_at = ${now()}
+    WHERE id = 1
+  `;
 }
 
-export function updateSettings<K extends keyof SettingsBlob>(
+export async function updateSettings<K extends keyof SettingsBlob>(
   section: K,
   patch: Partial<SettingsBlob[K]>
-): SettingsBlob {
-  const current = getSettings();
+): Promise<SettingsBlob> {
+  const current = await getSettings();
   const merged: SettingsBlob = {
     ...current,
     [section]: { ...current[section], ...patch },
   };
-  saveSettings(merged);
+  await saveSettings(merged);
   return merged;
 }
 
-export function insertBooking(args: {
+export async function insertBooking(args: {
   customerId: string;
   treatment: string | null;
   requestedDate: string | null;
   requestedTime: string | null;
   notes: string | null;
-}): string {
+}): Promise<string> {
+  const sql = await getDb();
   const id = uuid();
-  getDb()
-    .prepare(
-      "INSERT INTO bookings (id, customer_id, treatment, requested_date, requested_time, notes, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'new', ?)"
-    )
-    .run(
-      id,
-      args.customerId,
-      args.treatment,
-      args.requestedDate,
-      args.requestedTime,
-      args.notes,
-      now()
-    );
+  await sql`
+    INSERT INTO bookings (id, customer_id, treatment, requested_date, requested_time, notes, status, created_at)
+    VALUES (${id}, ${args.customerId}, ${args.treatment}, ${args.requestedDate}, ${args.requestedTime}, ${args.notes}, 'new', ${now()})
+  `;
   return id;
 }
 
@@ -363,38 +371,30 @@ export type KnowledgeChunk = {
   embedding: number[];
 };
 
-export function insertKnowledgeChunk(args: {
+export async function insertKnowledgeChunk(args: {
   sourceDoc: string;
   text: string;
   embedding: number[];
-}): string {
+}): Promise<string> {
+  const sql = await getDb();
   const id = uuid();
-  getDb()
-    .prepare(
-      "INSERT INTO knowledge_chunks (id, source_doc, text, embedding, created_at) VALUES (?, ?, ?, ?, ?)"
-    )
-    .run(id, args.sourceDoc, args.text, JSON.stringify(args.embedding), now());
+  const vec = pgvectorToSql(args.embedding);
+  await sql`
+    INSERT INTO knowledge_chunks (id, source_doc, text, embedding, created_at)
+    VALUES (${id}, ${args.sourceDoc}, ${args.text}, ${vec}::vector, ${now()})
+  `;
   return id;
 }
 
-export function listKnowledgeChunks(): KnowledgeChunk[] {
-  const rows = getDb()
-    .prepare(
-      "SELECT id, source_doc, text, embedding FROM knowledge_chunks"
-    )
-    .all() as { id: string; source_doc: string; text: string; embedding: string }[];
-  return rows.map((r) => ({
-    id: r.id,
-    source_doc: r.source_doc,
-    text: r.text,
-    embedding: JSON.parse(r.embedding) as number[],
-  }));
-}
-
-export function deleteKnowledgeForSource(sourceDoc: string): number {
-  return getDb()
-    .prepare("DELETE FROM knowledge_chunks WHERE source_doc = ?")
-    .run(sourceDoc).changes;
+export async function deleteKnowledgeForSource(
+  sourceDoc: string
+): Promise<number> {
+  const sql = await getDb();
+  const rows = await sql`
+    DELETE FROM knowledge_chunks WHERE source_doc = ${sourceDoc}
+  `;
+  // postgres-js returns a result with a `count` property for write queries.
+  return rows.count ?? 0;
 }
 
 export type KnowledgeDoc = {
@@ -410,17 +410,18 @@ export type KnowledgeDoc = {
 // Each chunk file starts with a title line; chunks sharing a title belong to the
 // same conceptual document. The chunker is upstream, so we re-derive doc grouping
 // at read time instead of adding another table.
-export function listKnowledgeDocs(): KnowledgeDoc[] {
-  const rows = getDb()
-    .prepare(
-      "SELECT id, source_doc, text, created_at FROM knowledge_chunks ORDER BY id ASC"
-    )
-    .all() as {
+export async function listKnowledgeDocs(): Promise<KnowledgeDoc[]> {
+  const sql = await getDb();
+  const rows = await sql<
+    {
       id: string;
       source_doc: string;
       text: string;
       created_at: number;
-    }[];
+    }[]
+  >`
+    SELECT id, source_doc, text, created_at FROM knowledge_chunks ORDER BY id ASC
+  `;
 
   const byTitle = new Map<
     string,
@@ -488,41 +489,47 @@ export type CapacityRule = {
   position: number;
 };
 
-export function listCapacityRules(): CapacityRule[] {
-  return getDb()
-    .prepare(
-      "SELECT id, treatment, per_day, slot_minutes, position FROM capacity_rules ORDER BY position ASC, treatment ASC"
-    )
-    .all() as CapacityRule[];
+export async function listCapacityRules(): Promise<CapacityRule[]> {
+  const sql = await getDb();
+  const rows = await sql<CapacityRule[]>`
+    SELECT id, treatment, per_day, slot_minutes, position
+    FROM capacity_rules
+    ORDER BY position ASC, treatment ASC
+  `;
+  return [...rows];
 }
 
-export function upsertCapacityRule(args: {
+export async function upsertCapacityRule(args: {
   id?: string | null;
   treatment: string;
   per_day: number;
   slot_minutes: number;
-}): CapacityRule {
-  const db = getDb();
+}): Promise<CapacityRule> {
+  const sql = await getDb();
   if (args.id) {
-    db.prepare(
-      "UPDATE capacity_rules SET treatment = ?, per_day = ?, slot_minutes = ?, updated_at = ? WHERE id = ?"
-    ).run(args.treatment, args.per_day, args.slot_minutes, now(), args.id);
-    return db
-      .prepare(
-        "SELECT id, treatment, per_day, slot_minutes, position FROM capacity_rules WHERE id = ?"
-      )
-      .get(args.id) as CapacityRule;
+    await sql`
+      UPDATE capacity_rules
+      SET treatment = ${args.treatment},
+          per_day = ${args.per_day},
+          slot_minutes = ${args.slot_minutes},
+          updated_at = ${now()}
+      WHERE id = ${args.id}
+    `;
+    const [row] = await sql<CapacityRule[]>`
+      SELECT id, treatment, per_day, slot_minutes, position
+      FROM capacity_rules WHERE id = ${args.id}
+    `;
+    return row;
   }
   const id = uuid();
-  const maxPos =
-    (
-      db.prepare("SELECT MAX(position) AS p FROM capacity_rules").get() as {
-        p: number | null;
-      }
-    ).p ?? -1;
-  db.prepare(
-    "INSERT INTO capacity_rules (id, treatment, per_day, slot_minutes, position, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(id, args.treatment, args.per_day, args.slot_minutes, maxPos + 1, now());
+  const [maxRow] = await sql<{ p: number | null }[]>`
+    SELECT MAX(position) AS p FROM capacity_rules
+  `;
+  const maxPos = maxRow?.p ?? -1;
+  await sql`
+    INSERT INTO capacity_rules (id, treatment, per_day, slot_minutes, position, updated_at)
+    VALUES (${id}, ${args.treatment}, ${args.per_day}, ${args.slot_minutes}, ${maxPos + 1}, ${now()})
+  `;
   return {
     id,
     treatment: args.treatment,
@@ -532,8 +539,9 @@ export function upsertCapacityRule(args: {
   };
 }
 
-export function removeCapacityRule(id: string): void {
-  getDb().prepare("DELETE FROM capacity_rules WHERE id = ?").run(id);
+export async function removeCapacityRule(id: string): Promise<void> {
+  const sql = await getDb();
+  await sql`DELETE FROM capacity_rules WHERE id = ${id}`;
 }
 
 // ---------- Team members ----------
@@ -543,74 +551,71 @@ export type TeamMember = {
   name: string;
   email: string;
   role: "Owner" | "Staff";
-  pending: number;
+  pending: boolean;
   last_active_at: number | null;
   created_at: number;
 };
 
-export function listTeamMembers(): TeamMember[] {
-  return getDb()
-    .prepare(
-      "SELECT id, name, email, role, pending, last_active_at, created_at FROM team_members ORDER BY pending ASC, role ASC, created_at ASC"
-    )
-    .all() as TeamMember[];
+export async function listTeamMembers(): Promise<TeamMember[]> {
+  const sql = await getDb();
+  const rows = await sql<TeamMember[]>`
+    SELECT id, name, email, role, pending, last_active_at, created_at
+    FROM team_members
+    ORDER BY pending ASC, role ASC, created_at ASC
+  `;
+  return [...rows];
 }
 
-export function insertTeamMember(args: {
+export async function insertTeamMember(args: {
   name: string;
   email: string;
   role: "Owner" | "Staff";
   pending: boolean;
-}): TeamMember {
+}): Promise<TeamMember> {
+  const sql = await getDb();
   const id = uuid();
   const ts = now();
-  getDb()
-    .prepare(
-      "INSERT INTO team_members (id, name, email, role, pending, last_active_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(id, args.name, args.email, args.role, args.pending ? 1 : 0, null, ts);
+  await sql`
+    INSERT INTO team_members (id, name, email, role, pending, last_active_at, created_at)
+    VALUES (${id}, ${args.name}, ${args.email}, ${args.role}, ${args.pending}, ${null}, ${ts})
+  `;
   return {
     id,
     name: args.name,
     email: args.email,
     role: args.role,
-    pending: args.pending ? 1 : 0,
+    pending: args.pending,
     last_active_at: null,
     created_at: ts,
   };
 }
 
-export function updateTeamMember(
+export async function updateTeamMember(
   id: string,
   patch: { name?: string; role?: "Owner" | "Staff"; pending?: boolean }
-): void {
-  const fields: string[] = [];
-  const values: unknown[] = [];
+): Promise<void> {
+  const sql = await getDb();
+  // postgres-js doesn't have a Drizzle-style dynamic builder; expand each
+  // optional field in turn. Doing them as separate UPDATEs is fine — the
+  // settings UI only ever sets one field at a time today, and the rows are
+  // tiny, so the round-trip cost is negligible.
   if (patch.name !== undefined) {
-    fields.push("name = ?");
-    values.push(patch.name);
+    await sql`UPDATE team_members SET name = ${patch.name} WHERE id = ${id}`;
   }
   if (patch.role !== undefined) {
-    fields.push("role = ?");
-    values.push(patch.role);
+    await sql`UPDATE team_members SET role = ${patch.role} WHERE id = ${id}`;
   }
   if (patch.pending !== undefined) {
-    fields.push("pending = ?");
-    values.push(patch.pending ? 1 : 0);
+    await sql`UPDATE team_members SET pending = ${patch.pending} WHERE id = ${id}`;
     if (!patch.pending) {
-      fields.push("last_active_at = ?");
-      values.push(now());
+      await sql`UPDATE team_members SET last_active_at = ${now()} WHERE id = ${id}`;
     }
   }
-  if (fields.length === 0) return;
-  values.push(id);
-  getDb()
-    .prepare(`UPDATE team_members SET ${fields.join(", ")} WHERE id = ?`)
-    .run(...values);
 }
 
-export function removeTeamMember(id: string): void {
-  getDb().prepare("DELETE FROM team_members WHERE id = ?").run(id);
+export async function removeTeamMember(id: string): Promise<void> {
+  const sql = await getDb();
+  await sql`DELETE FROM team_members WHERE id = ${id}`;
 }
 
 // ---------- Audit log ----------
@@ -623,38 +628,42 @@ export type AuditEntry = {
   created_at: number;
 };
 
-export function appendAudit(args: {
+export async function appendAudit(args: {
   section: string;
   actor: string;
   summary: string;
-}): AuditEntry {
+}): Promise<AuditEntry> {
+  const sql = await getDb();
   const id = uuid();
   const ts = now();
-  getDb()
-    .prepare(
-      "INSERT INTO audit_log (id, section, actor, summary, created_at) VALUES (?, ?, ?, ?, ?)"
-    )
-    .run(id, args.section, args.actor, args.summary, ts);
+  await sql`
+    INSERT INTO audit_log (id, section, actor, summary, created_at)
+    VALUES (${id}, ${args.section}, ${args.actor}, ${args.summary}, ${ts})
+  `;
   return { id, ...args, created_at: ts };
 }
 
-export function listAuditLog(opts?: {
+export async function listAuditLog(opts?: {
   section?: string;
   limit?: number;
-}): AuditEntry[] {
+}): Promise<AuditEntry[]> {
+  const sql = await getDb();
   const limit = opts?.limit ?? 50;
   if (opts?.section) {
-    return getDb()
-      .prepare(
-        "SELECT id, section, actor, summary, created_at FROM audit_log WHERE section = ? ORDER BY created_at DESC LIMIT ?"
-      )
-      .all(opts.section, limit) as AuditEntry[];
+    const rows = await sql<AuditEntry[]>`
+      SELECT id, section, actor, summary, created_at FROM audit_log
+      WHERE section = ${opts.section}
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `;
+    return [...rows];
   }
-  return getDb()
-    .prepare(
-      "SELECT id, section, actor, summary, created_at FROM audit_log ORDER BY created_at DESC LIMIT ?"
-    )
-    .all(limit) as AuditEntry[];
+  const rows = await sql<AuditEntry[]>`
+    SELECT id, section, actor, summary, created_at FROM audit_log
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
+  return [...rows];
 }
 
 // ---------- Sample dialogues (brand voice) ----------
@@ -666,30 +675,30 @@ export type SampleDialogue = {
   position: number;
 };
 
-export function listSampleDialogues(): SampleDialogue[] {
-  return getDb()
-    .prepare(
-      "SELECT id, customer_text, yuna_text, position FROM sample_dialogues ORDER BY position ASC"
-    )
-    .all() as SampleDialogue[];
+export async function listSampleDialogues(): Promise<SampleDialogue[]> {
+  const sql = await getDb();
+  const rows = await sql<SampleDialogue[]>`
+    SELECT id, customer_text, yuna_text, position
+    FROM sample_dialogues
+    ORDER BY position ASC
+  `;
+  return [...rows];
 }
 
-export function insertSampleDialogue(args: {
+export async function insertSampleDialogue(args: {
   customer_text: string;
   yuna_text: string;
-}): SampleDialogue {
-  const db = getDb();
+}): Promise<SampleDialogue> {
+  const sql = await getDb();
   const id = uuid();
-  const maxPos =
-    (
-      db.prepare("SELECT MAX(position) AS p FROM sample_dialogues").get() as {
-        p: number | null;
-      }
-    ).p ?? -1;
-  const pos = maxPos + 1;
-  db.prepare(
-    "INSERT INTO sample_dialogues (id, customer_text, yuna_text, position, created_at) VALUES (?, ?, ?, ?, ?)"
-  ).run(id, args.customer_text, args.yuna_text, pos, now());
+  const [maxRow] = await sql<{ p: number | null }[]>`
+    SELECT MAX(position) AS p FROM sample_dialogues
+  `;
+  const pos = (maxRow?.p ?? -1) + 1;
+  await sql`
+    INSERT INTO sample_dialogues (id, customer_text, yuna_text, position, created_at)
+    VALUES (${id}, ${args.customer_text}, ${args.yuna_text}, ${pos}, ${now()})
+  `;
   return {
     id,
     customer_text: args.customer_text,
@@ -698,8 +707,9 @@ export function insertSampleDialogue(args: {
   };
 }
 
-export function removeSampleDialogue(id: string): void {
-  getDb().prepare("DELETE FROM sample_dialogues WHERE id = ?").run(id);
+export async function removeSampleDialogue(id: string): Promise<void> {
+  const sql = await getDb();
+  await sql`DELETE FROM sample_dialogues WHERE id = ${id}`;
 }
 
 // ---------- DSAR export ----------
@@ -710,24 +720,24 @@ export type CustomerExport = {
   bookings: unknown[];
 };
 
-export function exportAllCustomers(): CustomerExport[] {
-  const db = getDb();
-  const customers = db
-    .prepare("SELECT * FROM customers ORDER BY created_at ASC")
-    .all() as Customer[];
+export async function exportAllCustomers(): Promise<CustomerExport[]> {
+  const sql = await getDb();
+  const customers = await sql<Customer[]>`
+    SELECT * FROM customers ORDER BY created_at ASC
+  `;
   const out: CustomerExport[] = [];
   for (const c of customers) {
-    const messages = db
-      .prepare(
-        "SELECT * FROM messages WHERE customer_id = ? ORDER BY created_at ASC"
-      )
-      .all(c.id) as Message[];
-    const bookings = db
-      .prepare(
-        "SELECT * FROM bookings WHERE customer_id = ? ORDER BY created_at ASC"
-      )
-      .all(c.id);
-    out.push({ customer: c, messages, bookings });
+    const messages = await sql<Message[]>`
+      SELECT * FROM messages
+      WHERE customer_id = ${c.id}
+      ORDER BY created_at ASC
+    `;
+    const bookings = await sql`
+      SELECT * FROM bookings
+      WHERE customer_id = ${c.id}
+      ORDER BY created_at ASC
+    `;
+    out.push({ customer: c, messages: [...messages], bookings: [...bookings] });
   }
   return out;
 }

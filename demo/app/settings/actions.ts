@@ -29,13 +29,14 @@ function bump() {
 // ---------- Brand voice ----------
 
 export async function saveBrandVoice(brandVoice: string): Promise<void> {
-  getDb()
-    .prepare(
-      "UPDATE settings SET brand_voice = ?, updated_at = ? WHERE id = 1"
-    )
-    .run(brandVoice, now());
-  updateSettings("brand_voice", { saved_at: now(), saved_by: ACTOR });
-  appendAudit({
+  const sql = await getDb();
+  await sql`
+    UPDATE settings
+    SET brand_voice = ${brandVoice}, updated_at = ${now()}
+    WHERE id = 1
+  `;
+  await updateSettings("brand_voice", { saved_at: now(), saved_by: ACTOR });
+  await appendAudit({
     section: "brand-voice",
     actor: ACTOR,
     summary: `Brand voice updated (${brandVoice.length} chars)`,
@@ -52,11 +53,11 @@ export async function addSampleDialogue(args: {
   if (!trimmedCustomer || !trimmedYuna) {
     throw new Error("Both customer and Yuna lines are required");
   }
-  const dialogue = insertSampleDialogue({
+  const dialogue = await insertSampleDialogue({
     customer_text: trimmedCustomer,
     yuna_text: trimmedYuna,
   });
-  appendAudit({
+  await appendAudit({
     section: "brand-voice",
     actor: ACTOR,
     summary: "Sample dialogue added",
@@ -66,8 +67,8 @@ export async function addSampleDialogue(args: {
 }
 
 export async function deleteSampleDialogue(id: string): Promise<void> {
-  removeSampleDialogue(id);
-  appendAudit({
+  await removeSampleDialogue(id);
+  await appendAudit({
     section: "brand-voice",
     actor: ACTOR,
     summary: "Sample dialogue removed",
@@ -88,12 +89,12 @@ export async function saveClinic(input: {
   hours: string;
   languages: string;
 }): Promise<SettingsBlob> {
-  const next = updateSettings("clinic", {
+  const next = await updateSettings("clinic", {
     ...input,
     saved_at: now(),
     saved_by: ACTOR,
   });
-  appendAudit({
+  await appendAudit({
     section: "clinic",
     actor: ACTOR,
     summary: `Clinic profile updated · ${input.name}`,
@@ -108,13 +109,13 @@ export async function saveLine(input: {
   channel_id: string;
   oa_name: string;
 }): Promise<SettingsBlob> {
-  const next = updateSettings("line", {
+  const next = await updateSettings("line", {
     channel_id: input.channel_id,
     oa_name: input.oa_name,
     saved_at: now(),
     saved_by: ACTOR,
   });
-  appendAudit({
+  await appendAudit({
     section: "line",
     actor: ACTOR,
     summary: `Line OA updated · ${input.oa_name}`,
@@ -126,8 +127,8 @@ export async function saveLine(input: {
 export async function rotateLineSecret(): Promise<{ last4: string; rotated_at: number }> {
   const last4 = randomBytes(2).toString("hex");
   const ts = now();
-  updateSettings("line", { secret_last4: last4, secret_rotated_at: ts });
-  appendAudit({
+  await updateSettings("line", { secret_last4: last4, secret_rotated_at: ts });
+  await appendAudit({
     section: "line",
     actor: ACTOR,
     summary: `Channel secret rotated · ends ${last4}`,
@@ -138,8 +139,8 @@ export async function rotateLineSecret(): Promise<{ last4: string; rotated_at: n
 
 export async function testLineSignature(): Promise<{ ok: true; pinged_at: number }> {
   const ts = now();
-  updateSettings("line", { last_ping_at: ts });
-  appendAudit({
+  await updateSettings("line", { last_ping_at: ts });
+  await appendAudit({
     section: "line",
     actor: ACTOR,
     summary: "Test signature verified",
@@ -155,14 +156,14 @@ export async function saveAiBrain(input: {
   model: string;
   temperature: number;
 }): Promise<SettingsBlob> {
-  const next = updateSettings("ai", {
+  const next = await updateSettings("ai", {
     provider: input.provider,
     model: input.model,
     temperature: Math.max(0, Math.min(1, input.temperature)),
     saved_at: now(),
     saved_by: ACTOR,
   });
-  appendAudit({
+  await appendAudit({
     section: "ai-brain",
     actor: ACTOR,
     summary: `AI brain updated · ${input.provider} ${input.model} @ ${input.temperature.toFixed(2)}`,
@@ -172,7 +173,7 @@ export async function saveAiBrain(input: {
 }
 
 export async function requestEmbeddingOverride(reason: string): Promise<void> {
-  appendAudit({
+  await appendAudit({
     section: "ai-brain",
     actor: ACTOR,
     summary: `Embedding override requested · ${reason.slice(0, 80) || "no reason"}`,
@@ -184,8 +185,8 @@ export async function requestEmbeddingOverride(reason: string): Promise<void> {
 
 export async function setKillSwitch(paused: boolean): Promise<SettingsBlob> {
   const ts = now();
-  const next = updateSettings("kill_switch", { paused, changed_at: ts });
-  appendAudit({
+  const next = await updateSettings("kill_switch", { paused, changed_at: ts });
+  await appendAudit({
     section: "kill-switch",
     actor: ACTOR,
     summary: paused
@@ -205,12 +206,12 @@ export async function saveAftercare(input: {
   send_time: string;
   languages: "th+en" | "th" | "en";
 }): Promise<SettingsBlob> {
-  const next = updateSettings("aftercare", {
+  const next = await updateSettings("aftercare", {
     ...input,
     saved_at: now(),
     saved_by: ACTOR,
   });
-  appendAudit({
+  await appendAudit({
     section: "aftercare",
     actor: ACTOR,
     summary: `Aftercare schedule updated · D1=${input.d1 ? "on" : "off"} D7=${
@@ -227,13 +228,13 @@ export async function savePrivacy(input: {
   conversation_months: number;
   audit_months: number;
 }): Promise<SettingsBlob> {
-  const next = updateSettings("privacy", {
+  const next = await updateSettings("privacy", {
     conversation_months: input.conversation_months,
     audit_months: input.audit_months,
     saved_at: now(),
     saved_by: ACTOR,
   });
-  appendAudit({
+  await appendAudit({
     section: "privacy",
     actor: ACTOR,
     summary: `Retention updated · conversation ${input.conversation_months}mo · audit ${input.audit_months}mo`,
@@ -247,14 +248,14 @@ export async function exportDsar(): Promise<{
   json: string;
   customers: number;
 }> {
-  const data: CustomerExport[] = exportAllCustomers();
+  const data: CustomerExport[] = await exportAllCustomers();
   const payload = {
     exported_at: new Date().toISOString(),
     clinic: "Sukhumvit Skin & Laser",
     customer_count: data.length,
     customers: data,
   };
-  appendAudit({
+  await appendAudit({
     section: "privacy",
     actor: ACTOR,
     summary: `DSAR export generated · ${data.length} customers`,
@@ -275,8 +276,8 @@ export async function saveCapacityRule(input: {
   per_day: number;
   slot_minutes: number;
 }): Promise<void> {
-  const rule = upsertCapacityRule(input);
-  appendAudit({
+  const rule = await upsertCapacityRule(input);
+  await appendAudit({
     section: "capacity",
     actor: ACTOR,
     summary: input.id
@@ -287,8 +288,8 @@ export async function saveCapacityRule(input: {
 }
 
 export async function deleteCapacityRule(id: string, name: string): Promise<void> {
-  removeCapacityRule(id);
-  appendAudit({
+  await removeCapacityRule(id);
+  await appendAudit({
     section: "capacity",
     actor: ACTOR,
     summary: `Capacity rule removed · ${name}`,
@@ -311,13 +312,13 @@ export async function inviteTeamMember(input: {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
     throw new Error("Email looks invalid");
   }
-  const member = insertTeamMember({
+  const member = await insertTeamMember({
     name: trimmedName,
     email: trimmedEmail,
     role: input.role,
     pending: true,
   });
-  appendAudit({
+  await appendAudit({
     section: "team",
     actor: ACTOR,
     summary: `Invite sent · ${trimmedEmail} (${input.role})`,
@@ -327,7 +328,7 @@ export async function inviteTeamMember(input: {
 }
 
 export async function resendInvite(id: string, email: string): Promise<void> {
-  appendAudit({
+  await appendAudit({
     section: "team",
     actor: ACTOR,
     summary: `Invite resent · ${email}`,
@@ -339,8 +340,8 @@ export async function setTeamMemberRole(
   id: string,
   role: "Owner" | "Staff"
 ): Promise<void> {
-  updateTeamMember(id, { role });
-  appendAudit({
+  await updateTeamMember(id, { role });
+  await appendAudit({
     section: "team",
     actor: ACTOR,
     summary: `Role changed to ${role}`,
@@ -349,8 +350,8 @@ export async function setTeamMemberRole(
 }
 
 export async function acceptTeamMemberInvite(id: string, email: string): Promise<void> {
-  updateTeamMember(id, { pending: false });
-  appendAudit({
+  await updateTeamMember(id, { pending: false });
+  await appendAudit({
     section: "team",
     actor: ACTOR,
     summary: `Invite accepted · ${email}`,
@@ -359,8 +360,8 @@ export async function acceptTeamMemberInvite(id: string, email: string): Promise
 }
 
 export async function deleteTeamMember(id: string, email: string): Promise<void> {
-  removeTeamMember(id);
-  appendAudit({
+  await removeTeamMember(id);
+  await appendAudit({
     section: "team",
     actor: ACTOR,
     summary: `Member removed · ${email}`,
@@ -378,13 +379,13 @@ export async function setBillingPlan(
     growth: 30_000,
     scale: 100_000,
   };
-  const next = updateSettings("billing", {
+  const next = await updateSettings("billing", {
     plan,
     msg_quota: quotaByPlan[plan],
     saved_at: now(),
     saved_by: ACTOR,
   });
-  appendAudit({
+  await appendAudit({
     section: "billing",
     actor: ACTOR,
     summary: `Plan switched to ${plan}`,
@@ -403,14 +404,14 @@ export async function saveBillingCard(input: {
   if (!/^\d{2}\/\d{2}$/.test(input.card_exp)) {
     throw new Error("Expiry must be MM/YY");
   }
-  const next = updateSettings("billing", {
+  const next = await updateSettings("billing", {
     card_brand: input.card_brand || "Card",
     card_last4: last4,
     card_exp: input.card_exp,
     saved_at: now(),
     saved_by: ACTOR,
   });
-  appendAudit({
+  await appendAudit({
     section: "billing",
     actor: ACTOR,
     summary: `Payment method updated · ${input.card_brand} ····${last4}`,
@@ -420,8 +421,8 @@ export async function saveBillingCard(input: {
 }
 
 export async function setAutoRenew(autoRenew: boolean): Promise<SettingsBlob> {
-  const next = updateSettings("billing", { auto_renew: autoRenew });
-  appendAudit({
+  const next = await updateSettings("billing", { auto_renew: autoRenew });
+  await appendAudit({
     section: "billing",
     actor: ACTOR,
     summary: autoRenew ? "Auto-renew turned on" : "Auto-renew turned off",

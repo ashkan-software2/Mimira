@@ -201,31 +201,55 @@ function timeUntil(ts: number): string {
   return `in ${Math.max(1, Math.floor(delta / HR))}h`;
 }
 
+// All date formatters render in Asia/Bangkok and build strings by hand so
+// Node's ICU and the browser's ICU can't disagree. toLocaleString output
+// differs between runtimes ("26 May, 18:24" vs "27 May at 01:24") which
+// triggers a hydration mismatch — React then regenerates the tree and
+// silently strips event handlers, so Save buttons appear dead.
+const MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+function bangkokParts(ts: number) {
+  // Asia/Bangkok is a fixed UTC+7 (no DST), so a literal offset is exact.
+  const d = new Date(ts + 7 * HR);
+  return {
+    day: d.getUTCDate(),
+    month: MONTHS_SHORT[d.getUTCMonth()],
+    year: d.getUTCFullYear(),
+    hour: d.getUTCHours(),
+    minute: d.getUTCMinutes(),
+  };
+}
+
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n);
+}
+
 function fmtDate(ts: number): string {
-  return new Date(ts).toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const p = bangkokParts(ts);
+  return `${p.day} ${p.month} ${p.year}`;
 }
 
 function fmtDateTime(ts: number): string {
-  return new Date(ts).toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const p = bangkokParts(ts);
+  return `${pad2(p.day)} ${p.month}, ${pad2(p.hour)}:${pad2(p.minute)}`;
 }
 
 function fmtClock(ts: number): string {
-  return new Date(ts).toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Bangkok",
-    hour12: false,
-  });
+  const p = bangkokParts(ts);
+  return `${pad2(p.hour)}:${pad2(p.minute)}`;
 }
 
 // ---------- Inline icons ----------
@@ -763,7 +787,7 @@ export function SettingsView(props: Props) {
         setTeam((prev) =>
           prev.map((m) =>
             m.id === member.id
-              ? { ...m, pending: 0, last_active_at: Date.now() }
+              ? { ...m, pending: false, last_active_at: Date.now() }
               : m
           )
         );

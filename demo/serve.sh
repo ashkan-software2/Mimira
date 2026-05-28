@@ -43,28 +43,9 @@ if [ -n "$ALL_PRIOR" ]; then
   sleep 1
 fi
 
-# 3. Boot dev server bound to all interfaces.
-nohup npx next dev -H 0.0.0.0 -p "$PORT" > "$LOG" 2>&1 &
-disown
-SERVER_PID=$!
-
-# 4. Wait up to 30s for the port to bind.
-for _ in $(seq 1 30); do
-  if ss -tln 2>/dev/null | grep -q ":${PORT} "; then break; fi
-  sleep 1
-done
-
-if ! ss -tln 2>/dev/null | grep -q ":${PORT} "; then
-  echo "ERROR      server did not bind to :${PORT}. Last log lines:"
-  tail -20 "$LOG"
-  exit 1
-fi
-echo "SERVER     http://127.0.0.1:${PORT}/  (PID ${SERVER_PID}, log ${LOG})"
-
-# 5. Loopback warmup — first request compiles the landing page.
-curl -s --max-time 30 -o /dev/null "http://127.0.0.1:${PORT}${LANDING}" || true
-
-# 6. Discover EC2 public IP — IMDSv2 → IMDSv1 → ipify.
+# 3. Discover EC2 public IP *before* starting the dev server, so it can be
+#    injected into Next's allowedDevOrigins. Without this, server actions
+#    (Save buttons) 403 silently when the page is loaded over the public IP.
 TOKEN=$(curl -sX PUT \
   -H "X-aws-ec2-metadata-token-ttl-seconds: 60" \
   --max-time 2 \
@@ -80,7 +61,29 @@ fi
     http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || true)
 [ -z "$PUBLIC_IP" ] && \
   PUBLIC_IP=$(curl -s --max-time 3 https://api.ipify.org 2>/dev/null || true)
+
+# 4. Boot dev server bound to all interfaces.
+YUNA_DEV_ORIGIN="${PUBLIC_IP}" \
+  nohup npx next dev -H 0.0.0.0 -p "$PORT" > "$LOG" 2>&1 &
+disown
+SERVER_PID=$!
+
+# 5. Wait up to 30s for the port to bind.
+for _ in $(seq 1 30); do
+  if ss -tln 2>/dev/null | grep -q ":${PORT} "; then break; fi
+  sleep 1
+done
+
+if ! ss -tln 2>/dev/null | grep -q ":${PORT} "; then
+  echo "ERROR      server did not bind to :${PORT}. Last log lines:"
+  tail -20 "$LOG"
+  exit 1
+fi
+echo "SERVER     http://127.0.0.1:${PORT}/  (PID ${SERVER_PID}, log ${LOG})"
 echo "PUBLIC     ${PUBLIC_IP:-NONE}"
+
+# 6. Loopback warmup — first request compiles the landing page.
+curl -s --max-time 30 -o /dev/null "http://127.0.0.1:${PORT}${LANDING}" || true
 
 # 7. Self-test reachability via the public IP.
 if [ -n "$PUBLIC_IP" ]; then

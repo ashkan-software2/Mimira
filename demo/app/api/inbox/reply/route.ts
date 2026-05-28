@@ -19,14 +19,14 @@ export async function POST(req: Request) {
     return new NextResponse("missing customerId or text", { status: 400 });
   }
 
-  const customer = getCustomerById(customerId);
+  const customer = await getCustomerById(customerId);
   if (!customer) {
     return new NextResponse("not found", { status: 404 });
   }
 
   // Staff reply implies a takeover — pause AI if not already.
-  if (customer.ai_paused !== 1) {
-    setAiPaused(customer.id, true);
+  if (!customer.ai_paused) {
+    await setAiPaused(customer.id, true);
   }
 
   try {
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const msg = insertMessage({
+  const msg = await insertMessage({
     customerId: customer.id,
     direction: "out",
     text,

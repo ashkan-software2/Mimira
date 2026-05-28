@@ -32,20 +32,20 @@ export async function POST(req: Request) {
     return new NextResponse(`unknown flag '${flag}'`, { status: 400 });
   }
 
-  const customer = getCustomerById(customerId);
+  const customer = await getCustomerById(customerId);
   if (!customer) {
     return new NextResponse("not found", { status: 404 });
   }
 
   const flags = body.on
-    ? addFlagToCustomer(customer.id, flag)
-    : removeFlagFromCustomer(customer.id, flag);
+    ? await addFlagToCustomer(customer.id, flag)
+    : await removeFlagFromCustomer(customer.id, flag);
 
   // Marking the thread Addressed is the "I'm done with this" signal — also
   // resolve any open per-message attention flags so the inbox stops nudging.
   let resolvedMessages = 0;
   if (flag === "Addressed" && body.on) {
-    resolvedMessages = resolveAttentionForCustomer({
+    resolvedMessages = await resolveAttentionForCustomer({
       customerId: customer.id,
       actor: ACTOR,
     });

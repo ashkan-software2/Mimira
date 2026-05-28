@@ -57,15 +57,15 @@ async function handleEvent(ev: LineEvent): Promise<void> {
   const replyToken = userEvent.replyToken;
 
   // Ensure we know this customer; fetch profile if first time.
-  let customer = getCustomerByLineId(userId);
+  let customer = await getCustomerByLineId(userId);
   if (!customer) {
     const profile = await getProfile(userId);
-    customer = upsertCustomer(userId, profile?.displayName ?? null);
+    customer = await upsertCustomer(userId, profile?.displayName ?? null);
   }
 
   // Non-text messages: log and send a static Thai apology, stop.
   if (userEvent.message.type !== "text") {
-    insertMessage({
+    await insertMessage({
       customerId: customer.id,
       direction: "in",
       text: `[${userEvent.message.type}]`,
@@ -74,7 +74,7 @@ async function handleEvent(ev: LineEvent): Promise<void> {
     });
     try {
       await replyText(replyToken, APOLOGY_THAI);
-      insertMessage({
+      await insertMessage({
         customerId: customer.id,
         direction: "out",
         text: APOLOGY_THAI,
@@ -88,7 +88,7 @@ async function handleEvent(ev: LineEvent): Promise<void> {
 
   // Text message: log inbound first, then either run pipeline or skip if paused.
   const text = userEvent.message.text;
-  insertMessage({
+  await insertMessage({
     customerId: customer.id,
     direction: "in",
     text,
