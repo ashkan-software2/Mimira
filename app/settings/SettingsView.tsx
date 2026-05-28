@@ -392,6 +392,7 @@ type Props = {
   initialCapacity: CapacityRule[];
   initialTeam: TeamMember[];
   initialAudit: AuditEntry[];
+  webhookUrl: string;
 };
 
 type ModalState =
@@ -1205,7 +1206,7 @@ export function SettingsView(props: Props) {
               <input
                 className={`${styles.input} ${styles.inputMono}`}
                 id="line-webhook"
-                value={settings.line.webhook_url}
+                value={props.webhookUrl}
                 readOnly
               />
               <span className={styles.hint}>

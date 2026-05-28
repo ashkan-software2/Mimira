@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import {
   getBrandVoice,
   getSettings,
@@ -10,7 +11,16 @@ import { SettingsView } from "./SettingsView";
 
 export const dynamic = "force-dynamic";
 
+function webhookUrlFromHeaders(h: Headers): string | null {
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (!host) return null;
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}/api/line/webhook`;
+}
+
 export default async function SettingsPage() {
+  const h = await headers();
+  const webhookUrl = webhookUrlFromHeaders(h);
   const [brandVoice, settings, dialogues, capacity, team, audit] =
     await Promise.all([
       getBrandVoice(),
@@ -28,6 +38,7 @@ export default async function SettingsPage() {
       initialCapacity={capacity}
       initialTeam={team}
       initialAudit={audit}
+      webhookUrl={webhookUrl ?? settings.line.webhook_url}
     />
   );
 }

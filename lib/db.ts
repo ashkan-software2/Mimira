@@ -200,7 +200,7 @@ const DEFAULT_SETTINGS_BLOB: SettingsBlob = {
     channel_id: "Cf12a93e8b8a",
     oa_name: "@sukhumvit-skin",
     secret_last4: "3f9c",
-    webhook_url: "https://api.mimira.app/v1/line/webhook/cf12a93e8b8a",
+    webhook_url: "https://api.mimira.app/api/line/webhook",
     secret_rotated_at: Date.now() - 14 * 24 * 3600 * 1000,
     last_ping_at: Date.now() - 3600 * 1000,
     saved_at: Date.now() - 14 * 24 * 3600 * 1000,

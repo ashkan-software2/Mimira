@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import {
   verifyLineSignature,
   getMessageContent,
@@ -45,10 +45,15 @@ export async function POST(req: Request) {
 
   const events = body.events ?? [];
 
-  // Ack within 1s: do not await pipeline work in the handler. Spawn it.
+  // Ack within 1s, but register the work with Next so serverless runtimes keep
+  // the invocation alive long enough to persist the inbound message and reply.
   for (const ev of events) {
-    handleEvent(ev).catch((err) => {
-      console.error("[line/webhook] event handler failed", err);
+    after(async () => {
+      try {
+        await handleEvent(ev);
+      } catch (err) {
+        console.error("[line/webhook] event handler failed", err);
+      }
     });
   }
 
