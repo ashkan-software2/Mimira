@@ -58,6 +58,104 @@ The admin app has 5 tabs. Each screen below lists purpose, what the user sees fi
 
 **Edge:** A broadcast that Line stops mid-send (quota exhausted, OA suspended, or other Line-side rejection) appears in the past-broadcasts list as `Stopped early` with the partial recipient count (e.g. `3,400 / 4,210`). No pre-send guard in v0; the owner sees the outcome, not a prediction.
 
+### Promotions
+
+**Purpose:** Owner authors, schedules, and retires time-bounded offers. A live promo is two things at once — content Yuna mentions when customers ask about deals (via RAG) and an optional one-shot broadcast.
+
+**v0 scope:** Owner-authored, single-language (Thai). Each promo has a body, an optional **image URL** (pasted, e.g. LINE CDN URL or external URL — no upload pipeline in v0), an optional video URL, and a start/end date range. Going live atomically embeds the body into `knowledge_chunks` and tags the row with `source_doc = 'promo:<id>'`; the retrieval query filters out expired rows (`expires_at IS NULL OR expires_at > now()`).
+
+**Deferred to v1:**
+- **Image upload pipeline** (Supabase Storage / S3). v0 accepts pasted image URLs only. Same fallback Broadcasts uses for now.
+- **"Also broadcast on go-live" toggle.** v0 ships pull-side only (RAG retrieval). Broadcast integration waits until the Broadcasts page is built and the cross-page coupling can be designed cleanly.
+
+**Data model (locked by plan-eng-review 2026-05-28):**
+
+New `promotions` table holds canonical promo records (drafts, live, past). `knowledge_chunks` holds the embeddings for the body, derived on Go Live.
+
+```sql
+CREATE TABLE IF NOT EXISTS promotions (
+  id          TEXT PRIMARY KEY,
+  title       TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  image_url   TEXT,                 -- pasted URL; no upload pipeline in v0
+  video_url   TEXT,
+  status      TEXT NOT NULL DEFAULT 'draft'
+                   CHECK (status IN ('draft','live','past')),
+  start_at    BIGINT,               -- epoch ms; informational for Drafts
+  end_at      BIGINT,               -- epoch ms; lazy-expire trigger when status='live'
+  created_at  BIGINT NOT NULL,
+  updated_at  BIGINT NOT NULL
+);
+
+-- Extension to knowledge_chunks (idempotent ALTER):
+ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS expires_at  BIGINT NULL;
+ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS source_kind TEXT NOT NULL DEFAULT 'knowledge'
+  CHECK (source_kind IN ('knowledge','promo'));
+```
+
+**v0 status state machine (3 states, manual transitions):**
+- `Draft` → `Live`: manual click `Go live`. Inserts `knowledge_chunks` rows from the body with `source_kind='promo'`, `source_doc='promo:<id>'`, `expires_at=<end_at>`.
+- `Live` → `Past`: manual click `Stop`, OR lazy on-page-load (when an admin loads `/promotions` or any admin page that reads the gallery, if `end_at <= now()` flip to `Past` and DELETE the matching `knowledge_chunks` rows). No background scheduler in v0.
+- No `Scheduled` status in v0 — without a scheduler, "scheduled" would lie about behavior. `start_at` is informational metadata only.
+
+**Required code changes (regression-safe):**
+- `repo.ts` `listKnowledgeDocs()` MUST filter `WHERE source_kind = 'knowledge'` so promos never leak into the Knowledge admin tree.
+- `rag.ts` `retrieve()` MUST add `WHERE expires_at IS NULL OR expires_at > <now>` to the top-K query.
+- `rag.ts` (or `pipeline.ts`) MUST always-inject the most-recent Live promo as a guaranteed extra chunk in addition to top-K, so customers asking about deals see the offer even if its body doesn't out-score evergreen treatment docs on cosine similarity. Use most-recent by `created_at` if multiple Live promos exist; tie-break by soonest `end_at`.
+- `insertKnowledgeChunk()` signature adds optional `expiresAt: number | null` and `sourceKind: 'knowledge' | 'promo'` (default `'knowledge'`) parameters. Existing callers unaffected.
+- Embedding cost: re-embed only fires on explicit Save in the slide-over editor, not per-keystroke.
+
+**The memorable thing:** *"I can swap in a new promo and Yuna already knows about it."* Activating a promo and making it AI-retrievable are the same action — there is no separate "publish to RAG" toggle.
+
+**Information hierarchy (single-pane gallery, no left rail):**
+
+1. **Status-stacked gallery** — page-level. Cards grouped by status section in this order: **Live**, **Scheduled**, **Drafts**, **Past**. Past is collapsed by default. Drafts collapses if empty. Each section header shows the count: `● LIVE (2)`.
+2. **Promo card** — `repeat(auto-fill, minmax(240px, 1fr))` with 16 px gap. 4:3 image area at the top, 12 px radius (matches `--radius-lg`). Title (`text-base / 500`, two-line clamp), meta line (`text-xs / 400 / --fg-muted`) showing the most relevant date-context per status. Card actions: `Edit` ghost button + `⋯` menu (Duplicate · Stop · Delete) revealed on hover/focus. 1 px `--border`, no shadow. Hover deepens border to `--fg-subtle`.
+3. **Slide-over editor** — opens on Edit click. ~480 px wide, slides in from the right with `--ease-enter` over 240 ms. Backdrop dims at `rgba(0,0,0,0.32)`. Esc or backdrop-click closes. Contains, top-to-bottom: status pill, LINE phone-frame preview (~285 px), form fields (Title, Body, Image, Video URL, Live dates), an inline helper line in `--ai-accent` reading *"Yuna mentions this when customers ask about deals."*, and a footer row with the action buttons.
+
+**Primary CTA:** `+ New promo` (top-right of the page). Inside the slide-over, the bottom CTA is `Go live` (primary, near-black) for drafts/scheduled, and `Save` (primary) + `Stop` (ghost) for live promos. Never two primary CTAs in the slide-over at once.
+
+**Status semantics (load-bearing — v0 has 3 states):**
+
+| Status | Dot | In RAG? | Visible to customers? |
+|---|---|---|---|
+| **Live** | `--success` | Yes — `knowledge_chunks` entry active with `source_kind='promo'` | Yes — Yuna may quote on demand |
+| **Drafts** | hollow circle | No | No |
+| **Past** | `--fg-subtle` | No — embedding rows deleted at lazy expire or manual Stop | No |
+
+No `Scheduled` status in v0 (no background scheduler — see Data model above). Owner sets `start_at` as planning metadata on a Draft, but the transition to Live is always a manual click.
+
+`--warning` amber stays reserved for "Needs attention" escalations (see DESIGN-UI.md AI accent rule). Do not repurpose for promo status.
+
+**The "Go live" action is atomic:**
+
+1. `promotions.status` → `Live`, `updated_at = now()`.
+2. INSERT rows into `knowledge_chunks` with `source_kind='promo'`, `source_doc='promo:<id>'`, `expires_at=<end_at>` (or NULL if owner didn't set end_at). Each chunk is the promo body (single chunk in v0 — promo bodies are short).
+3. **No broadcast in v0** (deferred — see v0 scope). Future v1 toggle will live in the slide-over editor; the spec doesn't render the toggle in v0 to avoid a UI that lies.
+
+**Stop / Lazy expire:**
+- Manual: owner clicks `Stop` in the slide-over editor → `promotions.status='past'`, DELETE matching `knowledge_chunks` rows.
+- Lazy: on every admin page load that reads the gallery, run `UPDATE promotions SET status='past' WHERE status='live' AND end_at IS NOT NULL AND end_at <= <now>` and DELETE expired `knowledge_chunks` rows (matched by `source_kind='promo' AND expires_at <= <now>`). 2 SQL writes per admin load when expiries are pending; no-op otherwise.
+- No background scheduler in v0 — if no admin loads the page for a day, expiry waits until next load. Customer-facing retrieval still filters expired rows in `retrieve()`, so a forgotten Stop doesn't surface stale promos to customers even when the admin lazy-expire hasn't fired yet.
+
+**Promo retrieval defense (locked):** `retrieve()` returns the standard top-K. The pipeline ALSO fetches the most-recent Live promo (most-recent `created_at`; tie-break by soonest `end_at`) and appends it as chunk K+1 with a fixed mid-range score. This guarantees Yuna sees the Live promo when a customer asks about deals, regardless of cosine similarity rankings. Edge case: zero Live promos → no extra chunk, top-K only.
+
+**Empty state (no promos):** Left-aligned, two sentences:
+> No promotions yet.
+> Promotions Yuna can answer about. Add your first to get started.
+
+`[ + New promo ]` CTA below. No illustration. No 3-step starter (Promotions is not a gate the way Knowledge is).
+
+**Edge:**
+- A draft with no image renders a dotted-border placeholder card in `--surface-2` showing a 16 px `+ image` icon. The new-promo flow asks for the image first, before the title, so this state is rare in normal usage.
+- Multiple Live promos visible at once is intentional, not a bug. The gallery's vertical density makes it obvious when there are too many overlapping offers — a useful side-effect that nudges the owner to think about LLM context bloat without us having to write a rule.
+
+**Out of scope for v0:**
+- Multi-language promo body (EN promo content arrives when the second clinic onboards a non-Thai audience).
+- Inline performance metrics on the card (impressions, click-through) — the clinic looks at Line OA Manager.
+- Drag-to-reorder — status + date dictates ordering.
+- Customer-facing tag segmentation for promo audiences — Pro tier, deferred per Broadcasts v0 scope.
+
 ### Settings
 **Purpose:** Owner configures everything that affects Yuna's behavior, billing, and team.
 **Information hierarchy — nine independently-saving sections, each its own collapsible card. DO NOT cram into one scrolling page:**
@@ -89,6 +187,9 @@ Every feature ships with all five states designed. Missing states = engineer shi
 | Knowledge — editor | Editor placeholder shimmer | "Pick a document from the tree or click Add Document." | "Failed to save — your edits are kept locally. Retry." | Save → "Saved" → fades to "Saved 8s ago" | Auto-saved draft toast every 30s |
 | Bookings — queue | Skeleton cards (3) | "No pending bookings. New requests appear here when a customer commits in chat." + link to a sample chat | "Couldn't load bookings. Retry." | Confirm → card slides to Confirmed section with a green check | Missing-fields cards highlighted yellow with "needs phone" badge |
 | Broadcasts — composer | n/a (instant) | n/a (always usable) | If image upload fails: inline below image area "Couldn't upload. Try a smaller image or paste a Line CDN URL." | Send → progress bar (recipients reached / total) → toast "Sent to 4,210 / 4,210 customers" | Line stopped the send mid-flight (quota / OA suspended / API error): broadcast appears in the log as `Stopped early` with the partial count (e.g. `3,400 / 4,210`) and a tooltip showing the Line error response. No in-app quota readout; the owner's source of truth for remaining quota is Line OA Manager. |
+| Promotions — gallery | Skeleton card grid (3 placeholders, 4:3 aspect, exact card dimensions) | Left-aligned two-line message + `+ New promo` CTA. No illustration, no starter wizard. | "Couldn't load promotions. Retry." | New draft card slides in at the top of the Drafts section with a brief `--border-subtle` → `--border` outline pulse (160 ms). | Some cards load, others fail: failed cards render with a single-line error in the card body and a small Retry ghost button. Section count reflects what loaded. |
+| Promotions — editor (slide-over) | Editor field skeletons inside the slide-over (does not block the gallery behind it) | n/a — slide-over only opens with content (new or existing) | Save fails: inline toast "Couldn't save. Your edits are kept locally — retry?" Image URL invalid or unreachable: inline below the URL field "Image URL didn't load. Paste a different URL." | `Save` → toast "Saved" → fades to "Saved 8s ago". `Go live` → status pill flips green; toast "Live. Yuna is using this · in chat in ~30s." | Body changed on a Live promo: re-embed only fires on explicit Save (not per-keystroke), toast "Saved. Yuna is using the new version · in chat in ~30s." Status stays Live throughout. |
+| Promotions — auto-expire | n/a (server-side) | n/a | DLQ after 3 retries on the embedding-removal step; audit_events entry visible to owner. | Card moves from Live to Past at midnight clinic-local; embedding row deleted; audit_events entry. No customer-facing notice. | n/a |
 | Settings — any section | Skeleton fields per section | n/a (always has defaults) | "Couldn't save. Your changes are kept locally — retry?" | Save → toast "Saved" → audit log entry in background | Field-level validation: red inline text below the field, never a global error |
 | Customer first-contact consent (Line) | n/a | n/a | If Line API fails, customer sees nothing; server-side retry | Customer sees Thai consent message + 2 quick-reply buttons ("ยินยอม" / "สอบถามก่อน") | n/a |
 | Aftercare D1/D7 send | n/a (server-side) | n/a | DLQ after 3 retries; `audit_events` entry visible to staff | Sent → `audit_events` entry + delivered tag in customer's conversation | LLM-judge classifier blocks an aftercare reply: doesn't send, escalates to staff inbox with "auto-blocked: diagnosis language detected" |
@@ -241,3 +342,10 @@ Nothing. Yuna is greenfield. Every component, screen, and visual decision is bei
 | T8 | P2 | ~4h / ~15min | sse-inbox | Real-time Inbox updates via SSE with polling fallback | Unresolved #4 — Inbox real-time |
 | T9 | P2 | ~2h / ~10min | staff-handoff | Auto-send "เจ้าหน้าที่กำลังตอบกลับค่ะ" on takeover (once per handoff) | Unresolved #5 — staff handoff UX |
 | T10 | P3 | ~1h / ~5min | consent-copy | Clinic #1's lawyer vets short + long Thai consent text | Unresolved #7 — consent copy |
+| T11 | P1 | ~2h / ~10min | promotions-schema | Add `promotions` table per spec (id, title, body, image_url, video_url, status enum draft/live/past, start_at, end_at, created_at, updated_at). Add `expires_at BIGINT NULL` and `source_kind TEXT DEFAULT 'knowledge'` columns to `knowledge_chunks` via idempotent ALTER. Run via existing `npm run db:migrate` | Architecture D2, D6 |
+| T12 | P1 | ~30min / ~5min | knowledge-admin-filter | `repo.ts:listKnowledgeDocs()` MUST filter `WHERE source_kind = 'knowledge'`. Regression — without this fix, going-live a promo silently leaks it into the Knowledge admin tree | Critical regression, Step 0 |
+| T13 | P1 | ~1h / ~10min | promotions-rag-filter | `rag.ts:retrieve()` MUST add `WHERE expires_at IS NULL OR expires_at > <now>`. Regression — without this, expired promos linger in retrieval until manual Stop fires | Critical regression, Step 0 |
+| T14 | P1 | ~1h / ~10min | promotions-rag-inject | Add second query in `retrieve()` (or wrap in `pipeline.ts`) that fetches the most-recent Live promo and appends it to the chunk array. Ensures Yuna sees the promo regardless of cosine ranking | Architecture D3 |
+| T15 | P2 | ~1d / ~45min | promotions-page | Build `app/promotions/` page: gallery + 3 status sections (Live/Drafts/Past) + slide-over editor. Image URL paste only (no upload). No broadcast toggle. Manual Go Live / Stop. Lazy expire on page load | Promotions screen inventory + D4/D5 |
+| T16 | P2 | ~1h / ~10min | promotions-actions | Server actions: createPromotion, updatePromotion, goLive (atomic: status flip + insertKnowledgeChunk with source_kind='promo'), stop (atomic: status flip + delete chunks), lazy-expire helper called from the page loader | Architecture D4 lazy expire |
+| T17 | P3 | ~30min / ~5min | promotions-audit | Add 'Promotions' section to audit_log writes on every status transition (created/edited/go-live/stop/expired). Reuses existing `appendAudit()` | Operational visibility |
