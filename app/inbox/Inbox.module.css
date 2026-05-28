@@ -472,6 +472,11 @@
   word-wrap: break-word;
   max-width: 100%;
 }
+.bubbleWithMedia {
+  display: grid;
+  gap: var(--space-sm);
+  padding: 6px;
+}
 .bubbleCustomer {
   background: var(--surface);
   color: var(--fg);
@@ -491,6 +496,14 @@
   color: var(--cta-fg);
   border: 1px solid var(--cta-fill);
   border-bottom-right-radius: var(--radius-sm);
+}
+.messageMedia {
+  display: block;
+  width: min(320px, 60vw);
+  max-height: 360px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  background: #000;
 }
 
 .msgMetaBottom {
@@ -599,7 +612,7 @@
 }
 .composerInput {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
   gap: var(--space-sm);
   align-items: end;
 }
@@ -629,6 +642,45 @@
   align-items: center;
   color: var(--fg-subtle);
   font-size: 12px;
+}
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.attachmentPreview {
+  display: inline-grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: var(--space-sm);
+  align-items: center;
+  max-width: 420px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.attachmentPreview img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.attachmentPreview div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.attachmentPreview span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--fg-muted);
 }
 
 /* ---------- Right rail ---------- */

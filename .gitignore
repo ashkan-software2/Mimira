@@ -9,3 +9,10 @@ next-env.d.ts
 .DS_Store
 .gstack/
 .claude/worktrees/
+
+# Local app data and uploaded media.
+data/yuna.db
+data/yuna.db-journal
+data/yuna.db-wal
+data/yuna.db-shm
+public/uploads/

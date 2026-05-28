@@ -1,5 +1,5 @@
 /**
- * Seed knowledge_chunks from pre-chunked files in demo/chunks/.
+ * Seed knowledge_chunks from pre-chunked files in chunks/.
  *
  * Filename convention: `<source_doc>__NNNN.txt`. The part before `__` becomes
  * the source_doc identifier in the DB; the rest is just an ordering suffix

@@ -31,6 +31,11 @@ export function verifyLineSignature(rawBody: string, signature: string | null): 
 }
 
 type LineTextMessage = { type: "text"; text: string };
+type LineImageMessage = {
+  type: "image";
+  originalContentUrl: string;
+  previewImageUrl: string;
+};
 
 async function lineFetch(path: string, init: RequestInit): Promise<Response> {
   const res = await fetch(`${LINE_API}${path}`, {
@@ -62,6 +67,43 @@ export async function pushText(toUserId: string, text: string): Promise<void> {
     method: "POST",
     body: JSON.stringify({ to: toUserId, messages }),
   });
+}
+
+export async function pushImage(
+  toUserId: string,
+  originalContentUrl: string,
+  previewImageUrl: string
+): Promise<void> {
+  const messages: LineImageMessage[] = [
+    { type: "image", originalContentUrl, previewImageUrl },
+  ];
+  await lineFetch("/v2/bot/message/push", {
+    method: "POST",
+    body: JSON.stringify({ to: toUserId, messages }),
+  });
+}
+
+export async function getMessageContent(messageId: string): Promise<{
+  contentType: string;
+  data: Buffer;
+}> {
+  const res = await fetch(`${LINE_API}/v2/bot/message/${messageId}/content`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${channelAccessToken()}`,
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`LINE content ${messageId} ${res.status}: ${body}`);
+  }
+  const contentType =
+    res.headers.get("content-type")?.split(";")[0]?.trim() ||
+    "application/octet-stream";
+  return {
+    contentType,
+    data: Buffer.from(await res.arrayBuffer()),
+  };
 }
 
 export type LineProfile = {

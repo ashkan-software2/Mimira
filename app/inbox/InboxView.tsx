@@ -80,6 +80,10 @@ export function InboxView({
   const [query, setQuery] = useState("");
   const [thread, setThread] = useState<ThreadResponse | null>(null);
   const [draft, setDraft] = useState("");
+  const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [attachedPreviewUrl, setAttachedPreviewUrl] = useState<string | null>(
+    null
+  );
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -165,6 +169,16 @@ export function InboxView({
     [thread, active]
   );
 
+  useEffect(() => {
+    if (!attachedImage) {
+      setAttachedPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(attachedImage);
+    setAttachedPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [attachedImage]);
+
   async function toggleFlag(flag: PresetFlag, on: boolean) {
     if (!active) return;
     const target = active.id;
@@ -246,14 +260,42 @@ export function InboxView({
 
   async function sendStaffReply() {
     const text = draft.trim();
-    if (!text || !active || sending) return;
+    if ((!text && !attachedImage) || !active || sending) return;
     setSending(true);
     setSendError(null);
     try {
+      let mediaPayload: {
+        media: NonNullable<ThreadMessage["media"]>;
+        publicUrl: string | null;
+      } | null = null;
+      if (attachedImage) {
+        const form = new FormData();
+        form.set("file", attachedImage);
+        const upload = await fetch("/api/inbox/upload", {
+          method: "POST",
+          body: form,
+        });
+        if (!upload.ok) {
+          const body = await upload.text();
+          setSendError(body || `Upload HTTP ${upload.status}`);
+          return;
+        }
+        const body = (await upload.json()) as {
+          media: NonNullable<ThreadMessage["media"]>;
+          publicUrl: string | null;
+        };
+        mediaPayload = body;
+      }
+
       const res = await fetch("/api/inbox/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId: active.id, text }),
+        body: JSON.stringify({
+          customerId: active.id,
+          text,
+          media: mediaPayload?.media,
+          mediaPublicUrl: mediaPayload?.publicUrl,
+        }),
       });
       if (!res.ok) {
         const body = await res.text();
@@ -261,6 +303,7 @@ export function InboxView({
         return;
       }
       setDraft("");
+      setAttachedImage(null);
       refreshThread(active.id);
       refreshList();
     } catch (err) {
@@ -369,6 +412,19 @@ export function InboxView({
               ) : (
                 <div className={styles.composerStaff}>
                   <div className={styles.composerInput}>
+                    <label className={`${styles.btn} ${styles.btnSecondary}`}>
+                      Image
+                      <input
+                        className={styles.fileInput}
+                        type="file"
+                        accept="image/*"
+                        disabled={sending}
+                        onChange={(e) => {
+                          setAttachedImage(e.target.files?.[0] ?? null);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
                     <textarea
                       ref={textareaRef}
                       value={draft}
@@ -380,11 +436,27 @@ export function InboxView({
                     <button
                       className={`${styles.btn} ${styles.btnPrimary}`}
                       onClick={sendStaffReply}
-                      disabled={!draft.trim() || sending}
+                      disabled={(!draft.trim() && !attachedImage) || sending}
                     >
                       {sending ? "Sending…" : "Send"}
                     </button>
                   </div>
+                  {attachedPreviewUrl && attachedImage && (
+                    <div className={styles.attachmentPreview}>
+                      <img src={attachedPreviewUrl} alt="" />
+                      <div>
+                        <span>{attachedImage.name}</span>
+                        <button
+                          className={`${styles.btn} ${styles.btnGhost} ${styles.btnGhostSmall}`}
+                          type="button"
+                          onClick={() => setAttachedImage(null)}
+                          disabled={sending}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className={styles.composerStaffToolbar}>
                     <span>Yuna is paused for this thread.</span>
                     <span>·</span>
@@ -585,11 +657,42 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
           </span>
         ) : null}
       </div>
-      <div className={`${styles.bubble} ${bubbleClass}`}>{message.text}</div>
+      <div
+        className={`${styles.bubble} ${bubbleClass} ${
+          message.media ? styles.bubbleWithMedia : ""
+        }`}
+      >
+        {message.media && <MessageMedia media={message.media} />}
+        {(!message.media || !isMediaPlaceholder(message.text)) && (
+          <div>{message.text}</div>
+        )}
+      </div>
       <div className={styles.msgMetaBottom}>
         <time>{timeOnly(message.createdAt)}</time>
       </div>
     </div>
+  );
+}
+
+function isMediaPlaceholder(text: string): boolean {
+  return text === "[image]" || text === "[video]";
+}
+
+function MessageMedia({ media }: { media: NonNullable<ThreadMessage["media"]> }) {
+  if (media.kind === "image") {
+    return (
+      <a href={media.url} target="_blank" rel="noreferrer">
+        <img className={styles.messageMedia} src={media.url} alt="Chat upload" />
+      </a>
+    );
+  }
+  return (
+    <video
+      className={styles.messageMedia}
+      src={media.url}
+      controls
+      preload="metadata"
+    />
   );
 }
 

@@ -18,6 +18,12 @@ export type ThreadMessage = {
   createdAt: number;
   needsAttention: boolean;
   attentionResolvedAt: number | null;
+  media: {
+    kind: "image" | "video";
+    url: string;
+    mimeType: string;
+    fileName?: string;
+  } | null;
 };
 
 export type ThreadResponse = {

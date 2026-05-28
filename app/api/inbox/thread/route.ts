@@ -3,6 +3,7 @@ import {
   allMessagesForCustomer,
   getCustomerById,
   messageAttentionResolvedAt,
+  messageMedia,
   messageNeedsAttention,
   parseFlags,
 } from "@/lib/repo";
@@ -42,6 +43,7 @@ export async function GET(req: Request) {
       createdAt: m.created_at,
       needsAttention: messageNeedsAttention(m),
       attentionResolvedAt: messageAttentionResolvedAt(m),
+      media: messageMedia(m),
     })),
   });
 }

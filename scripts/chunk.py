@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Chunker for the demo RAG ingest pipeline.
+Chunker for the RAG ingest pipeline.
 
 Reads a knowledge text file (clinic notes are loosely formatted: bullet lists
 with bare-line section headers, no markdown `#` syntax), splits it into
 ~500-character chunks that preserve their section heading as context, and
-writes each chunk as its own .txt file under demo/chunks/. Downstream the
-ingest step (see demo/scripts/seed-knowledge.ts) embeds each chunk and inserts
+writes each chunk as its own .txt file under chunks/. Downstream the
+ingest step (see scripts/seed-knowledge.ts) embeds each chunk and inserts
 into the `knowledge_chunks` table.
 
 Strategy
@@ -25,9 +25,9 @@ Strategy
 
 Usage
 -----
-    python3 demo/scripts/chunk.py [INPUT] [--out DIR] [--target N]
+    python3 scripts/chunk.py [INPUT] [--out DIR] [--target N]
 
-INPUT defaults to demo/data/sample_clinic_knowledge. If INPUT is a directory,
+INPUT defaults to data/sample_clinic_knowledge. If INPUT is a directory,
 every regular file inside it is chunked.
 """
 
@@ -228,13 +228,13 @@ def main() -> int:
     parser.add_argument(
         "input",
         nargs="?",
-        default="demo/data/sample_clinic_knowledge",
-        help="Input file or directory (default: demo/data/sample_clinic_knowledge)",
+        default="data/sample_clinic_knowledge",
+        help="Input file or directory (default: data/sample_clinic_knowledge)",
     )
     parser.add_argument(
         "--out",
-        default="demo/chunks",
-        help="Output directory (default: demo/chunks)",
+        default="chunks",
+        help="Output directory (default: chunks)",
     )
     parser.add_argument(
         "--keep",

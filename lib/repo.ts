@@ -116,6 +116,17 @@ type AttentionMeta = {
   attention_resolved_by?: unknown;
 };
 
+export type MessageMedia = {
+  kind: "image" | "video";
+  url: string;
+  mimeType: string;
+  fileName?: string;
+};
+
+type MediaMeta = {
+  media?: unknown;
+};
+
 function parseAttentionMeta(m: Message | null | undefined): AttentionMeta | null {
   if (!m || !m.channel_meta) return null;
   try {
@@ -139,6 +150,27 @@ export function messageAttentionResolvedAt(
   return typeof meta.attention_resolved_at === "number"
     ? meta.attention_resolved_at
     : null;
+}
+
+export function messageMedia(m: Message | null | undefined): MessageMedia | null {
+  if (!m || !m.channel_meta) return null;
+  let meta: MediaMeta | null;
+  try {
+    meta = JSON.parse(m.channel_meta) as MediaMeta;
+  } catch {
+    return null;
+  }
+  const media = meta?.media;
+  if (!media || typeof media !== "object") return null;
+  const raw = media as Record<string, unknown>;
+  if (raw.kind !== "image" && raw.kind !== "video") return null;
+  if (typeof raw.url !== "string" || typeof raw.mimeType !== "string") return null;
+  return {
+    kind: raw.kind,
+    url: raw.url,
+    mimeType: raw.mimeType,
+    fileName: typeof raw.fileName === "string" ? raw.fileName : undefined,
+  };
 }
 
 // Returns the set of customer ids that have at least one AI message flagged

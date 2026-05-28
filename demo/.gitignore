@@ -1,5 +1,0 @@
-# SQLite database file + WAL/SHM journals are local-only.
-data/yuna.db
-data/yuna.db-journal
-data/yuna.db-wal
-data/yuna.db-shm

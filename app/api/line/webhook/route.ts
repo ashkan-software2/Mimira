@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { verifyLineSignature, getProfile, replyText, APOLOGY_THAI } from "@/lib/line";
+import {
+  verifyLineSignature,
+  getMessageContent,
+  getProfile,
+  replyText,
+  APOLOGY_THAI,
+} from "@/lib/line";
+import { savePublicMedia, type ChatMedia } from "@/lib/media";
 import {
   getCustomerByLineId,
   insertMessage,
@@ -63,14 +70,36 @@ async function handleEvent(ev: LineEvent): Promise<void> {
     customer = await upsertCustomer(userId, profile?.displayName ?? null);
   }
 
-  // Non-text messages: log and send a static Thai apology, stop.
+  // Non-text messages: log media previews for staff, send a static Thai apology, stop.
   if (userEvent.message.type !== "text") {
+    let media: ChatMedia | undefined;
+    if (
+      userEvent.message.type === "image" ||
+      userEvent.message.type === "video"
+    ) {
+      try {
+        const content = await getMessageContent(userEvent.message.id);
+        media = await savePublicMedia({
+          bytes: content.data,
+          mimeType: content.contentType,
+          kind: userEvent.message.type,
+          folder: "line",
+        });
+      } catch (err) {
+        console.error("[line/webhook] failed to save message content", err);
+      }
+    }
+
     await insertMessage({
       customerId: customer.id,
       direction: "in",
       text: `[${userEvent.message.type}]`,
       sentBy: "customer",
-      channelMeta: { messageId: userEvent.message.id, kind: userEvent.message.type },
+      channelMeta: {
+        messageId: userEvent.message.id,
+        kind: userEvent.message.type,
+        media,
+      },
     });
     try {
       await replyText(replyToken, APOLOGY_THAI);
