@@ -496,7 +496,7 @@
   color: var(--fg-muted);
   line-height: 1.3;
 }
-.badgeYuna {
+.badgeMimira {
   color: var(--ai-accent);
   background: var(--ai-accent-bg);
   border-color: color-mix(in srgb, var(--ai-accent) 22%, var(--ai-accent-bg));
@@ -562,7 +562,7 @@
   color: var(--fg-muted);
   padding-top: 2px;
 }
-.whoYuna {
+.whoMimira {
   color: var(--ai-accent);
   font-weight: 500;
 }
@@ -571,7 +571,7 @@
   color: var(--fg);
   line-height: 1.45;
 }
-.turnText .badgeYuna { margin-right: 4px; }
+.turnText .badgeMimira { margin-right: 4px; }
 .remove {
   appearance: none;
   background: transparent;

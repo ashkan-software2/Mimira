@@ -621,7 +621,7 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
     message.sentBy === "customer"
       ? styles.bubbleCustomer
       : message.sentBy === "ai"
-        ? styles.bubbleYuna
+        ? styles.bubbleMimira
         : styles.bubbleStaff;
 
   const author =
@@ -640,7 +640,7 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
       <div className={styles.msgMetaTop}>
         <span className={styles.msgAuthor}>{author}</span>
         {message.sentBy === "ai" && (
-          <span className={`${styles.badge} ${styles.badgeYuna}`}>Mimira</span>
+          <span className={`${styles.badge} ${styles.badgeMimira}`}>Mimira</span>
         )}
         {message.needsAttention ? (
           <span className={`${styles.badge} ${styles.badgeAttention}`}>

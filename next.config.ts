@@ -4,8 +4,8 @@ import type { NextConfig } from "next";
 // `*` does NOT cross dots. That means a bare `"*"` won't match a literal IPv4
 // like `52.38.207.78` — server actions then 403 silently and buttons appear
 // dead. serve.sh discovers the EC2 public IP at boot and passes it through
-// `YUNA_DEV_ORIGIN`; we append it here.
-const extraDevOrigin = process.env.YUNA_DEV_ORIGIN?.trim();
+// `MIMIRA_DEV_ORIGIN`; we append it here.
+const extraDevOrigin = process.env.MIMIRA_DEV_ORIGIN?.trim();
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

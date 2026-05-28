@@ -1274,7 +1274,7 @@ export function SettingsView(props: Props) {
             title={
               <>
                 AI brain{" "}
-                <span className={`${styles.badge} ${styles.badgeYuna}`}>
+                <span className={`${styles.badge} ${styles.badgeMimira}`}>
                   Mimira
                 </span>
               </>
@@ -1431,7 +1431,7 @@ export function SettingsView(props: Props) {
             title={
               <>
                 Kill switch{" "}
-                <span className={`${styles.badge} ${styles.badgeYuna}`}>
+                <span className={`${styles.badge} ${styles.badgeMimira}`}>
                   Mimira
                 </span>
               </>
@@ -1556,11 +1556,11 @@ export function SettingsView(props: Props) {
                       </button>
                     </div>
                     <div className={styles.turn}>
-                      <span className={`${styles.who} ${styles.whoYuna}`}>
+                      <span className={`${styles.who} ${styles.whoMimira}`}>
                         Mimira
                       </span>
                       <div className={styles.turnText}>
-                        <span className={`${styles.badge} ${styles.badgeYuna}`}>
+                        <span className={`${styles.badge} ${styles.badgeMimira}`}>
                           Mimira
                         </span>
                         {d.assistant_text}

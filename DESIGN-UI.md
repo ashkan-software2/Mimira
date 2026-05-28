@@ -248,7 +248,7 @@ Rules:
 
 The `Mimira` badge:
 ```html
-<span class="badge badge-yuna">Mimira</span>
+<span class="badge badge-mimira">Mimira</span>
 ```
 Renders ~10.5 px, uppercase letterforms, `--ai-accent` foreground on `--ai-accent-bg`. Single rule: every model-generated message gets one, every staff message does not.
 

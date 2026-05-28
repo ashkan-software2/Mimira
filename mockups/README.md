@@ -18,7 +18,7 @@ The canonical path: serve from the workspace VM on port `8042`, bound to all int
 The full recipe is in [`serve.sh`](./serve.sh). Run it any time:
 
 ```bash
-bash /home/ubuntu/workspace/Yuna/mockups/serve.sh
+bash ./serve.sh
 ```
 
 It is idempotent: kills any prior server on 8042, restarts bound to `0.0.0.0`, fetches the EC2 public IPv4 via IMDSv2, self-tests reachability, and prints the URL. Sample output:

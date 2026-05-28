@@ -63,7 +63,7 @@ fi
   PUBLIC_IP=$(curl -s --max-time 3 https://api.ipify.org 2>/dev/null || true)
 
 # 4. Boot dev server bound to all interfaces.
-YUNA_DEV_ORIGIN="${PUBLIC_IP}" \
+MIMIRA_DEV_ORIGIN="${PUBLIC_IP}" \
   nohup npx next dev -H 0.0.0.0 -p "$PORT" > "$LOG" 2>&1 &
 disown
 SERVER_PID=$!

@@ -11,8 +11,8 @@ next-env.d.ts
 .claude/worktrees/
 
 # Local app data and uploaded media.
-data/yuna.db
-data/yuna.db-journal
-data/yuna.db-wal
-data/yuna.db-shm
+data/mimira.db
+data/mimira.db-journal
+data/mimira.db-wal
+data/mimira.db-shm
 public/uploads/

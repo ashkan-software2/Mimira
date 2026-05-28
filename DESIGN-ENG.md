@@ -369,7 +369,7 @@ Synthesized from this review's findings. Each task derives from a specific decis
 | ET15 | P1 | ~2h / ~15min | tests | Critical-path test scaffolding (all 11 from D13) | Test review T1 (D13) |
 | ET16 | P2 | ~2h / ~15min | docs | Hosting decision documentation (Singapore + BKK migration trigger) | Outside voice + D22c |
 
-> Full JSONL form: `~/.gstack/projects/ashkan-software2-Yuna/tasks-eng-review-20260525-161034.jsonl` (consumed by `/autoplan`).
+> Full JSONL form: `~/.gstack/projects/ashkan-software2-Mimira/tasks-eng-review-20260525-161034.jsonl` (consumed by `/autoplan`).
 
 > Test plan with full coverage diagram + 53-path audit: see **TEST-PLAN.md** in this repo.
 
