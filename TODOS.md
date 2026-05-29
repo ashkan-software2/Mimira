@@ -4,7 +4,7 @@ Deferred items captured during planning. Each entry: WHAT, WHY, PROS, CONS, CONT
 
 ## Shipped documentation updates
 
-- **Agent workflow clarification** — **DONE 2026-05-29, commit pending.** `AGENTS.md` and `CLAUDE.md` now state that agents should scan relevant `.md` docs broadly before work, keep in-progress markers local-only, and commit/push only completed work or coherent completed chunks.
+- **Agent workflow clarification** — **DONE 2026-05-29, commit `052f343`.** `AGENTS.md` and `CLAUDE.md` now state that agents should scan relevant `.md` docs broadly before work, keep in-progress markers local-only, and commit/push only completed work or coherent completed chunks.
 
 ## Post-v0 evals (deferred from D14)
 
