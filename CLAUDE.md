@@ -4,6 +4,13 @@
 - `mockups/` — static HTML visual references. The real app must match the layout and tokens here.
 - `DESIGN.md`, `DESIGN-DEMO.md`, `DESIGN-ENG.md`, `DESIGN-UX.md`, `DESIGN-UI.md`, `TEST-PLAN.md`, `TODOS.md` — shared design + planning docs at the worktree root. Read these before making product, architecture, or visual decisions. Keep app code in the root app folders above and never overwrite the shared docs without explicit user approval.
 
+## Task completion protocol
+
+When you finish a task (or a coherent chunk of one), follow the **Task completion
+protocol** in `AGENTS.md`: mark progress in the relevant `*-TASKS.md` / `TODOS.md`
+doc, commit code + doc together, and push the current branch — automatically, without
+being asked. See `AGENTS.md` for the guardrails.
+
 ## gstack (REQUIRED — global install)
 
 **Before doing ANY work, verify gstack is installed:**
