@@ -5,7 +5,9 @@ import { NextResponse } from "next/server";
 import {
   bootstrapFirstOwner,
   getActiveTeamMemberByEmail,
+  getTeamMemberByClerkUserId,
   getTeamMemberByEmail,
+  linkClerkUserId,
   markTeamMemberActive,
   type TeamMember,
 } from "@/lib/repo";
@@ -30,20 +32,45 @@ export async function getCurrentMember(): Promise<CurrentMember | null> {
 export async function getMemberForUser(
   user: ClerkUser
 ): Promise<CurrentMember | null> {
-  const email = user?.primaryEmailAddress?.emailAddress;
+  const primary = user?.primaryEmailAddress;
+  const email = primary?.emailAddress;
   if (!user || !email) {
     return null;
   }
 
-  let member =
-    (await getActiveTeamMemberByEmail(email)) ??
-    (await getTeamMemberByEmail(email));
+  // AG5: only ever link a *verified* primary email. An unverified address can be
+  // attacker-controlled, and linking it would hand them an existing team member's
+  // account (and role). Clerk normally enforces verification before sign-in, but
+  // we re-check here so the lazy-link can never be the weak link.
+  if (primary.verification?.status !== "verified") {
+    return null;
+  }
 
+  // 1. Already bound to this Clerk account — authoritative fast path, immune to
+  //    an email being reassigned to a different person later.
+  let member = await getTeamMemberByClerkUserId(user.id);
+
+  // 2. Not yet bound: match the invited row by case-insensitive email and claim
+  //    it for this Clerk account. linkClerkUserId is guarded + idempotent, so two
+  //    concurrent sign-ins can't re-point the row, and the unique index backstops.
+  if (!member) {
+    member =
+      (await getActiveTeamMemberByEmail(email)) ??
+      (await getTeamMemberByEmail(email));
+    if (member) {
+      await linkClerkUserId(member.id, user.id);
+    }
+  }
+
+  // 3. No row at all: bootstrap the very first owner, then bind it.
   if (!member) {
     member = await bootstrapFirstOwner({
       name: displayNameForUser(user, email),
       email: email.toLowerCase(),
     });
+    if (member) {
+      await linkClerkUserId(member.id, user.id);
+    }
   }
 
   if (!member) {
@@ -54,7 +81,9 @@ export async function getMemberForUser(
   return {
     clerkUserId: user.id,
     email,
-    member,
+    // Reflect the freshly-claimed link so callers (e.g. AG13 actor) see a real
+    // clerk_user_id even on the first sign-in that performed the bind.
+    member: { ...member, clerk_user_id: user.id },
   };
 }
 

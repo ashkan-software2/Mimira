@@ -639,12 +639,13 @@ export type TeamMember = {
   pending: boolean;
   last_active_at: number | null;
   created_at: number;
+  clerk_user_id: string | null;
 };
 
 export async function listTeamMembers(): Promise<TeamMember[]> {
   const sql = await getDb();
   const rows = await sql<TeamMember[]>`
-    SELECT id, name, email, role, pending, last_active_at, created_at
+    SELECT id, name, email, role, pending, last_active_at, created_at, clerk_user_id
     FROM team_members
     ORDER BY pending ASC, role ASC, created_at ASC
   `;
@@ -656,7 +657,7 @@ export async function getActiveTeamMemberByEmail(
 ): Promise<TeamMember | null> {
   const sql = await getDb();
   const rows = await sql<TeamMember[]>`
-    SELECT id, name, email, role, pending, last_active_at, created_at
+    SELECT id, name, email, role, pending, last_active_at, created_at, clerk_user_id
     FROM team_members
     WHERE lower(email) = lower(${email})
       AND pending = false
@@ -670,12 +671,42 @@ export async function getTeamMemberByEmail(
 ): Promise<TeamMember | null> {
   const sql = await getDb();
   const rows = await sql<TeamMember[]>`
-    SELECT id, name, email, role, pending, last_active_at, created_at
+    SELECT id, name, email, role, pending, last_active_at, created_at, clerk_user_id
     FROM team_members
     WHERE lower(email) = lower(${email})
     LIMIT 1
   `;
   return rows[0] ?? null;
+}
+
+export async function getTeamMemberByClerkUserId(
+  clerkUserId: string
+): Promise<TeamMember | null> {
+  const sql = await getDb();
+  const rows = await sql<TeamMember[]>`
+    SELECT id, name, email, role, pending, last_active_at, created_at, clerk_user_id
+    FROM team_members
+    WHERE clerk_user_id = ${clerkUserId}
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
+// Bind a Clerk account to a team member. Idempotent: re-linking the same id is a
+// no-op. The `clerk_user_id IS NULL` guard means we never silently steal a Clerk
+// account away from another row — the unique index would reject that anyway, but
+// the guard makes the intent explicit and avoids a constraint error on retries.
+export async function linkClerkUserId(
+  id: string,
+  clerkUserId: string
+): Promise<void> {
+  const sql = await getDb();
+  await sql`
+    UPDATE team_members
+    SET clerk_user_id = ${clerkUserId}
+    WHERE id = ${id}
+      AND (clerk_user_id IS NULL OR clerk_user_id = ${clerkUserId})
+  `;
 }
 
 export async function markTeamMemberActive(id: string): Promise<void> {
@@ -733,6 +764,7 @@ export async function bootstrapFirstOwner(args: {
     pending: false,
     last_active_at: ts,
     created_at: ts,
+    clerk_user_id: null,
   };
 }
 
@@ -757,6 +789,7 @@ export async function insertTeamMember(args: {
     pending: args.pending,
     last_active_at: null,
     created_at: ts,
+    clerk_user_id: null,
   };
 }
 
