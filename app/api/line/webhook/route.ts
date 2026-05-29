@@ -11,6 +11,7 @@ import {
   getCustomerByLineId,
   getSettings,
   insertMessage,
+  updateSettings,
   upsertCustomer,
 } from "@/lib/repo";
 import { gateOutboundMessage, recordOutboundMessage } from "@/lib/outbound";
@@ -46,17 +47,20 @@ export async function POST(req: Request) {
     return new NextResponse("bad json", { status: 400 });
   }
 
-  const settings = await getSettings();
+  let settings = await getSettings();
+  // LINE sends the bot user id as `destination`. Rejecting on mismatch blocked
+  // all real traffic when Settings still had the seeded demo channel id.
   if (
-    body.destination &&
+    body.destination?.trim() &&
     !lineDestinationMatches(body.destination, settings.line.channel_id)
   ) {
     console.warn(
-      "[line/webhook] destination mismatch",
-      body.destination,
-      settings.line.channel_id
+      "[line/webhook] channel_id mismatch — syncing from LINE destination",
+      { stored: settings.line.channel_id, destination: body.destination }
     );
-    return new NextResponse("wrong channel", { status: 403 });
+    settings = await updateSettings("line", {
+      channel_id: body.destination.trim(),
+    });
   }
 
   const events = body.events ?? [];
@@ -154,6 +158,11 @@ async function handleEvent(ev: LineEvent): Promise<void> {
     text,
     sentBy: "customer",
     channelMeta: { messageId: userEvent.message.id },
+  });
+  console.info("[line/webhook] inbound text saved", {
+    customerId: customer.id,
+    lineUserId: userId,
+    preview: text.slice(0, 80),
   });
 
   if (customer.ai_paused) {
