@@ -17,7 +17,7 @@ Statuses below were reconciled against the codebase on 2026-05-29 — re-verify 
 | AG3 | P1 | `lib/auth.ts`: `requireMember`/`requireApiMember`/`withAuthedAction`, all return the member | ◑ | `requireMember` ✅, `requireApiMember` ✅, `requireOwner` ✅. **`withAuthedAction` wrapper NOT implemented** — settings uses ad-hoc `requireOwnerActor()` instead. |
 | AG4 | P1 | Schema: `clerk_user_id` UNIQUE + `lower(email)` unique index | ✅ | Done in working tree (uncommitted): `db/schema.sql` adds nullable `clerk_user_id` + `idx_team_members_clerk_user_id` UNIQUE + `idx_team_members_email_lower` UNIQUE on `lower(email)`; `TeamMember` type + selects carry `clerk_user_id`. |
 | AG5 | P1 | Hardened lazy-link (atomic, lower-email, verified primary, real actor) | ✅ | `getMemberForUser()` now: (1) rejects unverified primary emails; (2) resolves by `clerk_user_id` first (authoritative), then case-insensitive email; (3) binds the row via guarded+idempotent `linkClerkUserId()` on email-match and on bootstrap, so the link is atomic at the row level (unique index backstops concurrent sign-ins). Returned member carries the real `clerk_user_id` → unblocks AG13 actor. |
-| AG6 | P1 | Guards on all `/api/inbox/*` + Server Actions (settings/knowledge) | 🔒 | **IN PROGRESS (Mike)** — `/api/inbox/*` guarded (7 routes) ✅; `settings/actions.ts` guarded via `requireOwner` ✅. Adding `requireMember()` guard to `knowledge/actions.ts` (last gap). |
+| AG6 | P1 | Guards on all `/api/inbox/*` + Server Actions (settings/knowledge) | ✅ | `/api/inbox/*` guarded (7 routes) ✅; `settings/actions.ts` guarded via `requireOwner` ✅; `knowledge/actions.ts` `createKnowledgeDoc` now gated via `requireMember()` (commit pending). All P1 server-action/API surfaces covered. |
 | AG7 | P1 | `inviteTeamMember()` → Clerk Invitations API; restrict signup | ✅ | `sendClerkInvitation()` → `client.invitations.createInvitation()` wired into `inviteTeamMember()`. Verify signup is actually restricted to invited emails. |
 | AG8 | P1 | `ADMIN_EMAIL` bootstrap; demo seeds non-linkable in prod | ◑ | Demo non-linkable ✅ (`isDemoAccount`, seed excludes `@sukhumvit-skin.com`). **`ADMIN_EMAIL` env bootstrap NOT present** — `bootstrapFirstOwner` promotes the first signed-in user instead. |
 | AG9–AG12 | P1 | Vitest unit + 2 CRITICAL integration tests (LINE regression, direct-API 401) + e2e smoke | ☐ | **No test framework installed** — no vitest/playwright config, no app tests. The LINE-webhook regression test is mandatory per the review. |
@@ -35,7 +35,7 @@ The P1 spine is mostly built; remaining work is hardening + tests. Recommended s
 
 1. **AG4** — add `clerk_user_id` column + `lower(email)` unique index (migration). Foundation for AG5.
 2. **AG5** — harden lazy-link onto AG4 (atomic upsert, verified-primary-email).
-3. **AG6 (finish)** — add the missing guard to `knowledge/actions.ts`.
+3. ~~**AG6 (finish)** — add the missing guard to `knowledge/actions.ts`.~~ ✅ done (`requireMember()`).
 4. **AG3 (finish)** — extract `withAuthedAction` wrapper; refactor settings/knowledge actions onto it.
 5. **AG13** — thread the real linked member through as actor (depends on AG5).
 6. **AG8 (finish)** — add `ADMIN_EMAIL` bootstrap path.

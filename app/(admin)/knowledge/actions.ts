@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { requireMember } from "@/lib/auth";
 import { embedDocuments } from "@/lib/cohere";
 import { insertKnowledgeChunk } from "@/lib/repo";
 
@@ -30,6 +31,11 @@ export type CreateKnowledgeDocResult = {
 export async function createKnowledgeDoc(
   input: CreateKnowledgeDocInput
 ): Promise<CreateKnowledgeDocResult> {
+  // AG6: knowledge ingest is a privileged write (it shapes every RAG answer the
+  // clinic sends). Gate it behind an active team member so a stray POST to this
+  // Server Action endpoint from an unauthenticated session can't seed the corpus.
+  await requireMember();
+
   const title = input.title.trim();
   if (!title) throw new Error("Title is required");
 
