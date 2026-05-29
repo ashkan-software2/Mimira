@@ -81,3 +81,43 @@ Features intentionally scoped out of v0 and surfaced as locked `Pro` entry point
 - **What:** Live readout of Line OA monthly push quota in the admin (banner in Broadcasts, indicator in the top bar). See resolved entry above under "Unresolved engineering review decisions" for why v0 ships without it.
 - **Why deferred:** Real-time per-OA quota pull is operationally awkward (Line's quota endpoint has its own rate limits and per-OA refresh quirks). The clinic already sees the canonical number in Line OA Manager. Pro tier could justify the engineering work as part of a broader analytics surface.
 - **Depends on:** A clinic explicitly asking for in-app visibility; a reliable cache strategy for the Line quota endpoint.
+
+## Auth gate follow-ups (deferred during /plan-eng-review 2026-05-29)
+
+Surfaced while planning the Clerk auth gate (login/signup + whole-app gating, single-tenant). The gate itself is in scope; these four are explicitly deferred.
+
+### Multi-tenant migration (org_id + RLS) — deferred from D1
+
+- **What:** `org_id` on every table, Postgres Row-Level Security, signup-creates-org, JWT org claim, and LINE webhook routing by clinic — the multi-tenant SaaS described in DESIGN.md / DESIGN-ENG.md.
+- **Why:** Unlocks the cofounder's multi-clinic distribution channel.
+- **Pros:** Real SaaS; clinic #2 onboards in a day; matches the documented vision.
+- **Cons:** Multi-week; touches every table and every query in `lib/repo.ts` + pipeline + webhook; tenant-isolation bugs leak patient data across clinics.
+- **Context:** Deferred in D1 because the built schema is single-tenant and a second clinic isn't real yet. The Clerk auth gate is the foundation — the Clerk identity becomes the org member. Boring-by-default: don't spend the multi-tenant innovation token until clinic #2 is concrete.
+- **Depends on:** This auth gate landing first; a real second clinic as the trigger.
+
+### Server-side role enforcement: requireOwner() — deferred from D11 (P1)
+
+- **What:** A `requireOwner()` guard applied to owner-grade Server Actions in `app/settings/actions.ts` (team mutation, role change, DSAR export, LINE-secret rotation, billing).
+- **Why:** Without it, any authenticated Staff member can call Owner-only endpoints directly — server-side privilege escalation. Roles are currently UI-only.
+- **Pros:** Closes a known privilege-escalation gap; makes the existing Owner/Staff model mean something at the API; cheap given the D9 guard infra.
+- **Cons:** ~3h human / ~15 min CC. Small window of exposure until it lands.
+- **Context:** Surfaced by Codex (#6), consciously deferred by the user in D11. Authentication + membership ship now; role checks are the immediate next follow-up. **Track as P1 — this is a deferred security gap, not a nice-to-have.**
+- **Depends on:** D9 guard infrastructure (shipping in this PR).
+
+### Protect public chat media (signed URLs / authed proxy) — Codex #12
+
+- **What:** Chat images/videos are written by `lib/media.ts` `savePublicMedia()` to public Vercel Blob / `public/uploads`. Gating pages/APIs does NOT protect media URLs already referenced in threads. Add signed URLs or an authed media proxy that reuses the guard.
+- **Why:** For a skin clinic, a leaked or guessed media URL exposes patient photos even with the app gated — a real privacy/PDPA exposure.
+- **Pros:** Closes a data-exposure path the auth gate alone leaves open.
+- **Cons:** Needs a media-proxy route or signed-URL scheme + migration of existing public URLs; expands scope beyond the gate.
+- **Context:** Out of scope for the auth gate itself; surfaced by Codex outside-voice review. The proxy would reuse `requireApiMember()`.
+- **Depends on:** Auth gate (guard helpers) landing first.
+
+### Guard claim-caching for scale — deferred from D7 (P3)
+
+- **What:** Cache membership/role in Clerk session claims to drop the per-request `team_members` lookup, if request volume ever makes it matter.
+- **Why:** Avoids a per-request DB query at high traffic.
+- **Pros:** Removes the hot-path query under load.
+- **Cons:** Adds a stale-revocation window (fired staff keep access until token refresh) and a team_members↔Clerk-metadata sync to maintain.
+- **Context:** Deferred in D7 — at clinic scale (a few staff) the indexed lookup is effectively free and instant revocation is worth more than the saved query. **P3: revisit only if request volume changes the math.**
+- **Depends on:** Nothing.
