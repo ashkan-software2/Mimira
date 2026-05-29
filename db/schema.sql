@@ -90,6 +90,19 @@ CREATE TABLE IF NOT EXISTS team_members (
   created_at      BIGINT NOT NULL
 );
 
+-- Auth-gate (AG4): link a Clerk account to its team member. Nullable so members
+-- can be invited by email before they ever sign in; a unique index allows many
+-- NULLs (Postgres semantics) but at most one row per Clerk user once linked.
+ALTER TABLE team_members ADD COLUMN IF NOT EXISTS clerk_user_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_team_members_clerk_user_id
+  ON team_members(clerk_user_id);
+
+-- Case-insensitive email uniqueness. The inline `email ... UNIQUE` above is
+-- case-sensitive, so 'a@x.com' and 'A@x.com' could both insert and break the
+-- email-based lazy-link (AG5). This index makes lower(email) the real key.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_team_members_email_lower
+  ON team_members(lower(email));
+
 CREATE TABLE IF NOT EXISTS audit_log (
   id          TEXT PRIMARY KEY,
   section     TEXT NOT NULL,

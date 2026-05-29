@@ -2,7 +2,19 @@
 
 - `app/`, `lib/`, `db/`, `scripts/`, `chunks/` — the Next.js app, runtime libraries, database schema, maintenance scripts, and seeded knowledge chunks. Run the dev server with `bash serve.sh` or `npm run dev`.
 - `mockups/` — static HTML visual references. The real app must match the layout and tokens here.
-- `DESIGN.md`, `DESIGN-DEMO.md`, `DESIGN-ENG.md`, `DESIGN-UX.md`, `DESIGN-UI.md`, `TEST-PLAN.md`, `TODOS.md` — shared design + planning docs at the worktree root. Read these before making product, architecture, or visual decisions. Keep app code in the root app folders above and never overwrite the shared docs without explicit user approval.
+- `AGENTS.md`, `DESIGN.md`, `DESIGN-DEMO.md`, `DESIGN-ENG.md`, `DESIGN-UX.md`, `DESIGN-UI.md`, `TEST-PLAN.md`, `TODOS.md`, `*-TASKS.md`, and relevant `mockups/*.md` files — shared design, planning, task, and operating docs. Scan all relevant `.md` files before making product, architecture, visual, or shipping decisions; do not rely on only a hand-picked subset. Keep app code in the root app folders above and never overwrite the shared docs without explicit user approval.
+
+## Task completion protocol
+
+When you finish a task (or a coherent chunk of one), follow the **Task completion
+protocol** in `AGENTS.md`: mark progress in the relevant `*-TASKS.md` / `TODOS.md`
+doc, commit code + doc together, and push the current branch — automatically, without
+being asked. See `AGENTS.md` for the guardrails.
+
+In-progress ownership/progress markers are local-VM coordination only. Do not
+commit or push in-progress-only tracking changes; commit and push only after the
+task or coherent chunk is complete and the tracker has been resolved to its final
+state.
 
 ## gstack (REQUIRED — global install)
 
