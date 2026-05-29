@@ -68,6 +68,10 @@ async function ensureSeeded(sql: Sql): Promise<void> {
     `;
   } else {
     const row = settingsRows[0];
+    if (hasRealTeamMember && isDemoSettingsData(row.data)) {
+      await resetDemoWorkspaceForRealTeam(sql, ts);
+      return;
+    }
     if (!row.data) {
       const defaultSettings = hasRealTeamMember
         ? FRESH_SETTINGS_BLOB
@@ -133,6 +137,36 @@ async function hasNonDemoTeamMember(sql: Sql): Promise<boolean> {
     WHERE lower(email) NOT LIKE '%@sukhumvit-skin.com'
   `;
   return (row?.n ?? 0) > 0;
+}
+
+function isDemoSettingsData(raw: string | null): boolean {
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw) as Partial<SettingsBlob>;
+    return (
+      parsed.clinic?.name === "Sukhumvit Skin & Laser" ||
+      parsed.line?.channel_id === "Cf12a93e8b8a" ||
+      parsed.billing?.card_last4 === "4242"
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function resetDemoWorkspaceForRealTeam(sql: Sql, ts: number): Promise<void> {
+  await sql.begin(async (tx) => {
+    await tx`DELETE FROM customers`;
+    await tx`DELETE FROM broadcasts`;
+    await tx`DELETE FROM knowledge_chunks`;
+    await tx`DELETE FROM capacity_rules`;
+    await tx`DELETE FROM sample_dialogues`;
+    await tx`DELETE FROM audit_log`;
+    await tx`
+      UPDATE settings
+      SET brand_voice = '', data = ${JSON.stringify(FRESH_SETTINGS_BLOB)}, updated_at = ${ts}
+      WHERE id = 1
+    `;
+  });
 }
 
 export type SettingsBlob = {
