@@ -4,6 +4,8 @@
 
 The design-review appendix in [DESIGN-UX.md](DESIGN-UX.md) (8/10) covers UI/UX and visual rules; this appendix covers architecture, code quality, tests, performance, and engineering decisions. **22 decisions resolved (D1–D22), 5 outside-voice findings unresolved, 16 engineering implementation tasks (ET1–ET16).** Each decision has a D-ID for traceability in commits and PRs.
 
+> A later `/plan-eng-review` (2026-05-29) added the **Clerk auth gate** — see the [Auth Gate Review](#auth-gate-review-added-2026-05-29) section below (decisions `AGD*`, tasks `AG1–AG14`; live status in [CLERK-AUTH-TASKS.md](CLERK-AUTH-TASKS.md)).
+
 ## Engineering Review Additions
 
 These decisions resolve specific architectural gaps in [DESIGN.md](DESIGN.md). Each links to a decision ID (D1–D22).
@@ -372,6 +374,55 @@ Synthesized from this review's findings. Each task derives from a specific decis
 > Full JSONL form: `~/.gstack/projects/ashkan-software2-Mimira/tasks-eng-review-20260525-161034.jsonl` (consumed by `/autoplan`).
 
 > Test plan with full coverage diagram + 53-path audit: see **TEST-PLAN.md** in this repo.
+
+---
+
+## Auth Gate Review (added 2026-05-29)
+
+A second `/plan-eng-review` on 2026-05-29 planned a **single-tenant Clerk auth gate** (login/signup
++ whole-app gating). 13 decisions resolved (Lake Score 11/13), Codex outside-voice run (14 findings,
+all resolved). Decisions and tasks below are namespaced (`AGD*`, `AG*`) to avoid collision with the
+master `D1–D22` / `ET1–ET16` / design `T1–T10` IDs; the plan artifact numbers them `D1–D13` / `T1–T14`.
+
+> **Live implementation status (✅/◑/☐) is tracked separately in [CLERK-AUTH-TASKS.md](CLERK-AUTH-TASKS.md).** This section is the durable decision + task spec only.
+> Plan artifact: `~/.gstack/projects/ashkan-software2-Mimira/ashkan-main-design-auth-gate-20260529.md` (+ test plan & tasks JSONL alongside).
+
+### Key decisions
+
+- **AGD1 — Provider: Clerk.** Hosted auth over rolling our own.
+- **AGD2 — Signup: invite-only.** No open registration; members arrive via Clerk Invitations API.
+- **AGD3 — Enforcement: route-group gating.** Protected `(app)`/`(admin)` group vs bare `(auth)` group; `proxy.ts` allowlists `/api/line/(.*)` (LINE webhook must stay public) and avoids `auth.protect()` on matched routes (bug #8302).
+- **AGD4 — Identity link: lazy-link by email.** Clerk identity ↔ `team_members` resolved per-request; first signed-in user bootstraps as Owner. Defense-in-depth + proxy-rename folded in.
+- **Scope reduced (from master D1):** single-tenant gate only; multi-tenant (`org_id` + RLS) deferred — see [TODOS.md](TODOS.md).
+- **Performance (AGD7):** per-request indexed `team_members` lookup accepted; claim-caching deferred (P3).
+- **Hardening (AGD12):** linkage hardening bundle folded in (atomic, lower-email, verified-primary).
+- **Deferred (AGD11, P1):** `requireOwner()` server-side role enforcement — since **implemented**, see TODOS.md.
+
+### Auth-gate implementation tasks (AG1–AG14, = plan T1–T14)
+
+| ID | Priority | Component | Task | Source |
+|---|---|---|---|---|
+| AG1 | P1 | proxy/clerk | Install Clerk; `proxy.ts` allowlist `/api/line/(.*)`, avoid `auth.protect()` (bug #8302) | AGD3 |
+| AG2 | P1 | route-groups | `(auth)` bare group + `(app)` protected group | AGD3 |
+| AG3 | P1 | lib/auth | `requireMember`/`requireApiMember`/`withAuthedAction`, all return the member | AGD3 |
+| AG4 | P1 | db/schema | `clerk_user_id` UNIQUE + `lower(email)` unique index | AGD4 |
+| AG5 | P1 | lib/auth | Hardened lazy-link (atomic, lower-email, verified primary, real actor) | AGD4/AGD12 |
+| AG6 | P1 | api/actions | Guards on all `/api/inbox/*` + Server Actions (settings/knowledge) | AGD3 |
+| AG7 | P1 | settings | `inviteTeamMember()` → Clerk Invitations API; restrict signup | AGD2 |
+| AG8 | P1 | bootstrap | `ADMIN_EMAIL` bootstrap; demo seeds non-linkable in prod | AGD4 |
+| AG9–AG12 | P1 | tests | Vitest unit + 2 CRITICAL integration tests (LINE regression, direct-API 401) + e2e smoke | test review |
+| AG13 | P2 | inbox/settings | Replace hardcoded `ACTOR="Pim"` with real linked member | AGD4 |
+| AG14 | P2 | deploy | Deploy/env checklist | outside voice |
+
+### Deferred (auth gate) → TODOS.md
+Multi-tenant migration (org_id + RLS), guard claim-caching (P3). Two originally-deferred items —
+`requireOwner()` and public chat-media protection — have since shipped.
+
+### Auth-gate review report
+| Review | Runs | Status | Findings |
+|---|---|---|---|
+| Eng Review | 1 | ISSUES_OPEN (PLAN) | 13 decisions resolved; 14 tasks AG1–AG14; verdict NOT CLEARED until `/review` runs on the built diff |
+| Outside Voice (Codex) | 1 | ISSUES_FOUND | 14 findings — 5 design changes adopted, 5 hardening folded, 1 deferred, 4 → TODOS.md |
 
 ---
 

@@ -84,7 +84,9 @@ Features intentionally scoped out of v0 and surfaced as locked `Pro` entry point
 
 ## Auth gate follow-ups (deferred during /plan-eng-review 2026-05-29)
 
-Surfaced while planning the Clerk auth gate (login/signup + whole-app gating, single-tenant). The gate itself is in scope; these four are explicitly deferred.
+> The in-scope build tasks (T1–T14) are tracked step-by-step in [CLERK-AUTH-TASKS.md](CLERK-AUTH-TASKS.md). This section holds only the items the review explicitly **deferred** past the gate.
+
+Surfaced while planning the Clerk auth gate (login/signup + whole-app gating, single-tenant). The gate itself is in scope; these four were explicitly deferred. **Two of the four are now DONE** (server-side role enforcement, public-media protection); multi-tenant migration and guard claim-caching remain deferred.
 
 ### Multi-tenant migration (org_id + RLS) — deferred from D1
 
@@ -95,7 +97,9 @@ Surfaced while planning the Clerk auth gate (login/signup + whole-app gating, si
 - **Context:** Deferred in D1 because the built schema is single-tenant and a second clinic isn't real yet. The Clerk auth gate is the foundation — the Clerk identity becomes the org member. Boring-by-default: don't spend the multi-tenant innovation token until clinic #2 is concrete.
 - **Depends on:** This auth gate landing first; a real second clinic as the trigger.
 
-### Server-side role enforcement: requireOwner() — deferred from D11 (P1)
+### ~~Server-side role enforcement: requireOwner() — deferred from D11 (P1)~~ — **DONE 2026-05-29**
+
+**RESOLVED:** `requireOwner()` ships in `lib/auth.ts`; every owner-grade Server Action in `app/(admin)/settings/actions.ts` is gated through `requireOwnerActor()` → `requireOwner()`. The privilege-escalation gap is closed.
 
 - **What:** A `requireOwner()` guard applied to owner-grade Server Actions in `app/settings/actions.ts` (team mutation, role change, DSAR export, LINE-secret rotation, billing).
 - **Why:** Without it, any authenticated Staff member can call Owner-only endpoints directly — server-side privilege escalation. Roles are currently UI-only.
@@ -104,7 +108,9 @@ Surfaced while planning the Clerk auth gate (login/signup + whole-app gating, si
 - **Context:** Surfaced by Codex (#6), consciously deferred by the user in D11. Authentication + membership ship now; role checks are the immediate next follow-up. **Track as P1 — this is a deferred security gap, not a nice-to-have.**
 - **Depends on:** D9 guard infrastructure (shipping in this PR).
 
-### Protect public chat media (signed URLs / authed proxy) — Codex #12
+### ~~Protect public chat media (signed URLs / authed proxy) — Codex #12~~ — **DONE 2026-05-29**
+
+**RESOLVED (commit `edd32b4`):** `app/api/inbox/media/route.ts` is an authed media proxy gated by `requireApiMember()`. `savePublicMedia()` now writes Vercel Blob with `access: "private"`, `protectedMediaUrl()` routes all thread media through the proxy, and `lineAccessibleMediaUrl()` issues short-lived signed tokens for LINE delivery. The data-exposure path is closed.
 
 - **What:** Chat images/videos are written by `lib/media.ts` `savePublicMedia()` to public Vercel Blob / `public/uploads`. Gating pages/APIs does NOT protect media URLs already referenced in threads. Add signed URLs or an authed media proxy that reuses the guard.
 - **Why:** For a skin clinic, a leaked or guessed media URL exposes patient photos even with the app gated — a real privacy/PDPA exposure.
