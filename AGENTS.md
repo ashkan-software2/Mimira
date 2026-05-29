@@ -1,5 +1,9 @@
 # Coding Tasks
 
+This workspace is a dev VM. User-visible app changes must be shipped to the
+remote/deployment before the user can see them in their browser; local dev
+server changes are only visible inside the VM unless explicitly exposed.
+
 When spawning Claude Code sessions for coding work, tell the session to use gstack skills.
 
 Examples:

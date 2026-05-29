@@ -82,9 +82,31 @@
 .topbarRight {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
+  gap: var(--space-xs);
 }
-.avatar {
+
+.authButton,
+.authButtonPrimary {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.authButton {
+  background: var(--surface);
+  color: var(--fg);
+}
+.authButtonPrimary {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+.avatar,
+.clerkAvatar {
   width: 28px;
   height: 28px;
   border-radius: var(--radius-full);

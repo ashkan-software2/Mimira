@@ -1,0 +1,63 @@
+.page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-2xl);
+  background: var(--bg);
+}
+
+.panel {
+  width: min(100%, 430px);
+  display: grid;
+  gap: var(--space-md);
+}
+
+.brandMark {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--fg);
+  color: var(--bg);
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.panel h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.panel p {
+  margin: 0;
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.panel dl {
+  margin: var(--space-xs) 0 0;
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.panel dl div {
+  display: grid;
+  gap: 3px;
+}
+
+.panel dt {
+  color: var(--fg-muted);
+  font-size: 13px;
+}
+
+.panel dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--fg);
+}

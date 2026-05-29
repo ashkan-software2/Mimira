@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiMember } from "@/lib/auth";
 import {
   customerIdsNeedingAttention,
   listConversations,
@@ -10,6 +11,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const forbidden = await requireApiMember();
+  if (forbidden) return forbidden;
+
   const [conversations, attentionSet] = await Promise.all([
     listConversations(),
     customerIdsNeedingAttention(),

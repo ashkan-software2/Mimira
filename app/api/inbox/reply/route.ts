@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiMember } from "@/lib/auth";
 import { gateOutboundMessage, recordOutboundMessage } from "@/lib/outbound";
 import { getCustomerById, insertMessage, setAiPaused } from "@/lib/repo";
 import { pushImage, pushText } from "@/lib/line";
@@ -8,6 +9,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const forbidden = await requireApiMember();
+  if (forbidden) return forbidden;
+
   let body: {
     customerId?: string;
     text?: string;

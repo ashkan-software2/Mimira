@@ -1,5 +1,6 @@
 "use client";
 
+import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./Shell.module.css";
@@ -55,7 +56,27 @@ export function Shell({
         </nav>
 
         <div className={styles.topbarRight}>
-          <div className={styles.avatar} title="Pim · staff">ภ</div>
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button className={styles.authButton} type="button">
+                Log in
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className={styles.authButtonPrimary} type="button">
+                Sign up
+              </button>
+            </SignUpButton>
+          </Show>
+          <Show when="signed-in">
+            <UserButton
+              appearance={{
+                elements: {
+                  userButtonAvatarBox: styles.clerkAvatar,
+                },
+              }}
+            />
+          </Show>
         </div>
       </header>
 

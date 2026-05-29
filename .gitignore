@@ -16,3 +16,6 @@ data/mimira.db-journal
 data/mimira.db-wal
 data/mimira.db-shm
 public/uploads/
+
+# clerk configuration (can include secrets)
+/.clerk/

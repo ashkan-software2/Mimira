@@ -635,6 +635,25 @@ export async function listTeamMembers(): Promise<TeamMember[]> {
   return [...rows];
 }
 
+export async function getActiveTeamMemberByEmail(
+  email: string
+): Promise<TeamMember | null> {
+  const sql = await getDb();
+  const rows = await sql<TeamMember[]>`
+    SELECT id, name, email, role, pending, last_active_at, created_at
+    FROM team_members
+    WHERE lower(email) = lower(${email})
+      AND pending = false
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
+export async function markTeamMemberActive(id: string): Promise<void> {
+  const sql = await getDb();
+  await sql`UPDATE team_members SET last_active_at = ${now()} WHERE id = ${id}`;
+}
+
 export async function insertTeamMember(args: {
   name: string;
   email: string;

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiMember } from "@/lib/auth";
 import {
   addFlagToCustomer,
   getCustomerById,
@@ -16,6 +17,9 @@ const ACTOR = "Pim";
 const ALLOWED: ReadonlySet<string> = new Set(PRESET_FLAGS);
 
 export async function POST(req: Request) {
+  const forbidden = await requireApiMember();
+  if (forbidden) return forbidden;
+
   let body: { customerId?: string; flag?: string; on?: boolean };
   try {
     body = await req.json();

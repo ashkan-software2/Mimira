@@ -11,6 +11,7 @@
     "seed:knowledge": "tsx scripts/seed-knowledge.ts"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.4.2",
     "@vercel/blob": "^2.4.0",
     "next": "^16.2.6",
     "pgvector": "^0.2.0",

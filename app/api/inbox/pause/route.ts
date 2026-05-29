@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireApiMember } from "@/lib/auth";
 import { getCustomerById, setAiPaused } from "@/lib/repo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const forbidden = await requireApiMember();
+  if (forbidden) return forbidden;
+
   let body: { customerId?: string; paused?: boolean };
   try {
     body = await req.json();

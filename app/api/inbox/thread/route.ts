@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiMember } from "@/lib/auth";
 import { retentionCutoffMs } from "@/lib/settings-runtime";
 import {
   allMessagesForCustomer,
@@ -14,6 +15,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const forbidden = await requireApiMember();
+  if (forbidden) return forbidden;
+
   const url = new URL(req.url);
   const customerId = url.searchParams.get("customerId");
   if (!customerId) {
