@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiMember } from "@/lib/auth";
-import { absolutePublicUrl, savePublicMedia } from "@/lib/media";
+import { lineAccessibleMediaUrl, savePublicMedia } from "@/lib/media";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     kind: "image",
     folder: "chat",
   });
-  const publicUrl = absolutePublicUrl(media.url);
+  const publicUrl = await lineAccessibleMediaUrl(media.url);
 
   return NextResponse.json({
     media,

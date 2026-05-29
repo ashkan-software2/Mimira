@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiMember } from "@/lib/auth";
+import { protectedMediaUrl } from "@/lib/media";
 import { retentionCutoffMs } from "@/lib/settings-runtime";
 import {
   allMessagesForCustomer,
@@ -44,15 +45,18 @@ export async function GET(req: Request) {
       createdAt: customer.created_at,
       flags: parseFlags(customer.flags),
     },
-    messages: messages.map((m) => ({
-      id: m.id,
-      direction: m.direction,
-      sentBy: m.sent_by,
-      text: m.text,
-      createdAt: m.created_at,
-      needsAttention: messageNeedsAttention(m),
-      attentionResolvedAt: messageAttentionResolvedAt(m),
-      media: messageMedia(m),
-    })),
+    messages: messages.map((m) => {
+      const media = messageMedia(m);
+      return {
+        id: m.id,
+        direction: m.direction,
+        sentBy: m.sent_by,
+        text: m.text,
+        createdAt: m.created_at,
+        needsAttention: messageNeedsAttention(m),
+        attentionResolvedAt: messageAttentionResolvedAt(m),
+        media: media ? { ...media, url: protectedMediaUrl(media.url) } : null,
+      };
+    }),
   });
 }

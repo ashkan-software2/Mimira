@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { put } from "@vercel/blob";
+import { issueSignedToken, presignUrl, put } from "@vercel/blob";
 import { uuid } from "./db";
 
 const UPLOAD_ROOT = path.join(process.cwd(), "public", "uploads");
@@ -45,6 +45,33 @@ export function absolutePublicUrl(relativeUrl: string): string | null {
   }
 }
 
+export function protectedMediaUrl(url: string): string {
+  if (url.startsWith("/api/inbox/media?")) {
+    return url;
+  }
+  return `/api/inbox/media?src=${encodeURIComponent(url)}`;
+}
+
+export async function lineAccessibleMediaUrl(url: string): Promise<string | null> {
+  if (process.env.BLOB_READ_WRITE_TOKEN && isBlobUrl(url)) {
+    const validUntil = Date.now() + 10 * 60_000;
+    const token = await issueSignedToken({
+      pathname: pathnameFromBlobUrl(url),
+      operations: ["get"],
+      validUntil,
+    });
+    const { presignedUrl } = await presignUrl(token, {
+      access: "private",
+      operation: "get",
+      pathname: pathnameFromBlobUrl(url),
+      validUntil,
+    });
+    return presignedUrl;
+  }
+
+  return absolutePublicUrl(url);
+}
+
 export async function savePublicMedia(args: {
   bytes: Buffer;
   mimeType: string;
@@ -56,7 +83,7 @@ export async function savePublicMedia(args: {
 
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     const blob = await put(`uploads/${args.folder}/${fileName}`, args.bytes, {
-      access: "public",
+      access: "private",
       contentType: args.mimeType,
     });
     return {
@@ -76,4 +103,16 @@ export async function savePublicMedia(args: {
     mimeType: args.mimeType,
     fileName,
   };
+}
+
+function isBlobUrl(url: string): boolean {
+  try {
+    return new URL(url).hostname.endsWith(".blob.vercel-storage.com");
+  } catch {
+    return false;
+  }
+}
+
+function pathnameFromBlobUrl(url: string): string {
+  return new URL(url).pathname.replace(/^\/+/, "");
 }
