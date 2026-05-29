@@ -53,26 +53,32 @@ export async function closeDb(): Promise<void> {
 async function ensureSeeded(sql: Sql): Promise<void> {
   const ts = now();
 
+  const hasRealTeamMember = await hasNonDemoTeamMember(sql);
   const settingsRows = await sql<
     { brand_voice: string | null; data: string | null }[]
   >`SELECT brand_voice, data FROM settings WHERE id = 1`;
   if (settingsRows.length === 0) {
+    const defaultSettings = hasRealTeamMember
+      ? FRESH_SETTINGS_BLOB
+      : DEMO_SETTINGS_BLOB;
+    const defaultBrandVoice = hasRealTeamMember ? "" : DEFAULT_BRAND_VOICE;
     await sql`
       INSERT INTO settings (id, brand_voice, data, updated_at)
-      VALUES (1, ${DEFAULT_BRAND_VOICE}, ${JSON.stringify(
-        DEFAULT_SETTINGS_BLOB
-      )}, ${ts})
+      VALUES (1, ${defaultBrandVoice}, ${JSON.stringify(defaultSettings)}, ${ts})
     `;
   } else {
     const row = settingsRows[0];
     if (!row.data) {
+      const defaultSettings = hasRealTeamMember
+        ? FRESH_SETTINGS_BLOB
+        : DEMO_SETTINGS_BLOB;
       await sql`
         UPDATE settings
-        SET data = ${JSON.stringify(DEFAULT_SETTINGS_BLOB)}
+        SET data = ${JSON.stringify(defaultSettings)}
         WHERE id = 1
       `;
     }
-    if (row.brand_voice === LEGACY_DEFAULT_BRAND_VOICE) {
+    if (!hasRealTeamMember && row.brand_voice === LEGACY_DEFAULT_BRAND_VOICE) {
       await sql`
         UPDATE settings
         SET brand_voice = ${DEFAULT_BRAND_VOICE}, updated_at = ${ts}
@@ -84,7 +90,7 @@ async function ensureSeeded(sql: Sql): Promise<void> {
   const [capacityCount] = await sql<{ n: number }[]>`
     SELECT COUNT(*)::int AS n FROM capacity_rules
   `;
-  if (capacityCount.n === 0) {
+  if (!hasRealTeamMember && capacityCount.n === 0) {
     for (let i = 0; i < DEFAULT_CAPACITY.length; i++) {
       const r = DEFAULT_CAPACITY[i];
       await sql`
@@ -109,7 +115,7 @@ async function ensureSeeded(sql: Sql): Promise<void> {
   const [dialoguesCount] = await sql<{ n: number }[]>`
     SELECT COUNT(*)::int AS n FROM sample_dialogues
   `;
-  if (dialoguesCount.n === 0) {
+  if (!hasRealTeamMember && dialoguesCount.n === 0) {
     for (let i = 0; i < DEFAULT_DIALOGUES.length; i++) {
       const d = DEFAULT_DIALOGUES[i];
       await sql`
@@ -118,6 +124,15 @@ async function ensureSeeded(sql: Sql): Promise<void> {
       `;
     }
   }
+}
+
+async function hasNonDemoTeamMember(sql: Sql): Promise<boolean> {
+  const [row] = await sql<{ n: number }[]>`
+    SELECT COUNT(*)::int AS n
+    FROM team_members
+    WHERE lower(email) NOT LIKE '%@sukhumvit-skin.com'
+  `;
+  return (row?.n ?? 0) > 0;
 }
 
 export type SettingsBlob = {
@@ -186,7 +201,7 @@ export type SettingsBlob = {
 
 const ACTOR = "Pim";
 
-const DEFAULT_SETTINGS_BLOB: SettingsBlob = {
+const DEMO_SETTINGS_BLOB: SettingsBlob = {
   clinic: {
     name: "Sukhumvit Skin & Laser",
     timezone: "Asia/Bangkok",
@@ -247,6 +262,70 @@ const DEFAULT_SETTINGS_BLOB: SettingsBlob = {
     renews_at: Date.now() + 8 * 24 * 3600 * 1000,
     saved_at: Date.now() - 30 * 24 * 3600 * 1000,
     saved_by: "Owner",
+  },
+};
+
+export const FRESH_SETTINGS_BLOB: SettingsBlob = {
+  clinic: {
+    name: "Your clinic",
+    timezone: "Asia/Bangkok",
+    address: "",
+    hours: "",
+    languages: "",
+    saved_at: 0,
+    saved_by: "",
+  },
+  line: {
+    channel_id: "",
+    oa_name: "",
+    secret_last4: "",
+    webhook_url: "",
+    secret_rotated_at: 0,
+    last_ping_at: 0,
+    saved_at: 0,
+    saved_by: "",
+  },
+  ai: {
+    provider: "OpenAI",
+    model: "gpt-4o-mini",
+    temperature: 0.4,
+    saved_at: 0,
+    saved_by: "",
+  },
+  kill_switch: {
+    paused: false,
+    changed_at: 0,
+  },
+  aftercare: {
+    d1: false,
+    d7: false,
+    d30: false,
+    send_time: "10:00",
+    languages: "th+en",
+    saved_at: 0,
+    saved_by: "",
+  },
+  privacy: {
+    conversation_months: 24,
+    audit_months: 36,
+    saved_at: 0,
+    saved_by: "",
+  },
+  brand_voice: {
+    saved_at: 0,
+    saved_by: "",
+  },
+  billing: {
+    plan: "starter",
+    card_brand: "",
+    card_last4: "",
+    card_exp: "",
+    msg_count: 0,
+    msg_quota: 10000,
+    auto_renew: false,
+    renews_at: 0,
+    saved_at: 0,
+    saved_by: "",
   },
 };
 

@@ -1,4 +1,4 @@
-import { Placeholder } from "../_components/Placeholder";
+import { Placeholder } from "../../_components/Placeholder";
 
 export default function BroadcastsPage() {
   return (

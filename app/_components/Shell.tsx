@@ -7,22 +7,36 @@ import styles from "./Shell.module.css";
 
 type NavItem = { href: string; label: string; count?: number };
 
-const NAV: NavItem[] = [
-  { href: "/inbox", label: "Inbox", count: 7 },
-  { href: "/knowledge", label: "Knowledge" },
-  { href: "/bookings", label: "Bookings", count: 3 },
-  { href: "/broadcasts", label: "Broadcasts" },
-  { href: "/settings", label: "Settings" },
-];
+function navItems(args: {
+  inboxCount: number;
+  bookingCount: number;
+}): NavItem[] {
+  return [
+    { href: "/inbox", label: "Inbox", count: args.inboxCount || undefined },
+    { href: "/knowledge", label: "Knowledge" },
+    {
+      href: "/bookings",
+      label: "Bookings",
+      count: args.bookingCount || undefined,
+    },
+    { href: "/broadcasts", label: "Broadcasts" },
+    { href: "/settings", label: "Settings" },
+  ];
+}
 
 export function Shell({
   children,
   clinicName,
+  inboxCount,
+  bookingCount,
 }: {
   children: React.ReactNode;
   clinicName: string;
+  inboxCount: number;
+  bookingCount: number;
 }) {
   const pathname = usePathname();
+  const nav = navItems({ inboxCount, bookingCount });
 
   return (
     <div className={styles.app}>
@@ -37,7 +51,7 @@ export function Shell({
         </Link>
 
         <nav className={styles.tabs} aria-label="Primary">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link

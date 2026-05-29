@@ -1,5 +1,5 @@
 import { toSql as pgvectorToSql } from "pgvector";
-import { getDb, now, uuid, type SettingsBlob } from "./db";
+import { FRESH_SETTINGS_BLOB, getDb, now, uuid, type SettingsBlob } from "./db";
 
 export type Customer = {
   id: string;
@@ -296,6 +296,14 @@ export async function listConversations(): Promise<ConversationSummary[]> {
   return result;
 }
 
+export async function countConversations(): Promise<number> {
+  const sql = await getDb();
+  const [row] = await sql<{ n: number }[]>`
+    SELECT COUNT(*)::int AS n FROM customers
+  `;
+  return row?.n ?? 0;
+}
+
 export async function setAiPaused(
   customerId: string,
   paused: boolean
@@ -429,6 +437,14 @@ export async function countBookingsForTreatmentOnDate(
     WHERE LOWER(TRIM(treatment)) = LOWER(TRIM(${treatment}))
       AND requested_date = ${requestedDate}
       AND status <> 'cancelled'
+  `;
+  return row?.n ?? 0;
+}
+
+export async function countBookings(): Promise<number> {
+  const sql = await getDb();
+  const [row] = await sql<{ n: number }[]>`
+    SELECT COUNT(*)::int AS n FROM bookings
   `;
   return row?.n ?? 0;
 }
@@ -691,11 +707,24 @@ export async function bootstrapFirstOwner(args: {
 
   const id = uuid();
   const ts = now();
-  await sql`DELETE FROM team_members`;
-  await sql`
-    INSERT INTO team_members (id, name, email, role, pending, last_active_at, created_at)
-    VALUES (${id}, ${args.name}, ${args.email}, 'Owner', false, ${ts}, ${ts})
-  `;
+  await sql.begin(async (tx) => {
+    await tx`DELETE FROM customers`;
+    await tx`DELETE FROM broadcasts`;
+    await tx`DELETE FROM knowledge_chunks`;
+    await tx`DELETE FROM capacity_rules`;
+    await tx`DELETE FROM sample_dialogues`;
+    await tx`DELETE FROM audit_log`;
+    await tx`DELETE FROM team_members`;
+    await tx`
+      INSERT INTO team_members (id, name, email, role, pending, last_active_at, created_at)
+      VALUES (${id}, ${args.name}, ${args.email}, 'Owner', false, ${ts}, ${ts})
+    `;
+    await tx`
+      UPDATE settings
+      SET brand_voice = '', data = ${JSON.stringify(FRESH_SETTINGS_BLOB)}, updated_at = ${ts}
+      WHERE id = 1
+    `;
+  });
   return {
     id,
     name: args.name,

@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { currentUser } from "@clerk/nextjs/server";
-import { AccessDenied } from "./_components/AccessDenied";
 import { AuthSetupMissing } from "./_components/AuthSetupMissing";
-import { getSettings } from "@/lib/repo";
-import { getMemberForUser } from "@/lib/auth";
-import { Shell } from "./_components/Shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,7 +13,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const settings = await getSettings();
   const hasClerkKeys = Boolean(
     process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY
   );
@@ -45,10 +39,6 @@ export default async function RootLayout({
     );
   }
 
-  const user = await currentUser();
-  const member = user ? await getMemberForUser(user) : null;
-  const blocked = Boolean(user && !member);
-
   return (
     <html lang="en">
       <head>
@@ -64,13 +54,7 @@ export default async function RootLayout({
         />
       </head>
       <body>
-        <ClerkProvider>
-          {blocked ? (
-            <AccessDenied />
-          ) : (
-            <Shell clinicName={settings.clinic.name}>{children}</Shell>
-          )}
-        </ClerkProvider>
+        <ClerkProvider>{children}</ClerkProvider>
       </body>
     </html>
   );

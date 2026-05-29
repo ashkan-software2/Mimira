@@ -18,6 +18,10 @@ export type CurrentMember = {
   member: TeamMember;
 };
 
+export function isDemoAccount(email: string): boolean {
+  return email.toLowerCase().endsWith("@sukhumvit-skin.com");
+}
+
 export async function getCurrentMember(): Promise<CurrentMember | null> {
   const user = await currentUser();
   return getMemberForUser(user);

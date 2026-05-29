@@ -33,6 +33,9 @@ export default async function SettingsPage() {
       sinceMs: retentionCutoffMs(settings.privacy.audit_months),
     }),
   ]);
+  const lineWebhookUrl =
+    settings.line.webhook_url ||
+    (settings.line.channel_id || settings.line.oa_name ? webhookUrl : null);
   return (
     <SettingsView
       initialBrandVoice={brandVoice}
@@ -41,7 +44,7 @@ export default async function SettingsPage() {
       initialCapacity={capacity}
       initialTeam={team}
       initialAudit={audit}
-      webhookUrl={webhookUrl ?? settings.line.webhook_url}
+      webhookUrl={lineWebhookUrl ?? ""}
     />
   );
 }
