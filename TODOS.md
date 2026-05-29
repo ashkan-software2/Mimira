@@ -2,6 +2,10 @@
 
 Deferred items captured during planning. Each entry: WHAT, WHY, PROS, CONS, CONTEXT, DEPENDS-ON.
 
+## Shipped documentation updates
+
+- **Agent workflow clarification** — **DONE 2026-05-29, commit pending.** `AGENTS.md` and `CLAUDE.md` now state that agents should scan relevant `.md` docs broadly before work, keep in-progress markers local-only, and commit/push only completed work or coherent completed chunks.
+
 ## Post-v0 evals (deferred from D14)
 
 User chose to keep only the 50-turn aftercare safety eval in v0; the four additional

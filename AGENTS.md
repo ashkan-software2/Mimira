@@ -6,6 +6,17 @@ server changes are only visible inside the VM unless explicitly exposed.
 
 ## Task completion protocol (do this automatically — do not wait to be asked)
 
+Before starting implementation, scan the repo docs instead of reading only a
+hand-picked subset: review `AGENTS.md` plus every root/shared `.md` file that can
+affect the task, including task trackers, design docs, test plans, and mockup
+READMEs. Use the docs to find the relevant tracker and constraints before
+editing code.
+
+While work is underway, mark ownership or progress as in-progress only in the
+local VM. In-progress claims are coordination hints for local/concurrent agents,
+not shipped project history. Do not commit or push in-progress-only tracking
+changes.
+
 When you finish a task, or a coherent self-contained chunk of one, complete ALL
 of these before reporting back:
 
@@ -21,6 +32,9 @@ Guardrails (this repo runs concurrent agents on shared branches):
 - Only stage YOUR task's related files — never sweep in another agent's
   in-progress work. Use explicit paths, not `git add -A`.
 - Only commit/push after the work lints + typechecks clean (`npm run lint`).
+- Only commit/push once the work or coherent chunk is complete. Local
+  in-progress notes stay uncommitted until they are resolved into the final
+  tracking update.
 - Push the current branch only; never force-push or push other branches.
 
 When spawning Claude Code sessions for coding work, tell the session to use gstack skills.
