@@ -1,0 +1,7 @@
+# Remotion is a standalone product-demo video project (its own package.json,
+# lockfile and deps). It is not imported by the Next app and is not part of the
+# Vercel deployment — keep it out of the build context.
+remotion/
+
+# Shared planning/design docs — not needed at runtime.
+mockups/
