@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { gateOutboundMessage, recordOutboundMessage } from "@/lib/outbound";
 import { getCustomerById, insertMessage, setAiPaused } from "@/lib/repo";
 import { pushImage, pushText } from "@/lib/line";
 import { type ChatMedia } from "@/lib/media";
@@ -46,6 +47,14 @@ export async function POST(req: Request) {
     await setAiPaused(customer.id, true);
   }
 
+  const outboundGate = await gateOutboundMessage();
+  if (!outboundGate.allowed) {
+    return NextResponse.json(
+      { ok: false, error: outboundGate.replyText },
+      { status: 402 }
+    );
+  }
+
   try {
     if (text) {
       await pushText(customer.line_user_id, text);
@@ -81,6 +90,11 @@ export async function POST(req: Request) {
         channelMeta: { media },
       })
     );
+  }
+
+  const outboundCount = text || media ? 1 : 0;
+  for (let i = 0; i < outboundCount; i++) {
+    await recordOutboundMessage();
   }
 
   return NextResponse.json({

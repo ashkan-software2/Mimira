@@ -14,7 +14,13 @@ const NAV: NavItem[] = [
   { href: "/settings", label: "Settings" },
 ];
 
-export function Shell({ children }: { children: React.ReactNode }) {
+export function Shell({
+  children,
+  clinicName,
+}: {
+  children: React.ReactNode;
+  clinicName: string;
+}) {
   const pathname = usePathname();
 
   return (
@@ -25,7 +31,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <span>
             <span className={styles.brandName}>Mimira</span>
             <span className={styles.brandSep}> · </span>
-            <span className={styles.brandClinic}>Sukhumvit Skin &amp; Laser</span>
+            <span className={styles.brandClinic}>{clinicName}</span>
           </span>
         </Link>
 

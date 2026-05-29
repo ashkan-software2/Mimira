@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { retentionCutoffMs } from "@/lib/settings-runtime";
 import {
   allMessagesForCustomer,
   getCustomerById,
+  getSettings,
   messageAttentionResolvedAt,
   messageMedia,
   messageNeedsAttention,
@@ -23,7 +25,10 @@ export async function GET(req: Request) {
     return new NextResponse("not found", { status: 404 });
   }
 
-  const messages = await allMessagesForCustomer(customerId);
+  const settings = await getSettings();
+  const messages = await allMessagesForCustomer(customerId, {
+    sinceMs: retentionCutoffMs(settings.privacy.conversation_months),
+  });
 
   return NextResponse.json({
     customer: {

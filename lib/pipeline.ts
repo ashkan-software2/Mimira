@@ -1,13 +1,29 @@
+import type { SettingsBlob } from "./db";
+import { gateOutboundMessage, recordOutboundMessage } from "./outbound";
 import {
   addFlagToCustomer,
+  countBookingsForTreatmentOnDate,
   getBrandVoice,
   getCustomerById,
   getSettings,
   insertBooking,
   insertMessage,
   lastMessagesForCustomer,
+  listCapacityRules,
+  listSampleDialogues,
+  type CapacityRule,
+  type SampleDialogue,
 } from "./repo";
 import { retrieve, type RetrievedChunk } from "./rag";
+import {
+  formatAftercareBlock,
+  formatCapacityBlock,
+  formatClinicBlock,
+  formatLanguageBlock,
+  formatSampleDialoguesBlock,
+  matchCapacityRule,
+  retentionCutoffMs,
+} from "./settings-runtime";
 import { pushText, replyText } from "./line";
 
 const PAUSED_REPLY_TH =
@@ -22,7 +38,22 @@ function openRouterKey(): string {
   return v;
 }
 
-function model(): string {
+/** Map Settings → AI brain picker to an OpenRouter model id. */
+export function openRouterModelId(ai: SettingsBlob["ai"]): string {
+  const prefix =
+    ai.provider === "OpenAI"
+      ? "openai"
+      : ai.provider === "Anthropic"
+        ? "anthropic"
+        : "google";
+  return `${prefix}/${ai.model}`;
+}
+
+/** Clinic settings win; env override is only a fallback when AI brain is unset. */
+function resolveModel(settings: SettingsBlob): string {
+  if (settings.ai.model?.trim()) {
+    return openRouterModelId(settings.ai);
+  }
   return process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 }
 
@@ -49,15 +80,20 @@ function detectHandoff(text: string): boolean {
   return HANDOFF_PATTERNS.some((re) => re.test(text));
 }
 
-// OpenAI-compatible function-tool definition. The model emits a tool_call
-// with `arguments` as a JSON string when it detects a booking intent.
-const BOOKING_TOOL = {
-  type: "function" as const,
-  function: {
-    name: "extract_booking_intent",
-    description:
-      "Call this when the customer is requesting a booking, reschedule, or cancellation. Capture whatever details they gave; leave fields null if not mentioned. Do not invent details. After calling this, still produce a friendly text reply for the customer.",
-    parameters: {
+function bookingTool(capacityRules: CapacityRule[]) {
+  const capacityHint =
+    capacityRules.length > 0
+      ? ` Respect per-treatment daily limits from Settings: ${capacityRules
+          .map((r) => `${r.treatment} max ${r.per_day}/day`)
+          .join("; ")}.`
+      : "";
+  return {
+    type: "function" as const,
+    function: {
+      name: "extract_booking_intent",
+      description:
+        `Call this when the customer is requesting a booking, reschedule, or cancellation. Capture whatever details they gave; leave fields null if not mentioned. Do not invent details. After calling this, still produce a friendly text reply for the customer.${capacityHint}`,
+      parameters: {
       type: "object",
       properties: {
         treatment: {
@@ -83,23 +119,39 @@ const BOOKING_TOOL = {
       },
     },
   },
-};
+  };
+}
 
-function buildSystemPrompt(brandVoice: string, chunks: RetrievedChunk[]): string {
+function buildSystemPrompt(args: {
+  brandVoice: string;
+  settings: SettingsBlob;
+  capacityRules: CapacityRule[];
+  sampleDialogues: SampleDialogue[];
+  chunks: RetrievedChunk[];
+}): string {
   const knowledge =
-    chunks.length === 0
+    args.chunks.length === 0
       ? "(no knowledge retrieved for this turn)"
-      : chunks
+      : args.chunks
           .map(
             (c, i) =>
               `[${i + 1}] (${c.source_doc}, score=${c.score.toFixed(3)})\n${c.text}`
           )
           .join("\n\n");
+  const sampleBlock = formatSampleDialoguesBlock(args.sampleDialogues);
   // Brand voice owns persona, tone, language, and reply format — edit it in
-  // Settings → Brand voice. Only safety guardrails, the retrieval-grounding
-  // rule, and per-turn retrieved knowledge are injected by the system.
-  return `${brandVoice}
+  // Settings → Brand voice. Clinic, aftercare, capacity, and samples come from
+  // Settings and are injected here so changes take effect without rewriting voice.
+  return `${args.brandVoice}
 
+${formatClinicBlock(args.settings)}
+
+${formatAftercareBlock(args.settings)}
+
+${formatLanguageBlock(args.settings)}
+
+${formatCapacityBlock(args.capacityRules)}
+${sampleBlock ? `\n${sampleBlock}\n` : ""}
 # Safety guardrails (non-negotiable)
 ${SAFETY_PREAMBLE}
 
@@ -151,15 +203,17 @@ async function callModel(
   system: string,
   messages: ChatMessage[],
   temperature: number,
+  modelId: string,
+  capacityRules: CapacityRule[],
   options: { withTools: boolean } = { withTools: true }
 ): Promise<OpenAIResponse> {
   const body: Record<string, unknown> = {
-    model: model(),
+    model: modelId,
     messages: [{ role: "system", content: system }, ...messages],
     max_tokens: 800,
     temperature,
   };
-  if (options.withTools) body.tools = [BOOKING_TOOL];
+  if (options.withTools) body.tools = [bookingTool(capacityRules)];
 
   const res = await fetch(OPENROUTER_API, {
     method: "POST",
@@ -200,8 +254,9 @@ export async function runChatPipeline(args: {
   const customer = await getCustomerById(args.customerId);
   if (!customer) throw new Error(`customer ${args.customerId} not found`);
 
-  // Clinic-wide kill switch — Mimira stays silent until staff turns her back on.
   const settings = await getSettings();
+
+  // Clinic-wide kill switch — Mimira stays silent until staff turns her back on.
   if (settings.kill_switch.paused) {
     if (args.replyToken) {
       try {
@@ -217,23 +272,66 @@ export async function runChatPipeline(args: {
       sentBy: "staff",
       channelMeta: { reason: "kill_switch" },
     });
+    if (args.replyToken) {
+      await recordOutboundMessage();
+    }
     return { replyText: PAUSED_REPLY_TH, bookingId: null };
   }
 
-  const brandVoice = await getBrandVoice();
-  const history = await lastMessagesForCustomer(args.customerId, 10);
+  const outboundGate = await gateOutboundMessage();
+  if (!outboundGate.allowed) {
+    const blocked = outboundGate.replyText;
+    if (args.replyToken) {
+      try {
+        await replyText(args.replyToken, blocked);
+      } catch (err) {
+        console.error("LINE reply failed during quota block", err);
+      }
+    }
+    await insertMessage({
+      customerId: args.customerId,
+      direction: "out",
+      text: blocked,
+      sentBy: "staff",
+      channelMeta: { reason: "billing_quota" },
+    });
+    return { replyText: blocked, bookingId: null };
+  }
+
+  const [brandVoice, capacityRules, sampleDialogues] = await Promise.all([
+    getBrandVoice(),
+    listCapacityRules(),
+    listSampleDialogues(),
+  ]);
+  const historySince = retentionCutoffMs(settings.privacy.conversation_months);
+  const history = await lastMessagesForCustomer(args.customerId, 10, {
+    sinceMs: historySince,
+  });
   // Drop the inbound text from history because we add it as the final user turn.
   const trimmed = history.slice(0, -1).filter((m) => m.sent_by !== "staff");
 
   const chunks = await retrieve(args.inboundText, 5);
-  const system = buildSystemPrompt(brandVoice, chunks);
+  const system = buildSystemPrompt({
+    brandVoice,
+    settings,
+    capacityRules,
+    sampleDialogues,
+    chunks,
+  });
 
   const messages: ChatMessage[] = [
     ...toRoleMessages(trimmed),
     { role: "user", content: args.inboundText },
   ];
 
-  const response = await callModel(system, messages, settings.ai.temperature);
+  const modelId = resolveModel(settings);
+  const response = await callModel(
+    system,
+    messages,
+    settings.ai.temperature,
+    modelId,
+    capacityRules
+  );
   const choice = response.choices[0];
   if (!choice) throw new Error("OpenRouter returned no choices");
 
@@ -253,16 +351,57 @@ export async function runChatPipeline(args: {
     } catch (err) {
       console.error("[pipeline] failed to parse tool arguments", err);
     }
-    bookingId = await insertBooking({
-      customerId: args.customerId,
-      treatment: parsed.treatment ?? null,
-      requestedDate: parsed.requested_date ?? null,
-      requestedTime: parsed.requested_time ?? null,
-      notes: parsed.notes ?? null,
-    });
+    const treatment = parsed.treatment ?? null;
+    const requestedDate = parsed.requested_date ?? null;
+    let toolPayload: Record<string, unknown> = { status: "captured" };
+
+    if (treatment && requestedDate) {
+      const rule = matchCapacityRule(capacityRules, treatment);
+      if (rule) {
+        const booked = await countBookingsForTreatmentOnDate(
+          rule.treatment,
+          requestedDate
+        );
+        if (booked >= rule.per_day) {
+          toolPayload = {
+            status: "capacity_full",
+            treatment: rule.treatment,
+            requested_date: requestedDate,
+            limit_per_day: rule.per_day,
+          };
+        } else {
+          bookingId = await insertBooking({
+            customerId: args.customerId,
+            treatment,
+            requestedDate,
+            requestedTime: parsed.requested_time ?? null,
+            notes: parsed.notes ?? null,
+          });
+          toolPayload = { status: "captured", booking_id: bookingId };
+        }
+      } else {
+        bookingId = await insertBooking({
+          customerId: args.customerId,
+          treatment,
+          requestedDate,
+          requestedTime: parsed.requested_time ?? null,
+          notes: parsed.notes ?? null,
+        });
+        toolPayload = { status: "captured", booking_id: bookingId };
+      }
+    } else {
+      bookingId = await insertBooking({
+        customerId: args.customerId,
+        treatment,
+        requestedDate,
+        requestedTime: parsed.requested_time ?? null,
+        notes: parsed.notes ?? null,
+      });
+      toolPayload = { status: "captured", booking_id: bookingId };
+    }
     toolResults.push({
       id: call.id,
-      content: JSON.stringify({ status: "captured", booking_id: bookingId }),
+      content: JSON.stringify(toolPayload),
     });
   }
 
@@ -285,6 +424,8 @@ export async function runChatPipeline(args: {
         })),
       ],
       settings.ai.temperature,
+      modelId,
+      capacityRules,
       { withTools: false }
     );
     replyTextBody = (followUp.choices[0]?.message.content ?? "").trim();
@@ -322,6 +463,8 @@ export async function runChatPipeline(args: {
     sentBy: "ai",
     channelMeta: Object.keys(meta).length > 0 ? meta : undefined,
   });
+
+  await recordOutboundMessage();
 
   return { replyText: replyTextBody, bookingId };
 }

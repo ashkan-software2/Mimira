@@ -227,27 +227,48 @@ export async function resolveAttentionForCustomer(args: {
 
 export async function lastMessagesForCustomer(
   customerId: string,
-  limit: number
+  limit: number,
+  opts?: { sinceMs?: number }
 ): Promise<Message[]> {
   const sql = await getDb();
-  const rows = await sql<Message[]>`
-    SELECT * FROM messages
-    WHERE customer_id = ${customerId}
-    ORDER BY created_at DESC
-    LIMIT ${limit}
-  `;
+  const sinceMs = opts?.sinceMs;
+  const rows =
+    sinceMs !== undefined
+      ? await sql<Message[]>`
+          SELECT * FROM messages
+          WHERE customer_id = ${customerId}
+            AND created_at >= ${sinceMs}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+        `
+      : await sql<Message[]>`
+          SELECT * FROM messages
+          WHERE customer_id = ${customerId}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+        `;
   return [...rows].reverse();
 }
 
 export async function allMessagesForCustomer(
-  customerId: string
+  customerId: string,
+  opts?: { sinceMs?: number }
 ): Promise<Message[]> {
   const sql = await getDb();
-  const rows = await sql<Message[]>`
-    SELECT * FROM messages
-    WHERE customer_id = ${customerId}
-    ORDER BY created_at ASC
-  `;
+  const sinceMs = opts?.sinceMs;
+  const rows =
+    sinceMs !== undefined
+      ? await sql<Message[]>`
+          SELECT * FROM messages
+          WHERE customer_id = ${customerId}
+            AND created_at >= ${sinceMs}
+          ORDER BY created_at ASC
+        `
+      : await sql<Message[]>`
+          SELECT * FROM messages
+          WHERE customer_id = ${customerId}
+          ORDER BY created_at ASC
+        `;
   return [...rows];
 }
 
@@ -394,6 +415,22 @@ export async function insertBooking(args: {
     VALUES (${id}, ${args.customerId}, ${args.treatment}, ${args.requestedDate}, ${args.requestedTime}, ${args.notes}, 'new', ${now()})
   `;
   return id;
+}
+
+/** Bookings for a treatment on a calendar day (Settings → capacity enforcement). */
+export async function countBookingsForTreatmentOnDate(
+  treatment: string,
+  requestedDate: string
+): Promise<number> {
+  const sql = await getDb();
+  const [row] = await sql<{ n: number }[]>`
+    SELECT COUNT(*)::int AS n
+    FROM bookings
+    WHERE LOWER(TRIM(treatment)) = LOWER(TRIM(${treatment}))
+      AND requested_date = ${requestedDate}
+      AND status <> 'cancelled'
+  `;
+  return row?.n ?? 0;
 }
 
 export type KnowledgeChunk = {
@@ -678,13 +715,34 @@ export async function appendAudit(args: {
 export async function listAuditLog(opts?: {
   section?: string;
   limit?: number;
+  sinceMs?: number;
 }): Promise<AuditEntry[]> {
   const sql = await getDb();
   const limit = opts?.limit ?? 50;
+  const sinceMs = opts?.sinceMs;
+  if (opts?.section && sinceMs !== undefined) {
+    const rows = await sql<AuditEntry[]>`
+      SELECT id, section, actor, summary, created_at FROM audit_log
+      WHERE section = ${opts.section}
+        AND created_at >= ${sinceMs}
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `;
+    return [...rows];
+  }
   if (opts?.section) {
     const rows = await sql<AuditEntry[]>`
       SELECT id, section, actor, summary, created_at FROM audit_log
       WHERE section = ${opts.section}
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `;
+    return [...rows];
+  }
+  if (sinceMs !== undefined) {
+    const rows = await sql<AuditEntry[]>`
+      SELECT id, section, actor, summary, created_at FROM audit_log
+      WHERE created_at >= ${sinceMs}
       ORDER BY created_at DESC
       LIMIT ${limit}
     `;
@@ -752,18 +810,29 @@ export type CustomerExport = {
   bookings: unknown[];
 };
 
-export async function exportAllCustomers(): Promise<CustomerExport[]> {
+export async function exportAllCustomers(opts?: {
+  conversationSinceMs?: number;
+}): Promise<CustomerExport[]> {
   const sql = await getDb();
   const customers = await sql<Customer[]>`
     SELECT * FROM customers ORDER BY created_at ASC
   `;
+  const sinceMs = opts?.conversationSinceMs;
   const out: CustomerExport[] = [];
   for (const c of customers) {
-    const messages = await sql<Message[]>`
-      SELECT * FROM messages
-      WHERE customer_id = ${c.id}
-      ORDER BY created_at ASC
-    `;
+    const messages =
+      sinceMs !== undefined
+        ? await sql<Message[]>`
+            SELECT * FROM messages
+            WHERE customer_id = ${c.id}
+              AND created_at >= ${sinceMs}
+            ORDER BY created_at ASC
+          `
+        : await sql<Message[]>`
+            SELECT * FROM messages
+            WHERE customer_id = ${c.id}
+            ORDER BY created_at ASC
+          `;
     const bookings = await sql`
       SELECT * FROM bookings
       WHERE customer_id = ${c.id}

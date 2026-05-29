@@ -3,9 +3,11 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getDb, now, type SettingsBlob } from "@/lib/db";
+import { retentionCutoffMs } from "@/lib/settings-runtime";
 import {
   appendAudit,
   exportAllCustomers,
+  getSettings,
   insertSampleDialogue,
   insertTeamMember,
   listSampleDialogues,
@@ -108,10 +110,12 @@ export async function saveClinic(input: {
 export async function saveLine(input: {
   channel_id: string;
   oa_name: string;
+  webhook_url?: string;
 }): Promise<SettingsBlob> {
   const next = await updateSettings("line", {
     channel_id: input.channel_id,
     oa_name: input.oa_name,
+    ...(input.webhook_url ? { webhook_url: input.webhook_url } : {}),
     saved_at: now(),
     saved_by: ACTOR,
   });
@@ -248,10 +252,17 @@ export async function exportDsar(): Promise<{
   json: string;
   customers: number;
 }> {
-  const data: CustomerExport[] = await exportAllCustomers();
+  const settings = await getSettings();
+  const data: CustomerExport[] = await exportAllCustomers({
+    conversationSinceMs: retentionCutoffMs(
+      settings.privacy.conversation_months
+    ),
+  });
   const payload = {
     exported_at: new Date().toISOString(),
-    clinic: "Sukhumvit Skin & Laser",
+    clinic: settings.clinic.name,
+    conversation_retention_months: settings.privacy.conversation_months,
+    audit_retention_months: settings.privacy.audit_months,
     customer_count: data.length,
     customers: data,
   };

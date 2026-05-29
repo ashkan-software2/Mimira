@@ -564,7 +564,10 @@ export function SettingsView(props: Props) {
   function saveLineSection() {
     startTransition(async () => {
       await doSave("Line OA", async () => {
-        const next = await saveLine(line);
+        const next = await saveLine({
+          ...line,
+          webhook_url: props.webhookUrl,
+        });
         setSettings(next);
         noteAudit("line", `Line OA updated · ${line.oa_name}`);
       });

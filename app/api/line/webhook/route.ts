@@ -9,10 +9,13 @@ import {
 import { savePublicMedia, type ChatMedia } from "@/lib/media";
 import {
   getCustomerByLineId,
+  getSettings,
   insertMessage,
   upsertCustomer,
 } from "@/lib/repo";
+import { gateOutboundMessage, recordOutboundMessage } from "@/lib/outbound";
 import { runChatPipeline } from "@/lib/pipeline";
+import { lineDestinationMatches } from "@/lib/settings-runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +44,19 @@ export async function POST(req: Request) {
     body = JSON.parse(raw);
   } catch {
     return new NextResponse("bad json", { status: 400 });
+  }
+
+  const settings = await getSettings();
+  if (
+    body.destination &&
+    !lineDestinationMatches(body.destination, settings.line.channel_id)
+  ) {
+    console.warn(
+      "[line/webhook] destination mismatch",
+      body.destination,
+      settings.line.channel_id
+    );
+    return new NextResponse("wrong channel", { status: 403 });
   }
 
   const events = body.events ?? [];
@@ -106,14 +122,24 @@ async function handleEvent(ev: LineEvent): Promise<void> {
         media,
       },
     });
+    const outboundGate = await gateOutboundMessage();
+    const apologyText = outboundGate.allowed
+      ? APOLOGY_THAI
+      : outboundGate.replyText;
     try {
-      await replyText(replyToken, APOLOGY_THAI);
+      await replyText(replyToken, apologyText);
       await insertMessage({
         customerId: customer.id,
         direction: "out",
-        text: APOLOGY_THAI,
+        text: apologyText,
         sentBy: "ai",
+        channelMeta: outboundGate.allowed
+          ? undefined
+          : { reason: "billing_quota" },
       });
+      if (outboundGate.allowed) {
+        await recordOutboundMessage();
+      }
     } catch (err) {
       console.error("[line/webhook] apology reply failed", err);
     }

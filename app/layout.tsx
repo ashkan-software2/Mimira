@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getSettings } from "@/lib/repo";
 import { Shell } from "./_components/Shell";
 import "./globals.css";
 
@@ -7,7 +8,12 @@ export const metadata: Metadata = {
   description: "Mimira admin — calm Line concierge for Thai skin clinics.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const settings = await getSettings();
   return (
     <html lang="en">
       <head>
@@ -23,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <Shell>{children}</Shell>
+        <Shell clinicName={settings.clinic.name}>{children}</Shell>
       </body>
     </html>
   );

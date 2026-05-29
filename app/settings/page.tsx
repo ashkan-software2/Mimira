@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { retentionCutoffMs } from "@/lib/settings-runtime";
 import {
   getBrandVoice,
   getSettings,
@@ -21,15 +22,17 @@ function webhookUrlFromHeaders(h: Headers): string | null {
 export default async function SettingsPage() {
   const h = await headers();
   const webhookUrl = webhookUrlFromHeaders(h);
-  const [brandVoice, settings, dialogues, capacity, team, audit] =
-    await Promise.all([
-      getBrandVoice(),
-      getSettings(),
-      listSampleDialogues(),
-      listCapacityRules(),
-      listTeamMembers(),
-      listAuditLog({ limit: 30 }),
-    ]);
+  const settings = await getSettings();
+  const [brandVoice, dialogues, capacity, team, audit] = await Promise.all([
+    getBrandVoice(),
+    listSampleDialogues(),
+    listCapacityRules(),
+    listTeamMembers(),
+    listAuditLog({
+      limit: 30,
+      sinceMs: retentionCutoffMs(settings.privacy.audit_months),
+    }),
+  ]);
   return (
     <SettingsView
       initialBrandVoice={brandVoice}
