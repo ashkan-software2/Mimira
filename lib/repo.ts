@@ -649,9 +649,62 @@ export async function getActiveTeamMemberByEmail(
   return rows[0] ?? null;
 }
 
+export async function getTeamMemberByEmail(
+  email: string
+): Promise<TeamMember | null> {
+  const sql = await getDb();
+  const rows = await sql<TeamMember[]>`
+    SELECT id, name, email, role, pending, last_active_at, created_at
+    FROM team_members
+    WHERE lower(email) = lower(${email})
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
 export async function markTeamMemberActive(id: string): Promise<void> {
   const sql = await getDb();
-  await sql`UPDATE team_members SET last_active_at = ${now()} WHERE id = ${id}`;
+  await sql`
+    UPDATE team_members
+    SET pending = false, last_active_at = ${now()}
+    WHERE id = ${id}
+  `;
+}
+
+export async function bootstrapFirstOwner(args: {
+  name: string;
+  email: string;
+}): Promise<TeamMember | null> {
+  const sql = await getDb();
+  const [row] = await sql<{ total: number; real: number }[]>`
+    SELECT
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (
+        WHERE lower(email) NOT LIKE '%@sukhumvit-skin.com'
+      )::int AS real
+    FROM team_members
+  `;
+
+  if ((row?.total ?? 0) > 0 && (row?.real ?? 0) > 0) {
+    return null;
+  }
+
+  const id = uuid();
+  const ts = now();
+  await sql`DELETE FROM team_members`;
+  await sql`
+    INSERT INTO team_members (id, name, email, role, pending, last_active_at, created_at)
+    VALUES (${id}, ${args.name}, ${args.email}, 'Owner', false, ${ts}, ${ts})
+  `;
+  return {
+    id,
+    name: args.name,
+    email: args.email,
+    role: "Owner",
+    pending: false,
+    last_active_at: ts,
+    created_at: ts,
+  };
 }
 
 export async function insertTeamMember(args: {

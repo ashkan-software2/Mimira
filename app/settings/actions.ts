@@ -1,15 +1,19 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
+import { clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { requireOwner } from "@/lib/auth";
 import { getDb, now, type SettingsBlob } from "@/lib/db";
 import { retentionCutoffMs } from "@/lib/settings-runtime";
 import {
   appendAudit,
   exportAllCustomers,
+  getTeamMemberByEmail,
   getSettings,
   insertSampleDialogue,
   insertTeamMember,
+  listTeamMembers,
   listSampleDialogues,
   removeCapacityRule,
   removeSampleDialogue,
@@ -26,6 +30,29 @@ const ACTOR = "Pim";
 
 function bump() {
   revalidatePath("/settings");
+}
+
+async function requireOwnerActor(): Promise<string> {
+  const current = await requireOwner();
+  return current.member.name;
+}
+
+function invitationRedirectUrl(): string | undefined {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+  if (!base) return undefined;
+  return new URL("/sign-up", base).toString();
+}
+
+async function sendClerkInvitation(email: string): Promise<void> {
+  const client = await clerkClient();
+  await client.invitations.createInvitation({
+    emailAddress: email,
+    ignoreExisting: true,
+    notify: true,
+    redirectUrl: invitationRedirectUrl(),
+  });
 }
 
 // ---------- Brand voice ----------
@@ -129,12 +156,13 @@ export async function saveLine(input: {
 }
 
 export async function rotateLineSecret(): Promise<{ last4: string; rotated_at: number }> {
+  const actor = await requireOwnerActor();
   const last4 = randomBytes(2).toString("hex");
   const ts = now();
   await updateSettings("line", { secret_last4: last4, secret_rotated_at: ts });
   await appendAudit({
     section: "line",
-    actor: ACTOR,
+    actor,
     summary: `Channel secret rotated · ends ${last4}`,
   });
   bump();
@@ -252,6 +280,7 @@ export async function exportDsar(): Promise<{
   json: string;
   customers: number;
 }> {
+  const actor = await requireOwnerActor();
   const settings = await getSettings();
   const data: CustomerExport[] = await exportAllCustomers({
     conversationSinceMs: retentionCutoffMs(
@@ -268,7 +297,7 @@ export async function exportDsar(): Promise<{
   };
   await appendAudit({
     section: "privacy",
-    actor: ACTOR,
+    actor,
     summary: `DSAR export generated · ${data.length} customers`,
   });
   bump();
@@ -315,6 +344,7 @@ export async function inviteTeamMember(input: {
   email: string;
   role: "Owner" | "Staff";
 }): Promise<TeamMember> {
+  const actor = await requireOwnerActor();
   const trimmedName = input.name.trim();
   const trimmedEmail = input.email.trim().toLowerCase();
   if (!trimmedName || !trimmedEmail) {
@@ -323,6 +353,11 @@ export async function inviteTeamMember(input: {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
     throw new Error("Email looks invalid");
   }
+  const existing = await getTeamMemberByEmail(trimmedEmail);
+  if (existing) {
+    throw new Error("That email is already on the team");
+  }
+  await sendClerkInvitation(trimmedEmail);
   const member = await insertTeamMember({
     name: trimmedName,
     email: trimmedEmail,
@@ -331,7 +366,7 @@ export async function inviteTeamMember(input: {
   });
   await appendAudit({
     section: "team",
-    actor: ACTOR,
+    actor,
     summary: `Invite sent · ${trimmedEmail} (${input.role})`,
   });
   bump();
@@ -339,9 +374,11 @@ export async function inviteTeamMember(input: {
 }
 
 export async function resendInvite(id: string, email: string): Promise<void> {
+  const actor = await requireOwnerActor();
+  await sendClerkInvitation(email);
   await appendAudit({
     section: "team",
-    actor: ACTOR,
+    actor,
     summary: `Invite resent · ${email}`,
   });
   bump();
@@ -351,30 +388,47 @@ export async function setTeamMemberRole(
   id: string,
   role: "Owner" | "Staff"
 ): Promise<void> {
+  const actor = await requireOwnerActor();
+  if (role === "Staff") {
+    const members = await listTeamMembers();
+    const target = members.find((m) => m.id === id);
+    const ownerCount = members.filter((m) => m.role === "Owner").length;
+    if (target?.role === "Owner" && ownerCount <= 1) {
+      throw new Error("At least one Owner is required");
+    }
+  }
   await updateTeamMember(id, { role });
   await appendAudit({
     section: "team",
-    actor: ACTOR,
+    actor,
     summary: `Role changed to ${role}`,
   });
   bump();
 }
 
 export async function acceptTeamMemberInvite(id: string, email: string): Promise<void> {
+  const actor = await requireOwnerActor();
   await updateTeamMember(id, { pending: false });
   await appendAudit({
     section: "team",
-    actor: ACTOR,
+    actor,
     summary: `Invite accepted · ${email}`,
   });
   bump();
 }
 
 export async function deleteTeamMember(id: string, email: string): Promise<void> {
+  const actor = await requireOwnerActor();
+  const members = await listTeamMembers();
+  const target = members.find((m) => m.id === id);
+  const ownerCount = members.filter((m) => m.role === "Owner").length;
+  if (target?.role === "Owner" && ownerCount <= 1) {
+    throw new Error("At least one Owner is required");
+  }
   await removeTeamMember(id);
   await appendAudit({
     section: "team",
-    actor: ACTOR,
+    actor,
     summary: `Member removed · ${email}`,
   });
   bump();
@@ -385,6 +439,7 @@ export async function deleteTeamMember(id: string, email: string): Promise<void>
 export async function setBillingPlan(
   plan: "starter" | "growth" | "scale"
 ): Promise<SettingsBlob> {
+  const actor = await requireOwnerActor();
   const quotaByPlan: Record<typeof plan, number> = {
     starter: 10_000,
     growth: 30_000,
@@ -398,7 +453,7 @@ export async function setBillingPlan(
   });
   await appendAudit({
     section: "billing",
-    actor: ACTOR,
+    actor,
     summary: `Plan switched to ${plan}`,
   });
   bump();
@@ -410,6 +465,7 @@ export async function saveBillingCard(input: {
   card_last4: string;
   card_exp: string;
 }): Promise<SettingsBlob> {
+  const actor = await requireOwnerActor();
   const last4 = input.card_last4.replace(/\D/g, "").slice(-4);
   if (last4.length !== 4) throw new Error("Card number must end in 4 digits");
   if (!/^\d{2}\/\d{2}$/.test(input.card_exp)) {
@@ -424,7 +480,7 @@ export async function saveBillingCard(input: {
   });
   await appendAudit({
     section: "billing",
-    actor: ACTOR,
+    actor,
     summary: `Payment method updated · ${input.card_brand} ····${last4}`,
   });
   bump();
@@ -432,10 +488,11 @@ export async function saveBillingCard(input: {
 }
 
 export async function setAutoRenew(autoRenew: boolean): Promise<SettingsBlob> {
+  const actor = await requireOwnerActor();
   const next = await updateSettings("billing", { auto_renew: autoRenew });
   await appendAudit({
     section: "billing",
-    actor: ACTOR,
+    actor,
     summary: autoRenew ? "Auto-renew turned on" : "Auto-renew turned off",
   });
   bump();
