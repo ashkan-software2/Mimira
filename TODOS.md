@@ -8,7 +8,7 @@ Deferred items captured during planning. Each entry: WHAT, WHY, PROS, CONS, CONT
 
 ## Shipped app fixes
 
-- **LINE channel name label** — **DONE 2026-05-30, commit `this commit`.** Settings now exposes a human Channel name for the LINE account while keeping the internal LINE destination identifier hidden and auto-synced from webhooks.
+- **LINE channel name label** — **DONE 2026-05-30, commit `dbd450f`.** Settings now exposes a human Channel name for the LINE account while keeping the internal LINE destination identifier hidden and auto-synced from webhooks.
 - **LINE webhook URL always visible** — **DONE 2026-05-30, commit `7fa4d0f`.** Settings now always shows the platform webhook URL during LINE setup, and the Help popup uses the same URL instead of falling back to a placeholder.
 - **LINE Settings credential simplification** — **DONE 2026-05-30, commit `3a25c90`.** Settings now asks only for Channel ID, editable Channel Secret, Channel Access Token, and the webhook URL, removes the Rotate / Verify connection / OA display name controls, and adds a Help modal with LINE setup steps.
 - **Demo inbox badge + clinic profile simplification** — **DONE 2026-05-30, commit `this commit`.** Inbox nav now counts unresolved attention threads instead of hardcoded demo totals / total customers, and Settings no longer exposes clinic hours or languages-spoken fields. The AI prompt now handles language choice directly from the customer's message.
