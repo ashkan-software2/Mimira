@@ -20,7 +20,7 @@ Statuses below were reconciled against the codebase on 2026-05-29 — re-verify 
 | AG6 | P1 | Guards on all `/api/inbox/*` + Server Actions (settings/knowledge) | ✅ | `/api/inbox/*` guarded (7 routes) ✅; `settings/actions.ts` guarded via `requireOwner` ✅; `knowledge/actions.ts` `createKnowledgeDoc` gated via `requireMember()` (committed `28af14d`). All P1 server-action/API surfaces covered. |
 | AG7 | P1 | `inviteTeamMember()` → Clerk Invitations API; restrict signup | ✅ | `sendClerkInvitation()` → `client.invitations.createInvitation()` wired into `inviteTeamMember()`. Verify signup is actually restricted to invited emails. |
 | AG8 | P1 | `ADMIN_EMAIL` bootstrap; demo seeds non-linkable in prod | ✅ | Shipped 2026-05-30. Demo non-linkable ✅ (`isDemoAccount`, seed excludes `@sukhumvit-skin.com`). `ADMIN_EMAIL` now restricts first-owner bootstrap to that verified Clerk primary email when configured; unset preserves dev/demo bootstrap behavior. Commit: this task commit. |
-| AG9–AG12 | P1 | Vitest unit + 2 CRITICAL integration tests (LINE regression, direct-API 401) + e2e smoke | ☐ | **No test framework installed** — no vitest/playwright config, no app tests. The LINE-webhook regression test is mandatory per the review. |
+| AG9–AG12 | P1 | Vitest unit + 2 CRITICAL integration tests (LINE regression, direct-API 401) + e2e smoke | ◑ | Shipped 2026-05-30. Vitest harness added (`npm test`) with focused regressions for all 7 `/api/inbox/*` routes returning 403 before route validation when Clerk membership is missing, plus LINE webhook signature regression proving invalid signatures 401 and valid signed webhooks remain public/no-Clerk. Playwright e2e smoke and broader unit coverage still outstanding. Commit: this task commit. |
 | AG13 | P2 | Replace hardcoded `ACTOR="Pim"` with real linked member | ✅ | Shipped 2026-05-30. Settings actions and inbox flag resolution now attribute changes to the authenticated Clerk-linked team member; demo booking labels no longer hardcode `Pim`. Commit: this task commit. |
 | AG14 | P2 | Deploy/env checklist | ☐ | `.env.example` has Clerk keys; no written deploy/env checklist. |
 
@@ -34,12 +34,12 @@ Statuses below were reconciled against the codebase on 2026-05-29 — re-verify 
 The P1 spine is built (AG1–AG8 done). Remaining work is
 hardening + tests. Recommended sequence for what's left:
 
-1. **AG9–AG12** — install Vitest + Playwright; write the LINE-webhook regression + direct-API-401 integration tests first (mandatory), then unit + e2e smoke.
+1. **AG9–AG12** — add Playwright and a browser e2e smoke, then broaden unit coverage around lazy-link/bootstrap edge cases.
 2. **AG14** — deploy/env checklist.
 3. Then `/review` the diff → `/ship`.
 
 ## Carry-forward concern
 
 `requireOwner()` is now implemented, closing the original D11 gap. Remaining hard blocker before
-ship is **AG9–AG12** — the mandatory LINE-webhook regression test does not yet exist, so the
-"direct-API 401" and "LINE still works" guarantees are currently unverified by CI.
+ship is **AG9–AG12** — the mandatory LINE-webhook and direct-API-401 regressions now exist in
+Vitest, but browser e2e smoke and broader unit coverage are still missing.
