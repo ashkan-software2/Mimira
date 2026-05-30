@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { AuthSetupMissing } from "./_components/AuthSetupMissing";
 import "./globals.css";
+import TopLoader from "./TopLoader";
 
 export const metadata: Metadata = {
   title: "Mimira",
@@ -44,6 +45,7 @@ export default async function RootLayout({
           />
         </head>
         <body>
+          <TopLoader />
           <AuthSetupMissing />
         </body>
       </html>
@@ -65,6 +67,7 @@ export default async function RootLayout({
         />
       </head>
       <body>
+        <TopLoader />
         <ClerkProvider>{children}</ClerkProvider>
       </body>
     </html>
