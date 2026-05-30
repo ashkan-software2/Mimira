@@ -8,7 +8,7 @@ Deferred items captured during planning. Each entry: WHAT, WHY, PROS, CONS, CONT
 
 ## Shipped app fixes
 
-- **Logo and favicon refresh** — **DONE 2026-05-30, commit `this commit`.** The app now serves the new Mimira logo and favicon from public assets, and the login/auth pages plus admin header use the new bitmap mark.
+- **Logo and favicon refresh** — **DONE 2026-05-30, commit `f0f24bc`.** The app now serves the new Mimira logo and favicon from public assets, and the login/auth pages plus admin header use the new bitmap mark.
 - **LINE channel name label** — **DONE 2026-05-30, commit `dbd450f`.** Settings now exposes a human Channel name for the LINE account while keeping the internal LINE destination identifier hidden and auto-synced from webhooks.
 - **LINE webhook URL always visible** — **DONE 2026-05-30, commit `7fa4d0f`.** Settings now always shows the platform webhook URL during LINE setup, and the Help popup uses the same URL instead of falling back to a placeholder.
 - **LINE Settings credential simplification** — **DONE 2026-05-30, commit `3a25c90`.** Settings now asks only for Channel ID, editable Channel Secret, Channel Access Token, and the webhook URL, removes the Rotate / Verify connection / OA display name controls, and adds a Help modal with LINE setup steps.
