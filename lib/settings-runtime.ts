@@ -29,8 +29,7 @@ export function formatClinicBlock(settings: SettingsBlob): string {
 Name: ${c.name}
 Timezone: ${c.timezone}
 Address: ${c.address}
-Hours: ${c.hours}
-Languages served: ${c.languages}`;
+Language handling: reply in the customer's latest language. If the customer mixes languages, use the language with more content words.`;
 }
 
 /** Aftercare scheduler config (Settings → Aftercare). */

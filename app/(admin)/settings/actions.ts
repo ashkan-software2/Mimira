@@ -18,6 +18,7 @@ import {
   removeCapacityRule,
   removeSampleDialogue,
   removeTeamMember,
+  saveSettings,
   updateSettings,
   updateTeamMember,
   upsertCapacityRule,
@@ -116,15 +117,20 @@ export async function saveClinic(input: {
   name: string;
   timezone: string;
   address: string;
-  hours: string;
-  languages: string;
 }): Promise<SettingsBlob> {
   const actor = await requireOwnerActor();
-  const next = await updateSettings("clinic", {
-    ...input,
-    saved_at: now(),
-    saved_by: actor,
-  });
+  const current = await getSettings();
+  const next: SettingsBlob = {
+    ...current,
+    clinic: {
+      name: input.name,
+      timezone: input.timezone,
+      address: input.address,
+      saved_at: now(),
+      saved_by: actor,
+    },
+  };
+  await saveSettings(next);
   await appendAudit({
     section: "clinic",
     actor,

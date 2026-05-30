@@ -428,13 +428,15 @@ export function SettingsView(props: Props) {
   const [settings, setSettings] = useState<SettingsBlob>(props.initialSettings);
 
   // Clinic
-  const [clinic, setClinic] = useState(settings.clinic);
+  const [clinic, setClinic] = useState({
+    name: settings.clinic.name,
+    timezone: settings.clinic.timezone,
+    address: settings.clinic.address,
+  });
   const clinicDirty =
     clinic.name !== settings.clinic.name ||
     clinic.timezone !== settings.clinic.timezone ||
-    clinic.address !== settings.clinic.address ||
-    clinic.hours !== settings.clinic.hours ||
-    clinic.languages !== settings.clinic.languages;
+    clinic.address !== settings.clinic.address;
 
   // Line
   const [line, setLine] = useState({
@@ -551,14 +553,22 @@ export function SettingsView(props: Props) {
   function saveClinicSection() {
     startTransition(async () => {
       await doSave("Clinic profile", async () => {
-        const next = await saveClinic(clinic);
+        const next = await saveClinic({
+          name: clinic.name,
+          timezone: clinic.timezone,
+          address: clinic.address,
+        });
         setSettings(next);
         noteAudit("clinic", `Clinic profile updated · ${clinic.name}`);
       });
     });
   }
   function cancelClinic() {
-    setClinic(settings.clinic);
+    setClinic({
+      name: settings.clinic.name,
+      timezone: settings.clinic.timezone,
+      address: settings.clinic.address,
+    });
   }
 
   function saveLineSection() {
@@ -1025,7 +1035,7 @@ export function SettingsView(props: Props) {
           <Card
             id="clinic"
             title="Clinic profile"
-            summary={`${settings.clinic.name} · ${settings.clinic.timezone.split("/")[1]} · ${settings.clinic.hours}`}
+            summary={`${settings.clinic.name} · ${settings.clinic.timezone.split("/")[1]}`}
             saved={`Saved ${timeAgo(settings.clinic.saved_at)}`}
             open={open.clinic}
             onToggle={() => toggle("clinic")}
@@ -1077,34 +1087,6 @@ export function SettingsView(props: Props) {
                   setClinic({ ...clinic, address: e.target.value })
                 }
               />
-            </div>
-            <div className={styles.fieldRow}>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="clinic-hours">
-                  Hours
-                </label>
-                <input
-                  className={styles.input}
-                  id="clinic-hours"
-                  value={clinic.hours}
-                  onChange={(e) =>
-                    setClinic({ ...clinic, hours: e.target.value })
-                  }
-                />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="clinic-langs">
-                  Languages spoken
-                </label>
-                <input
-                  className={styles.input}
-                  id="clinic-langs"
-                  value={clinic.languages}
-                  onChange={(e) =>
-                    setClinic({ ...clinic, languages: e.target.value })
-                  }
-                />
-              </div>
             </div>
             <div className={styles.cardActions}>
               <span className={styles.saveMeta}>

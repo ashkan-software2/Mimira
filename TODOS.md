@@ -6,6 +6,10 @@ Deferred items captured during planning. Each entry: WHAT, WHY, PROS, CONS, CONT
 
 - **Agent workflow clarification** — **DONE 2026-05-29, commit `052f343`.** `AGENTS.md` and `CLAUDE.md` now state that agents should scan relevant `.md` docs broadly before work, keep in-progress markers local-only, and commit/push only completed work or coherent completed chunks.
 
+## Shipped app fixes
+
+- **Demo inbox badge + clinic profile simplification** — **DONE 2026-05-30, commit `this commit`.** Inbox nav now counts unresolved attention threads instead of hardcoded demo totals / total customers, and Settings no longer exposes clinic hours or languages-spoken fields. The AI prompt now handles language choice directly from the customer's message.
+
 ## Post-v0 evals (deferred from D14)
 
 User chose to keep only the 50-turn aftercare safety eval in v0; the four additional

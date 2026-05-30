@@ -175,8 +175,6 @@ export type SettingsBlob = {
     name: string;
     timezone: string;
     address: string;
-    hours: string;
-    languages: string;
     saved_at: number;
     saved_by: string;
   };
@@ -241,8 +239,6 @@ const DEMO_SETTINGS_BLOB: SettingsBlob = {
     name: "Sukhumvit Skin & Laser",
     timezone: "Asia/Bangkok",
     address: "492/2 Sukhumvit Rd, Khlong Toei, Bangkok 10110",
-    hours: "Mon–Sat · 10:00–20:00",
-    languages: "Thai, English",
     saved_at: Date.now() - 3 * 24 * 3600 * 1000,
     saved_by: ACTOR,
   },
@@ -305,8 +301,6 @@ export const FRESH_SETTINGS_BLOB: SettingsBlob = {
     name: "Your clinic",
     timezone: "Asia/Bangkok",
     address: "",
-    hours: "",
-    languages: "",
     saved_at: 0,
     saved_by: "",
   },

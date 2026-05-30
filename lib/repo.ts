@@ -191,6 +191,10 @@ export async function customerIdsNeedingAttention(): Promise<Set<string>> {
   return new Set(rows.map((r) => r.customer_id));
 }
 
+export async function countCustomersNeedingAttention(): Promise<number> {
+  return (await customerIdsNeedingAttention()).size;
+}
+
 // Mark every open "needs attention" flag on this customer's AI messages as
 // resolved. Returns the number of messages that flipped.
 export async function resolveAttentionForCustomer(args: {
