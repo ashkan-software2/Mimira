@@ -19,9 +19,15 @@ function webhookUrlFromHeaders(h: Headers): string | null {
   return `${proto}://${host}/api/line/webhook`;
 }
 
+function platformWebhookUrl(h: Headers): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (appUrl) return new URL("/api/line/webhook", appUrl).toString();
+  return webhookUrlFromHeaders(h) ?? "https://app.mimira.ai/api/line/webhook";
+}
+
 export default async function SettingsPage() {
   const h = await headers();
-  const webhookUrl = webhookUrlFromHeaders(h);
+  const webhookUrl = platformWebhookUrl(h);
   const settings = await getSettings();
   const [brandVoice, dialogues, capacity, team, audit] = await Promise.all([
     getBrandVoice(),
@@ -33,9 +39,7 @@ export default async function SettingsPage() {
       sinceMs: retentionCutoffMs(settings.privacy.audit_months),
     }),
   ]);
-  const lineWebhookUrl =
-    settings.line.webhook_url ||
-    (settings.line.channel_id ? webhookUrl : null);
+  const lineWebhookUrl = settings.line.webhook_url || webhookUrl;
   return (
     <SettingsView
       initialBrandVoice={brandVoice}
