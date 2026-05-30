@@ -21,8 +21,8 @@ const MIME_BY_EXT: Record<string, string> = {
 };
 
 export async function GET(req: Request) {
-  const forbidden = await requireApiMember();
-  if (forbidden) return forbidden;
+  const auth = await requireApiMember();
+  if (auth instanceof NextResponse) return auth;
 
   const src = new URL(req.url).searchParams.get("src");
   if (!src) {

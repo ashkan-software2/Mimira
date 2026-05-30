@@ -3,7 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import { requireOwner } from "@/lib/auth";
+import { withAuthedAction } from "@/lib/auth";
 import { getDb, now, type SettingsBlob } from "@/lib/db";
 import { retentionCutoffMs } from "@/lib/settings-runtime";
 import {
@@ -26,16 +26,14 @@ import {
   type TeamMember,
 } from "@/lib/repo";
 
-const ACTOR = "Pim";
-
 function bump() {
   revalidatePath("/settings");
 }
 
-async function requireOwnerActor(): Promise<string> {
-  const current = await requireOwner();
-  return current.member.name;
-}
+const requireOwnerActor = withAuthedAction(
+  async (current) => current.member.name,
+  { role: "Owner" }
+);
 
 function invitationRedirectUrl(): string | undefined {
   const base =
@@ -58,16 +56,17 @@ async function sendClerkInvitation(email: string): Promise<void> {
 // ---------- Brand voice ----------
 
 export async function saveBrandVoice(brandVoice: string): Promise<void> {
+  const actor = await requireOwnerActor();
   const sql = await getDb();
   await sql`
     UPDATE settings
     SET brand_voice = ${brandVoice}, updated_at = ${now()}
     WHERE id = 1
   `;
-  await updateSettings("brand_voice", { saved_at: now(), saved_by: ACTOR });
+  await updateSettings("brand_voice", { saved_at: now(), saved_by: actor });
   await appendAudit({
     section: "brand-voice",
-    actor: ACTOR,
+    actor,
     summary: `Brand voice updated (${brandVoice.length} chars)`,
   });
   bump();
@@ -77,6 +76,7 @@ export async function addSampleDialogue(args: {
   customer_text: string;
   assistant_text: string;
 }): Promise<SampleDialogue> {
+  const actor = await requireOwnerActor();
   const trimmedCustomer = args.customer_text.trim();
   const trimmedAssistant = args.assistant_text.trim();
   if (!trimmedCustomer || !trimmedAssistant) {
@@ -88,7 +88,7 @@ export async function addSampleDialogue(args: {
   });
   await appendAudit({
     section: "brand-voice",
-    actor: ACTOR,
+    actor,
     summary: "Sample dialogue added",
   });
   bump();
@@ -96,10 +96,11 @@ export async function addSampleDialogue(args: {
 }
 
 export async function deleteSampleDialogue(id: string): Promise<void> {
+  const actor = await requireOwnerActor();
   await removeSampleDialogue(id);
   await appendAudit({
     section: "brand-voice",
-    actor: ACTOR,
+    actor,
     summary: "Sample dialogue removed",
   });
   bump();
@@ -118,14 +119,15 @@ export async function saveClinic(input: {
   hours: string;
   languages: string;
 }): Promise<SettingsBlob> {
+  const actor = await requireOwnerActor();
   const next = await updateSettings("clinic", {
     ...input,
     saved_at: now(),
-    saved_by: ACTOR,
+    saved_by: actor,
   });
   await appendAudit({
     section: "clinic",
-    actor: ACTOR,
+    actor,
     summary: `Clinic profile updated · ${input.name}`,
   });
   bump();
@@ -139,16 +141,17 @@ export async function saveLine(input: {
   oa_name: string;
   webhook_url?: string;
 }): Promise<SettingsBlob> {
+  const actor = await requireOwnerActor();
   const next = await updateSettings("line", {
     channel_id: input.channel_id,
     oa_name: input.oa_name,
     ...(input.webhook_url ? { webhook_url: input.webhook_url } : {}),
     saved_at: now(),
-    saved_by: ACTOR,
+    saved_by: actor,
   });
   await appendAudit({
     section: "line",
-    actor: ACTOR,
+    actor,
     summary: `Line OA updated · ${input.oa_name}`,
   });
   bump();
@@ -170,11 +173,12 @@ export async function rotateLineSecret(): Promise<{ last4: string; rotated_at: n
 }
 
 export async function testLineSignature(): Promise<{ ok: true; pinged_at: number }> {
+  const actor = await requireOwnerActor();
   const ts = now();
   await updateSettings("line", { last_ping_at: ts });
   await appendAudit({
     section: "line",
-    actor: ACTOR,
+    actor,
     summary: "Test signature verified",
   });
   bump();
@@ -188,16 +192,17 @@ export async function saveAiBrain(input: {
   model: string;
   temperature: number;
 }): Promise<SettingsBlob> {
+  const actor = await requireOwnerActor();
   const next = await updateSettings("ai", {
     provider: input.provider,
     model: input.model,
     temperature: Math.max(0, Math.min(1, input.temperature)),
     saved_at: now(),
-    saved_by: ACTOR,
+    saved_by: actor,
   });
   await appendAudit({
     section: "ai-brain",
-    actor: ACTOR,
+    actor,
     summary: `AI brain updated · ${input.provider} ${input.model} @ ${input.temperature.toFixed(2)}`,
   });
   bump();
@@ -205,9 +210,10 @@ export async function saveAiBrain(input: {
 }
 
 export async function requestEmbeddingOverride(reason: string): Promise<void> {
+  const actor = await requireOwnerActor();
   await appendAudit({
     section: "ai-brain",
-    actor: ACTOR,
+    actor,
     summary: `Embedding override requested · ${reason.slice(0, 80) || "no reason"}`,
   });
   bump();
@@ -216,11 +222,12 @@ export async function requestEmbeddingOverride(reason: string): Promise<void> {
 // ---------- Kill switch ----------
 
 export async function setKillSwitch(paused: boolean): Promise<SettingsBlob> {
+  const actor = await requireOwnerActor();
   const ts = now();
   const next = await updateSettings("kill_switch", { paused, changed_at: ts });
   await appendAudit({
     section: "kill-switch",
-    actor: ACTOR,
+    actor,
     summary: paused
       ? "Mimira paused for the clinic"
       : "Mimira re-activated for the clinic",
@@ -238,14 +245,15 @@ export async function saveAftercare(input: {
   send_time: string;
   languages: "th+en" | "th" | "en";
 }): Promise<SettingsBlob> {
+  const actor = await requireOwnerActor();
   const next = await updateSettings("aftercare", {
     ...input,
     saved_at: now(),
-    saved_by: ACTOR,
+    saved_by: actor,
   });
   await appendAudit({
     section: "aftercare",
-    actor: ACTOR,
+    actor,
     summary: `Aftercare schedule updated · D1=${input.d1 ? "on" : "off"} D7=${
       input.d7 ? "on" : "off"
     } D30=${input.d30 ? "on" : "off"} @ ${input.send_time}`,
@@ -260,15 +268,16 @@ export async function savePrivacy(input: {
   conversation_months: number;
   audit_months: number;
 }): Promise<SettingsBlob> {
+  const actor = await requireOwnerActor();
   const next = await updateSettings("privacy", {
     conversation_months: input.conversation_months,
     audit_months: input.audit_months,
     saved_at: now(),
-    saved_by: ACTOR,
+    saved_by: actor,
   });
   await appendAudit({
     section: "privacy",
-    actor: ACTOR,
+    actor,
     summary: `Retention updated · conversation ${input.conversation_months}mo · audit ${input.audit_months}mo`,
   });
   bump();
@@ -316,10 +325,11 @@ export async function saveCapacityRule(input: {
   per_day: number;
   slot_minutes: number;
 }): Promise<void> {
+  const actor = await requireOwnerActor();
   const rule = await upsertCapacityRule(input);
   await appendAudit({
     section: "capacity",
-    actor: ACTOR,
+    actor,
     summary: input.id
       ? `Capacity rule updated · ${rule.treatment}`
       : `Capacity rule added · ${rule.treatment}`,
@@ -328,10 +338,11 @@ export async function saveCapacityRule(input: {
 }
 
 export async function deleteCapacityRule(id: string, name: string): Promise<void> {
+  const actor = await requireOwnerActor();
   await removeCapacityRule(id);
   await appendAudit({
     section: "capacity",
-    actor: ACTOR,
+    actor,
     summary: `Capacity rule removed · ${name}`,
   });
   bump();
@@ -449,7 +460,7 @@ export async function setBillingPlan(
     plan,
     msg_quota: quotaByPlan[plan],
     saved_at: now(),
-    saved_by: ACTOR,
+    saved_by: actor,
   });
   await appendAudit({
     section: "billing",
@@ -476,7 +487,7 @@ export async function saveBillingCard(input: {
     card_last4: last4,
     card_exp: input.card_exp,
     saved_at: now(),
-    saved_by: ACTOR,
+    saved_by: actor,
   });
   await appendAudit({
     section: "billing",

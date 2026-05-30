@@ -11,14 +11,12 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Single-clinic demo; staff actions are attributed to "Pim".
-const ACTOR = "Pim";
-
 const ALLOWED: ReadonlySet<string> = new Set(PRESET_FLAGS);
 
 export async function POST(req: Request) {
-  const forbidden = await requireApiMember();
-  if (forbidden) return forbidden;
+  const auth = await requireApiMember();
+  if (auth instanceof NextResponse) return auth;
+  const actor = auth.member.name;
 
   let body: { customerId?: string; flag?: string; on?: boolean };
   try {
@@ -51,7 +49,7 @@ export async function POST(req: Request) {
   if (flag === "Addressed" && body.on) {
     resolvedMessages = await resolveAttentionForCustomer({
       customerId: customer.id,
-      actor: ACTOR,
+      actor,
     });
   }
 

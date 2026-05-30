@@ -9,8 +9,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const forbidden = await requireApiMember();
-  if (forbidden) return forbidden;
+  const auth = await requireApiMember();
+  if (auth instanceof NextResponse) return auth;
 
   let body: {
     customerId?: string;

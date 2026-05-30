@@ -16,8 +16,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const forbidden = await requireApiMember();
-  if (forbidden) return forbidden;
+  const auth = await requireApiMember();
+  if (auth instanceof NextResponse) return auth;
 
   const url = new URL(req.url);
   const customerId = url.searchParams.get("customerId");

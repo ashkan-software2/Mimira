@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 export async function POST(req: Request) {
-  const forbidden = await requireApiMember();
-  if (forbidden) return forbidden;
+  const auth = await requireApiMember();
+  if (auth instanceof NextResponse) return auth;
 
   let form: FormData;
   try {

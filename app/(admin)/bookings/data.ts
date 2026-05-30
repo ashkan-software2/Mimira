@@ -91,7 +91,7 @@ export const CONFIRMED: ConfirmedBooking[] = [
     whenLabel: "Sat 24 May · 15:00",
     startISO: "2025-05-24T15:00:00",
     durationMin: 60,
-    statusLabel: "Mimira confirmed · sent by Pim · 22 May",
+    statusLabel: "Mimira confirmed · sent by staff · 22 May",
   },
   {
     id: "c2",
@@ -100,7 +100,7 @@ export const CONFIRMED: ConfirmedBooking[] = [
     whenLabel: "Fri 23 May · 11:00",
     startISO: "2025-05-23T11:00:00",
     durationMin: 45,
-    statusLabel: "Mimira confirmed · sent by Pim · 21 May",
+    statusLabel: "Mimira confirmed · sent by staff · 21 May",
   },
   {
     id: "c3",
@@ -118,7 +118,7 @@ export const CONFIRMED: ConfirmedBooking[] = [
     whenLabel: "Wed 21 May · 10:00",
     startISO: "2025-05-21T10:00:00",
     durationMin: 30,
-    statusLabel: "Mimira confirmed · sent by Pim · 19 May",
+    statusLabel: "Mimira confirmed · sent by staff · 19 May",
   },
   {
     id: "c5",
@@ -136,7 +136,7 @@ export const CONFIRMED: ConfirmedBooking[] = [
     whenLabel: "Mon 19 May · 11:30",
     startISO: "2025-05-19T11:30:00",
     durationMin: 60,
-    statusLabel: "Mimira confirmed · sent by Pim · 17 May",
+    statusLabel: "Mimira confirmed · sent by staff · 17 May",
   },
   {
     id: "c7",
@@ -145,7 +145,7 @@ export const CONFIRMED: ConfirmedBooking[] = [
     whenLabel: "Sat 17 May · 13:00",
     startISO: "2025-05-17T13:00:00",
     durationMin: 60,
-    statusLabel: "Mimira confirmed · sent by Pim · 15 May",
+    statusLabel: "Mimira confirmed · sent by staff · 15 May",
   },
   {
     id: "c8",
@@ -166,7 +166,7 @@ export const DECLINED: ConfirmedBooking[] = [
     whenLabel: "Sun 18 May · 13:00",
     startISO: "2025-05-18T13:00:00",
     durationMin: 60,
-    statusLabel: "No-show · logged by Pim",
+    statusLabel: "No-show · logged by staff",
     isNoShow: true,
   },
 ];

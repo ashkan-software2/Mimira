@@ -20,6 +20,10 @@ export type CurrentMember = {
   member: TeamMember;
 };
 
+type AuthedActionOptions = {
+  role?: "Owner";
+};
+
 export function isDemoAccount(email: string): boolean {
   return email.toLowerCase().endsWith("@sukhumvit-skin.com");
 }
@@ -103,10 +107,21 @@ export async function requireOwner(): Promise<CurrentMember> {
   return current;
 }
 
-export async function requireApiMember(): Promise<NextResponse | null> {
+export function withAuthedAction<Args extends unknown[], Result>(
+  handler: (current: CurrentMember, ...args: Args) => Promise<Result>,
+  options: AuthedActionOptions = {}
+): (...args: Args) => Promise<Result> {
+  return async (...args: Args) => {
+    const current =
+      options.role === "Owner" ? await requireOwner() : await requireMember();
+    return handler(current, ...args);
+  };
+}
+
+export async function requireApiMember(): Promise<CurrentMember | NextResponse> {
   const current = await getCurrentMember();
   if (current) {
-    return null;
+    return current;
   }
   return NextResponse.json(
     { ok: false, error: "Forbidden" },
