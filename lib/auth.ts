@@ -4,6 +4,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import {
   bootstrapFirstOwner,
+  ensureDemoTeamMember,
   getActiveTeamMemberByEmail,
   getTeamMemberByClerkUserId,
   getTeamMemberByEmail,
@@ -24,8 +25,15 @@ type AuthedActionOptions = {
   role?: "Owner";
 };
 
+const DEMO_EMAILS = new Set(["demo@mimira.tech"]);
+const DEMO_EMAIL_SUFFIXES = ["@sukhumvit-skin.com"];
+
 export function isDemoAccount(email: string): boolean {
-  return email.toLowerCase().endsWith("@sukhumvit-skin.com");
+  const normalized = email.toLowerCase();
+  return (
+    DEMO_EMAILS.has(normalized) ||
+    DEMO_EMAIL_SUFFIXES.some((suffix) => normalized.endsWith(suffix))
+  );
 }
 
 function configuredAdminEmail(): string | null {
@@ -78,15 +86,24 @@ export async function getMemberForUser(
 
   // 3. No row at all: bootstrap the very first owner, then bind it.
   if (!member) {
-    if (!canBootstrapOwner(email)) {
+    if (isDemoAccount(email)) {
+      member = await ensureDemoTeamMember({
+        name: displayNameForUser(user, email),
+        email: email.toLowerCase(),
+      });
+      if (member) {
+        await linkClerkUserId(member.id, user.id);
+      }
+    } else if (!canBootstrapOwner(email)) {
       return null;
-    }
-    member = await bootstrapFirstOwner({
-      name: displayNameForUser(user, email),
-      email: email.toLowerCase(),
-    });
-    if (member) {
-      await linkClerkUserId(member.id, user.id);
+    } else {
+      member = await bootstrapFirstOwner({
+        name: displayNameForUser(user, email),
+        email: email.toLowerCase(),
+      });
+      if (member) {
+        await linkClerkUserId(member.id, user.id);
+      }
     }
   }
 

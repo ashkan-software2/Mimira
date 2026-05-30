@@ -718,6 +718,31 @@ export async function markTeamMemberActive(id: string): Promise<void> {
   `;
 }
 
+export async function ensureDemoTeamMember(args: {
+  name: string;
+  email: string;
+}): Promise<TeamMember> {
+  const existing = await getTeamMemberByEmail(args.email);
+  if (existing) {
+    return existing;
+  }
+
+  try {
+    return await insertTeamMember({
+      name: args.name,
+      email: args.email,
+      role: "Owner",
+      pending: false,
+    });
+  } catch (err) {
+    const concurrent = await getTeamMemberByEmail(args.email);
+    if (concurrent) {
+      return concurrent;
+    }
+    throw err;
+  }
+}
+
 export async function bootstrapFirstOwner(args: {
   name: string;
   email: string;
@@ -728,6 +753,7 @@ export async function bootstrapFirstOwner(args: {
       COUNT(*)::int AS total,
       COUNT(*) FILTER (
         WHERE lower(email) NOT LIKE '%@sukhumvit-skin.com'
+          AND lower(email) <> 'demo@mimira.tech'
       )::int AS real
     FROM team_members
   `;

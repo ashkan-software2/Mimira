@@ -135,6 +135,7 @@ async function hasNonDemoTeamMember(sql: Sql): Promise<boolean> {
     SELECT COUNT(*)::int AS n
     FROM team_members
     WHERE lower(email) NOT LIKE '%@sukhumvit-skin.com'
+      AND lower(email) <> 'demo@mimira.tech'
   `;
   return (row?.n ?? 0) > 0;
 }

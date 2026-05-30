@@ -28,6 +28,7 @@ Statuses below were reconciled against the codebase on 2026-05-29 — re-verify 
 - `requireOwner()` server-side role enforcement (was deferred P1 in TODOS.md) — **done**, commit gates all owner-grade settings actions.
 - Public chat-media protection (Codex #12) — **done**, commit `edd32b4` (authed `/api/inbox/media` proxy + private Blob).
 - Sign-in / sign-up page branding — **done**, commit `874ff91`. `app/sign-in` + `app/sign-up` wrapped in shared `app/_components/AuthLayout` (brand mark + product tagline) with a token-themed Clerk widget (`app/_components/clerkAppearance.ts`). Conforms to DESIGN-UX.md login-copy rule + DESIGN-UI.md radius/no-card-shadow hierarchy. Not an AG task; recorded here as a shipped extra.
+- Demo Clerk user access — **done 2026-05-30, commit: this task commit.** `demo@mimira.tech` is now classified as a demo account, gets an Owner team-member row lazily on verified Clerk sign-in, and remains excluded from the real-team bootstrap/reset checks so it opens the seeded demo workspace instead of the Access not enabled screen.
 
 ## Suggested implementation order
 
