@@ -200,6 +200,7 @@ export type SettingsBlob = {
     provider: "OpenAI" | "Anthropic" | "Google";
     model: string;
     temperature: number;
+    assistant_name: string;
     saved_at: number;
     saved_by: string;
   };
@@ -266,6 +267,7 @@ const DEMO_SETTINGS_BLOB: SettingsBlob = {
     provider: "Anthropic",
     model: "claude-sonnet-4-6",
     temperature: 0.4,
+    assistant_name: "Mimira",
     saved_at: Date.now() - 4 * 3600 * 1000,
     saved_by: "Owner",
   },
@@ -330,6 +332,7 @@ export const FRESH_SETTINGS_BLOB: SettingsBlob = {
     provider: "OpenAI",
     model: "gpt-4o-mini",
     temperature: 0.4,
+    assistant_name: "Mimira",
     saved_at: 0,
     saved_by: "",
   },

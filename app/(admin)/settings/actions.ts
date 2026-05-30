@@ -175,19 +175,22 @@ export async function saveAiBrain(input: {
   provider: "OpenAI" | "Anthropic" | "Google";
   model: string;
   temperature: number;
+  assistant_name: string;
 }): Promise<SettingsBlob> {
   const actor = await requireOwnerActor();
+  const assistantName = input.assistant_name.trim() || "Mimira";
   const next = await updateSettings("ai", {
     provider: input.provider,
     model: input.model,
     temperature: Math.max(0, Math.min(1, input.temperature)),
+    assistant_name: assistantName,
     saved_at: now(),
     saved_by: actor,
   });
   await appendAudit({
     section: "ai-brain",
     actor,
-    summary: `AI brain updated · ${input.provider} ${input.model} @ ${input.temperature.toFixed(2)}`,
+    summary: `AI brain updated · ${input.provider} ${input.model} @ ${input.temperature.toFixed(2)} · name "${assistantName}"`,
   });
   bump();
   return next;

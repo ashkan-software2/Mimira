@@ -1,5 +1,6 @@
 import {
   customerIdsNeedingAttention,
+  getSettings,
   listConversations,
   parseFlags,
 } from "@/lib/repo";
@@ -9,9 +10,10 @@ import type { ConversationListItem } from "./types";
 export const dynamic = "force-dynamic";
 
 export default async function InboxPage() {
-  const [attentionSet, conversationRows] = await Promise.all([
+  const [attentionSet, conversationRows, settings] = await Promise.all([
     customerIdsNeedingAttention(),
     listConversations(),
+    getSettings(),
   ]);
   const conversations: ConversationListItem[] = conversationRows.map((c) => ({
     id: c.customer.id,
@@ -25,5 +27,10 @@ export default async function InboxPage() {
     flags: parseFlags(c.customer.flags),
   }));
 
-  return <InboxView initialConversations={conversations} />;
+  return (
+    <InboxView
+      initialConversations={conversations}
+      assistantName={settings.ai.assistant_name}
+    />
+  );
 }

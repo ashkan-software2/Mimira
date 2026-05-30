@@ -8,6 +8,7 @@ Deferred items captured during planning. Each entry: WHAT, WHY, PROS, CONS, CONT
 
 ## Shipped app fixes
 
+- **Customizable assistant name** — **DONE 2026-05-30, commit `1ffe12c`.** Settings → AI brain now has an "Assistant name" field so each clinic can rename "Mimira" to whatever they like (defaults to Mimira; persisted in the `ai` settings section and backfilled for existing blobs). The saved name drives the AI nav tag, the AI brain / kill switch / brand-voice badges in Settings, and the green assistant badge on AI replies in the Inbox. The Inbox no longer renders the duplicate black "Mimira" author label on AI messages — the green assistant badge is the single source of the name.
 - **Promo video refresh** — **DONE 2026-05-30, commit `e3a5b18`.** Remotion `Demo` composition now uses the "Bright Horizons Ahead" music bed, the new acid-green Mimira logo mark in the intro/outro/channels hub, an updated voiceover script (regenerated via ElevenLabs), drops "on LINE" from the intro tagline, and removes TikTok from the channels animation. Re-rendered `remotion/out/mimira-promo.mp4`.
 - **Logo and favicon refresh** — **DONE 2026-05-30, commit `f0f24bc`.** The app now serves the new Mimira logo and favicon from public assets, and the login/auth pages plus admin header use the new bitmap mark.
 - **LINE channel name label** — **DONE 2026-05-30, commit `dbd450f`.** Settings now exposes a human Channel name for the LINE account while keeping the internal LINE destination identifier hidden and auto-synced from webhooks.

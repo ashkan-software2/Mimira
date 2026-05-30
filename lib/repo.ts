@@ -395,7 +395,10 @@ export async function getSettings(): Promise<SettingsBlob> {
   `;
   const data = rows[0]?.data;
   if (!data) throw new Error("settings row not initialized");
-  return JSON.parse(data) as SettingsBlob;
+  const parsed = JSON.parse(data) as SettingsBlob;
+  // Backfill for settings blobs persisted before assistant_name existed.
+  if (!parsed.ai.assistant_name) parsed.ai.assistant_name = "Mimira";
+  return parsed;
 }
 
 export async function saveSettings(next: SettingsBlob): Promise<void> {

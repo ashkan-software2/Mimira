@@ -68,8 +68,10 @@ function displayName(c: ConversationListItem): string {
 
 export function InboxView({
   initialConversations,
+  assistantName,
 }: {
   initialConversations: ConversationListItem[];
+  assistantName: string;
 }) {
   const [conversations, setConversations] = useState<ConversationListItem[]>(
     initialConversations
@@ -391,7 +393,10 @@ export function InboxView({
                   No messages yet for this customer.
                 </div>
               ) : (
-                <MessagesList messages={thread.messages} />
+                <MessagesList
+                  messages={thread.messages}
+                  assistantName={assistantName}
+                />
               )}
             </div>
 
@@ -595,7 +600,13 @@ function RightRail({
   );
 }
 
-function MessagesList({ messages }: { messages: ThreadMessage[] }) {
+function MessagesList({
+  messages,
+  assistantName,
+}: {
+  messages: ThreadMessage[];
+  assistantName: string;
+}) {
   const items: React.ReactNode[] = [];
   let lastDay = "";
   for (const m of messages) {
@@ -609,13 +620,21 @@ function MessagesList({ messages }: { messages: ThreadMessage[] }) {
       );
       lastDay = dayKey;
     }
-    items.push(<MessageBubble key={m.id} message={m} />);
+    items.push(
+      <MessageBubble key={m.id} message={m} assistantName={assistantName} />
+    );
   }
   return <>{items}</>;
 }
 
-function MessageBubble({ message }: { message: ThreadMessage }) {
-  // Customer on the left; both Mimira and staff (the clinic's "side") on the right.
+function MessageBubble({
+  message,
+  assistantName,
+}: {
+  message: ThreadMessage;
+  assistantName: string;
+}) {
+  // Customer on the left; both the AI and staff (the clinic's "side") on the right.
   const side = message.sentBy === "customer" ? "left" : "right";
   const bubbleClass =
     message.sentBy === "customer"
@@ -624,12 +643,9 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
         ? styles.bubbleMimira
         : styles.bubbleStaff;
 
-  const author =
-    message.sentBy === "customer"
-      ? "Customer"
-      : message.sentBy === "ai"
-        ? "Mimira"
-        : "You";
+  // AI messages are labeled by the green assistant badge below, so the plain
+  // author name is only shown for customer and staff messages.
+  const author = message.sentBy === "customer" ? "Customer" : "You";
 
   return (
     <div
@@ -638,9 +654,12 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
       }`}
     >
       <div className={styles.msgMetaTop}>
-        <span className={styles.msgAuthor}>{author}</span>
-        {message.sentBy === "ai" && (
-          <span className={`${styles.badge} ${styles.badgeMimira}`}>Mimira</span>
+        {message.sentBy === "ai" ? (
+          <span className={`${styles.badge} ${styles.badgeMimira}`}>
+            {assistantName}
+          </span>
+        ) : (
+          <span className={styles.msgAuthor}>{author}</span>
         )}
         {message.needsAttention ? (
           <span className={`${styles.badge} ${styles.badgeAttention}`}>

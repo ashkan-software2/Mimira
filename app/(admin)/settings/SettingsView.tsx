@@ -443,11 +443,15 @@ export function SettingsView(props: Props) {
     provider: settings.ai.provider,
     model: settings.ai.model,
     temperature: settings.ai.temperature,
+    assistant_name: settings.ai.assistant_name,
   });
   const aiDirty =
     ai.provider !== settings.ai.provider ||
     ai.model !== settings.ai.model ||
-    ai.temperature !== settings.ai.temperature;
+    ai.temperature !== settings.ai.temperature ||
+    ai.assistant_name !== settings.ai.assistant_name;
+  // Saved assistant name — used for section badges and copy.
+  const assistantName = settings.ai.assistant_name || "Mimira";
 
   // Kill switch
   const [aiActive, setAiActive] = useState(!settings.kill_switch.paused);
@@ -599,6 +603,7 @@ export function SettingsView(props: Props) {
       provider: settings.ai.provider,
       model: settings.ai.model,
       temperature: settings.ai.temperature,
+      assistant_name: settings.ai.assistant_name,
     });
   }
 
@@ -974,7 +979,7 @@ export function SettingsView(props: Props) {
                   <span>{item.label}</span>
                   {item.tag === "ai" && (
                     <span className={`${styles.navTag} ${styles.navTagAi}`}>
-                      Mimira
+                      {assistantName}
                     </span>
                   )}
                 </button>
@@ -1203,7 +1208,7 @@ export function SettingsView(props: Props) {
               <>
                 AI brain{" "}
                 <span className={`${styles.badge} ${styles.badgeMimira}`}>
-                  Mimira
+                  {assistantName}
                 </span>
               </>
             }
@@ -1214,9 +1219,31 @@ export function SettingsView(props: Props) {
             registerRef={registerRef}
           >
             <p className={styles.help}>
-              Which model writes Mimira&rsquo;s replies. Changes apply to new
-              conversations — active threads finish on the current provider.
+              Which model writes {assistantName}&rsquo;s replies. Changes apply
+              to new conversations — active threads finish on the current
+              provider.
             </p>
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="ai-assistant-name">
+                Assistant name
+              </label>
+              <input
+                id="ai-assistant-name"
+                className={styles.input}
+                type="text"
+                maxLength={40}
+                value={ai.assistant_name}
+                placeholder="Mimira"
+                onChange={(e) =>
+                  setAi({ ...ai, assistant_name: e.target.value })
+                }
+              />
+              <span className={styles.hint}>
+                The name your clinic gives the AI assistant. Shown on its replies
+                in the inbox and on customer-facing messages.
+              </span>
+            </div>
 
             <div className={styles.field}>
               <label className={styles.label}>Provider</label>
@@ -1234,9 +1261,9 @@ export function SettingsView(props: Props) {
                     aria-checked={ai.provider === p}
                     onClick={() =>
                       setAi({
+                        ...ai,
                         provider: p,
                         model: MODEL_BY_PROVIDER[p][0].id,
-                        temperature: ai.temperature,
                       })
                     }
                   >
@@ -1360,7 +1387,7 @@ export function SettingsView(props: Props) {
               <>
                 Kill switch{" "}
                 <span className={`${styles.badge} ${styles.badgeMimira}`}>
-                  Mimira
+                  {assistantName}
                 </span>
               </>
             }
@@ -1485,11 +1512,11 @@ export function SettingsView(props: Props) {
                     </div>
                     <div className={styles.turn}>
                       <span className={`${styles.who} ${styles.whoMimira}`}>
-                        Mimira
+                        {assistantName}
                       </span>
                       <div className={styles.turnText}>
                         <span className={`${styles.badge} ${styles.badgeMimira}`}>
-                          Mimira
+                          {assistantName}
                         </span>
                         {d.assistant_text}
                       </div>
