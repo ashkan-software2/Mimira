@@ -3,7 +3,6 @@ import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C, RADIUS} from '../theme';
 import {SANS} from '../fonts';
 import {AppWindow} from '../components/AppWindow';
-import {Caption} from '../components/Caption';
 import {cameraKeyframes, pulse, riseIn, sceneFade, enter} from '../anim';
 
 const BookingCard: React.FC<{
@@ -97,8 +96,6 @@ export const BookingScene: React.FC = () => {
 
   return (
     <AbsoluteFill style={{background: C.bg, justifyContent: 'center', alignItems: 'center', opacity: fade}}>
-      <Caption kicker="From chat to calendar" title="Every booking, captured automatically" frame={frame} total={durationInFrames} />
-
       <div style={{opacity: win.opacity, transform: `translateY(${win.y + 122}px) scale(${camera})`, transformOrigin: '58% 38%', fontFamily: SANS}}>
         <AppWindow active="Bookings">
           <div style={{padding: '28px 40px', height: '100%', overflow: 'hidden'}}>

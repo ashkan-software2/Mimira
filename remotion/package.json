@@ -5,8 +5,9 @@
   "description": "Remotion product demo for Mimira",
   "scripts": {
     "audio": "node scripts/gen-audio.mjs",
+    "voiceover": "node scripts/gen-voiceover.mjs",
     "studio": "remotion studio",
-    "render": "remotion render Demo out/mimira-demo.mp4",
+    "render": "remotion render Demo out/mimira-promo.mp4",
     "still": "remotion still Demo out/still.png"
   },
   "dependencies": {

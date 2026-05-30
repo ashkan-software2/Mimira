@@ -1,0 +1,139 @@
+// Generate the Mimira promo voiceover with ElevenLabs TTS, one clip per line.
+// Writes public/vo/line{n}-{id}.wav and src/voiceover.ts (durations in frames @ fps).
+// Re-runs skip lines whose wav already exists unless FORCE=1.
+//
+//   node scripts/gen-voiceover.mjs          # generate missing clips
+//   FORCE=1 node scripts/gen-voiceover.mjs  # regenerate everything
+//
+// Reads ELEVEN_LABS_API_KEY from ../.env.local (the Next app's env) or the shell.
+
+import fs from 'fs';
+import path from 'path';
+import {fileURLToPath} from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.join(__dirname, '..');
+const VO_DIR = path.join(ROOT, 'public', 'vo');
+const MANIFEST = path.join(ROOT, 'src', 'voiceover.ts');
+
+const FPS = 30;
+// The voice the user created for Mimira.
+const VOICE_ID = 'fviOuGnDdPySDtD0rt0F';
+const MODEL = 'eleven_multilingual_v2'; // highest-quality, expressive brand read
+// CBR mp3 @ 128kbps — available on every tier. Constant bitrate lets us
+// measure clip duration straight from the byte length, no decoder needed.
+const OUTPUT_FORMAT = 'mp3_44100_128';
+const MP3_BITRATE = 128000;
+const VOICE_SETTINGS = {
+  stability: 0.5, // warm + steady, but still expressive
+  similarity_boost: 0.8,
+  style: 0.15,
+  use_speaker_boost: true,
+};
+
+// The script, one entry per scene. `id` maps to a scene component in Demo.tsx.
+export const LINES = [
+  {id: 'hook', text: 'Your clinic runs on conversations. Managing all of them is where most operations fall short.'},
+  {id: 'meet', text: 'Meet Mimira — the all-in-one AI platform built to help clinics unlock the opportunity from every conversation, and drive more revenue.'},
+  {id: 'answer', text: 'Mimira answers every customer twenty-four seven, warmly — turning conversations into booked sales and appointments, instantly.'},
+  {id: 'channels', text: 'Conversations move seamlessly across all your social apps, with natural, human-like response times.'},
+  {id: 'inbox', text: "And with Mimira's staff inbox, your team can monitor, manage, and jump into any conversation when a human touch is needed."},
+  {id: 'outbound', text: "But Mimira doesn't just respond. With intelligent outbound, Mimira reaches customers first — sending promotions they're likely to buy, and automatically following up with aftercare, appointment reminders, and more."},
+  {id: 'outro', text: 'Unlock the value of every conversation, with Mimira — the all-in-one intelligence and automation platform for the AI-driven clinic.'},
+];
+
+function loadKey() {
+  if (process.env.ELEVEN_LABS_API_KEY) return process.env.ELEVEN_LABS_API_KEY.trim();
+  const envPath = path.join(ROOT, '..', '.env.local');
+  const raw = fs.readFileSync(envPath, 'utf8');
+  for (const line of raw.split('\n')) {
+    const m = line.match(/^\s*ELEVEN_LABS_API_KEY\s*=\s*(.*)\s*$/);
+    if (m) return m[1].replace(/^["']|["']$/g, '').trim();
+  }
+  throw new Error('ELEVEN_LABS_API_KEY not found in env or ../.env.local');
+}
+
+// Duration of a CBR mp3, skipping a leading ID3v2 tag if present.
+function mp3Seconds(buf) {
+  let audioStart = 0;
+  if (buf.toString('ascii', 0, 3) === 'ID3') {
+    // ID3v2 size is a 28-bit synchsafe integer in bytes 6..9.
+    const size =
+      (buf[6] << 21) | (buf[7] << 14) | (buf[8] << 7) | buf[9];
+    audioStart = 10 + size;
+  }
+  const audioBytes = buf.length - audioStart;
+  return (audioBytes * 8) / MP3_BITRATE;
+}
+
+async function tts(key, text) {
+  const url =
+    `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}` +
+    `?output_format=${OUTPUT_FORMAT}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'xi-api-key': key,
+      'Content-Type': 'application/json',
+      Accept: 'audio/mpeg',
+    },
+    body: JSON.stringify({
+      text,
+      model_id: MODEL,
+      voice_settings: VOICE_SETTINGS,
+    }),
+  });
+  if (!res.ok) throw new Error(`TTS ${res.status}: ${await res.text()}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+async function main() {
+  const key = loadKey();
+  fs.mkdirSync(VO_DIR, {recursive: true});
+  const force = process.env.FORCE === '1';
+  const manifest = [];
+
+  for (let i = 0; i < LINES.length; i++) {
+    const {id, text} = LINES[i];
+    const file = `vo/line${i + 1}-${id}.mp3`;
+    const abs = path.join(ROOT, 'public', file);
+    let buf;
+    if (!force && fs.existsSync(abs) && fs.statSync(abs).size > 1000) {
+      buf = fs.readFileSync(abs);
+      console.log(`• line ${i + 1} (${id}) — reuse existing`);
+    } else {
+      process.stdout.write(`• line ${i + 1} (${id}) — synthesizing… `);
+      buf = await tts(key, text);
+      fs.writeFileSync(abs, buf);
+      console.log(`${(buf.length / 1024).toFixed(0)} KB`);
+    }
+    const seconds = mp3Seconds(buf);
+    const frames = Math.ceil(seconds * FPS);
+    manifest.push({id, file, text, seconds: +seconds.toFixed(3), frames});
+  }
+
+  const body =
+    '// AUTO-GENERATED by scripts/gen-voiceover.mjs — do not edit by hand.\n' +
+    '// Run `node scripts/gen-voiceover.mjs` (or FORCE=1 …) to regenerate.\n\n' +
+    'export type VoiceLine = {\n' +
+    '  id: string;\n' +
+    '  file: string;\n' +
+    '  text: string;\n' +
+    '  seconds: number;\n' +
+    '  frames: number;\n' +
+    '};\n\n' +
+    `export const FPS = ${FPS};\n\n` +
+    'export const VOICEOVER: VoiceLine[] = ' +
+    JSON.stringify(manifest, null, 2) +
+    ';\n';
+  fs.writeFileSync(MANIFEST, body);
+
+  const total = manifest.reduce((n, l) => n + l.frames, 0);
+  console.log(`\nWrote ${MANIFEST}`);
+  console.log(`Narration: ${(total / FPS).toFixed(1)}s of VO across ${manifest.length} lines.`);
+}
+
+main().catch((e) => {
+  console.error('\nFAILED:', e.message);
+  process.exit(1);
+});

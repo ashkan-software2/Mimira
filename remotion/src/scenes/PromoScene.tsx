@@ -3,7 +3,6 @@ import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C, RADIUS} from '../theme';
 import {SANS} from '../fonts';
 import {AppWindow} from '../components/AppWindow';
-import {Caption} from '../components/Caption';
 import {cameraKeyframes, pulse, riseIn, sceneFade, enter} from '../anim';
 
 const PROMO = 'โปรฟิลเลอร์เดือนนี้ค่ะ ✨ รับส่วนลดพิเศษสำหรับฟิลเลอร์ใต้ตาและคาง พร้อมปรึกษาคุณหมอก่อนทำทุกเคส สนใจให้ทีมงานช่วยดูคิวว่าง ทักกลับมาได้เลยนะคะ 💛';
@@ -33,8 +32,6 @@ export const PromoScene: React.FC = () => {
 
   return (
     <AbsoluteFill style={{background: C.bg, justifyContent: 'center', alignItems: 'center', opacity: fade}}>
-      <Caption kicker="Promotions" title="Launch a filler campaign with the right offer" frame={frame} total={durationInFrames} />
-
       <div style={{opacity: win.opacity, transform: `translateY(${win.y + 122}px) scale(${camera})`, transformOrigin: '56% 58%', fontFamily: SANS}}>
         <AppWindow active="Broadcasts">
           <div style={{padding: '28px 40px', height: '100%', display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32}}>

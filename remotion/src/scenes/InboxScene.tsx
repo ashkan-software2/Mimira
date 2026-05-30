@@ -3,7 +3,7 @@ import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C, RADIUS} from '../theme';
 import {SANS} from '../fonts';
 import {AppWindow} from '../components/AppWindow';
-import {Caption, MimiraBadge, AttentionBadge} from '../components/Caption';
+import {MimiraBadge, AttentionBadge} from '../components/Caption';
 import {cameraKeyframes, pulse, riseIn, sceneFade} from '../anim';
 
 const ESCALATIONS = [
@@ -45,8 +45,6 @@ export const InboxScene: React.FC = () => {
 
   return (
     <AbsoluteFill style={{background: C.bg, justifyContent: 'center', alignItems: 'center', opacity: fade}}>
-      <Caption kicker="Always-on, on-brand" title="Warm answers for treatment questions" frame={frame} total={durationInFrames} />
-
       <div style={{opacity: win.opacity, transform: `translateY(${win.y + 122}px) scale(${camera})`, transformOrigin: '74% 63%', fontFamily: SANS}}>
         <AppWindow active="Inbox">
           <div style={{display: 'grid', gridTemplateColumns: '360px 1fr', height: '100%'}}>
