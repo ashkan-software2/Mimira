@@ -142,7 +142,7 @@ export async function saveClinic(input: {
 // ---------- Line OA ----------
 
 export async function saveLine(input: {
-  channel_id: string;
+  channel_name: string;
   channel_secret: string;
   channel_access_token: string;
   webhook_url?: string;
@@ -151,7 +151,7 @@ export async function saveLine(input: {
   const channelSecret = input.channel_secret.trim();
   const channelAccessToken = input.channel_access_token.trim();
   const next = await updateSettings("line", {
-    channel_id: input.channel_id.trim(),
+    oa_name: input.channel_name.trim(),
     channel_secret: channelSecret,
     channel_access_token: channelAccessToken,
     secret_last4: channelSecret.slice(-4),
@@ -163,7 +163,7 @@ export async function saveLine(input: {
   await appendAudit({
     section: "line",
     actor,
-    summary: `Line OA credentials updated · ${input.channel_id.trim()}`,
+    summary: `Line OA credentials updated · ${input.channel_name.trim()}`,
   });
   bump();
   return next;

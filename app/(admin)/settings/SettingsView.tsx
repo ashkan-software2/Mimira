@@ -429,12 +429,12 @@ export function SettingsView(props: Props) {
 
   // Line
   const [line, setLine] = useState({
-    channel_id: settings.line.channel_id,
+    channel_name: settings.line.oa_name,
     channel_secret: settings.line.channel_secret ?? "",
     channel_access_token: settings.line.channel_access_token ?? "",
   });
   const lineDirty =
-    line.channel_id !== settings.line.channel_id ||
+    line.channel_name !== settings.line.oa_name ||
     line.channel_secret !== (settings.line.channel_secret ?? "") ||
     line.channel_access_token !== (settings.line.channel_access_token ?? "");
 
@@ -570,13 +570,13 @@ export function SettingsView(props: Props) {
           webhook_url: props.webhookUrl,
         });
         setSettings(next);
-        noteAudit("line", `Line OA credentials updated · ${line.channel_id}`);
+        noteAudit("line", `Line OA credentials updated · ${line.channel_name}`);
       });
     });
   }
   function cancelLine() {
     setLine({
-      channel_id: settings.line.channel_id,
+      channel_name: settings.line.oa_name,
       channel_secret: settings.line.channel_secret ?? "",
       channel_access_token: settings.line.channel_access_token ?? "",
     });
@@ -945,11 +945,12 @@ export function SettingsView(props: Props) {
     Math.round((settings.billing.msg_count / settings.billing.msg_quota) * 100)
   );
 
-  const lineSummary = settings.line.channel_id
-    ? `Channel ${settings.line.channel_id.slice(0, 4)}…${settings.line.channel_id.slice(-4)} · token ${
+  const lineName = settings.line.oa_name || "Unnamed channel";
+  const lineSummary = settings.line.oa_name || settings.line.channel_access_token
+    ? `${lineName} · token ${
         settings.line.channel_access_token ? "saved" : "missing"
       }`
-    : "Not connected";
+    : "Not configured";
 
   return (
     <div className={styles.workspace}>
@@ -1086,23 +1087,27 @@ export function SettingsView(props: Props) {
             registerRef={registerRef}
           >
             <p className={styles.help}>
-              The clinic&rsquo;s Line Messaging API credentials. You need Channel
-              ID, Channel secret, Channel access token, and the webhook URL below
-              entered in LINE.
+              The clinic&rsquo;s Line Messaging API credentials. Channel name is
+              just your internal label for this account; authentication uses the
+              Channel secret and Channel access token.
             </p>
 
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="line-id">
-                Channel ID
+              <label className={styles.label} htmlFor="line-name">
+                Channel name
               </label>
               <input
-                className={`${styles.input} ${styles.inputMono}`}
-                id="line-id"
-                value={line.channel_id}
+                className={styles.input}
+                id="line-name"
+                value={line.channel_name}
                 onChange={(e) =>
-                  setLine({ ...line, channel_id: e.target.value })
+                  setLine({ ...line, channel_name: e.target.value })
                 }
+                placeholder="Sukhumvit Skin main LINE"
               />
+              <span className={styles.hint}>
+                For your own reference when you connect multiple LINE accounts.
+              </span>
             </div>
 
             <div className={styles.field}>
@@ -2131,7 +2136,8 @@ export function SettingsView(props: Props) {
             <li>Enable Chat and Webhooks.</li>
             <li>Disable auto response.</li>
             <li>Go to Messaging API under Settings.</li>
-            <li>Copy Channel ID and Channel Secret into Mimira.</li>
+            <li>Enter a Channel name in Mimira so you can recognize this LINE account later.</li>
+            <li>Copy Channel Secret into Mimira.</li>
             <li>
               Enter this Webhook URL in LINE:{" "}
               <code className={styles.inlineCode}>{props.webhookUrl || "[webhook URL]"}</code>
