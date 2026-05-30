@@ -382,18 +382,6 @@ Mechanics:
 - No state library, no router patching, no per-page changes; all timers are cleared on unmount.
 
 Visual spec lives in **DESIGN-UI.md** (Motion); UX behavior + states in **DESIGN-UX.md** (Interaction State Matrix).
-| ET17 | P2 | ~1h / ~10min (done) | app/TopLoader | Dependency-free top navigation progress bar mounted once in `app/layout.tsx` | Perceived-perf follow-up (shipped) |
-
-### TopLoader navigation progress bar (ET17)
-
-**Dependency-free client component** (`app/TopLoader.tsx`, `"use client"`) mounted once in `app/layout.tsx` (in both the auth-configured and `AuthSetupMissing` `<body>` branches). It gives instant feedback on client-side navigation while a slow route renders — it does not change actual route latency (see the related perf item in **TODOS.md**).
-
-Mechanics:
-- A single global **capture-phase** `click` listener inspects the closest `<a>`. It starts the bar only for same-origin, left-click, unmodified navigations to a different path; it ignores external links, `target="_blank"`, `download`, `#`-anchors, modified clicks (meta/ctrl/shift/alt), and same-page hrefs.
-- On start, a CSS-`transition: width` bar trickles 8% → 88% via staged `setTimeout`s. Completion is detected by a `usePathname()` effect (route actually changed), which snaps to 100% and fades out. A 12 s safety timer force-finishes if a navigation is cancelled, so the bar can never get stuck.
-- No state library, no router patching, no per-page changes; all timers are cleared on unmount.
-
-Visual spec lives in **DESIGN-UI.md** (Motion); UX behavior + states in **DESIGN-UX.md** (Interaction State Matrix).
 
 > Full JSONL form: `~/.gstack/projects/ashkan-software2-Mimira/tasks-eng-review-20260525-161034.jsonl` (consumed by `/autoplan`).
 
