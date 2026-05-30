@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate} from 'remotion';
+import {AbsoluteFill, Img, staticFile, useCurrentFrame, useVideoConfig, interpolate} from 'remotion';
 import {C, RADIUS} from '../theme';
 import {SANS} from '../fonts';
 import {riseIn, sceneFade, enter} from '../anim';
@@ -33,21 +33,14 @@ export const Outro: React.FC = () => {
           transform: `translateY(${mark.y}px)`,
         }}
       >
-        <div
+        <Img
+          src={staticFile('mimira-logo.png')}
           style={{
             width: 86,
             height: 86,
             borderRadius: 18,
-            background: C.fg,
-            color: C.bg,
-            display: 'grid',
-            placeItems: 'center',
-            fontSize: 52,
-            fontWeight: 600,
           }}
-        >
-          M
-        </div>
+        />
         <div style={{fontSize: 78, fontWeight: 600, letterSpacing: '-0.03em', color: C.fg}}>
           Mimira
         </div>

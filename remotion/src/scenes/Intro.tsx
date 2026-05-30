@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate} from 'remotion';
+import {AbsoluteFill, Img, staticFile, useCurrentFrame, useVideoConfig, interpolate} from 'remotion';
 import {C, RADIUS} from '../theme';
 import {SANS} from '../fonts';
 import {riseIn, sceneFade, enter} from '../anim';
@@ -25,23 +25,16 @@ export const Intro: React.FC = () => {
       }}
     >
       <div style={{display: 'flex', alignItems: 'center', gap: 26}}>
-        <div
+        <Img
+          src={staticFile('mimira-logo.png')}
           style={{
             width: 116,
             height: 116,
             borderRadius: 24,
-            background: C.fg,
-            color: C.bg,
-            display: 'grid',
-            placeItems: 'center',
-            fontSize: 70,
-            fontWeight: 600,
             opacity: mark.opacity,
             transform: `translateY(${mark.y}px) scale(${interpolate(mark.opacity, [0, 1], [0.92, 1])})`,
           }}
-        >
-          M
-        </div>
+        />
         <div
           style={{
             fontSize: 104,
@@ -77,7 +70,7 @@ export const Intro: React.FC = () => {
           transform: `translateY(${tag.y}px)`,
         }}
       >
-        The AI front desk for your clinic — on LINE.
+        The AI front desk for your clinic.
       </div>
     </AbsoluteFill>
   );

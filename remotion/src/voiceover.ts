@@ -16,29 +16,29 @@ export const VOICEOVER: VoiceLine[] = [
     "id": "hook",
     "file": "vo/line1-hook.mp3",
     "text": "Your clinic runs on conversations. Managing all of them is where most operations fall short.",
-    "seconds": 5.825,
-    "frames": 175
+    "seconds": 5.277,
+    "frames": 159
   },
   {
     "id": "meet",
     "file": "vo/line2-meet.mp3",
-    "text": "Meet Mimira — the all-in-one AI platform built to help clinics unlock the opportunity from every conversation, and drive more revenue.",
-    "seconds": 8.411,
-    "frames": 253
+    "text": "Meet Mimira AI — the all-in-one AI platform built to help clinics unlock the opportunity from every conversation, and drive more revenue.",
+    "seconds": 8.751,
+    "frames": 263
   },
   {
     "id": "answer",
     "file": "vo/line3-answer.mp3",
-    "text": "Mimira answers every customer twenty-four seven, warmly — turning conversations into booked sales and appointments, instantly.",
-    "seconds": 7.366,
-    "frames": 221
+    "text": "Mimira answers every customer twenty-four seven, turning conversations into booked sales and appointments instantly.",
+    "seconds": 6.557,
+    "frames": 197
   },
   {
     "id": "channels",
     "file": "vo/line4-channels.mp3",
-    "text": "Conversations move seamlessly across all your social apps, with natural, human-like response times.",
-    "seconds": 5.956,
-    "frames": 179
+    "text": "Conversations move seamlessly across all social apps, with natural, human-like response times.",
+    "seconds": 5.877,
+    "frames": 177
   },
   {
     "id": "inbox",
@@ -50,15 +50,15 @@ export const VOICEOVER: VoiceLine[] = [
   {
     "id": "outbound",
     "file": "vo/line6-outbound.mp3",
-    "text": "But Mimira doesn't just respond. With intelligent outbound, Mimira reaches customers first — sending promotions they're likely to buy, and automatically following up with aftercare, appointment reminders, and more.",
-    "seconds": 11.807,
-    "frames": 355
+    "text": "But Mimira doesn't just respond. With intelligent outbound capabilities, Mimira can reach customers first, sending promotions they're likely to buy, automatically following up with aftercare, appointment reminders, and more.",
+    "seconds": 13.531,
+    "frames": 406
   },
   {
     "id": "outro",
     "file": "vo/line7-outro.mp3",
-    "text": "Unlock the value of every conversation, with Mimira — the all-in-one intelligence and automation platform for the AI-driven clinic.",
-    "seconds": 8.229,
-    "frames": 247
+    "text": "Unlock the value of every conversation with Mimira, the all-in-one intelligence and automation platform for the AI-driven clinic.",
+    "seconds": 7.575,
+    "frames": 228
   }
 ];

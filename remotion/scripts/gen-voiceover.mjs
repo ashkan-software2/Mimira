@@ -34,12 +34,12 @@ const VOICE_SETTINGS = {
 // The script, one entry per scene. `id` maps to a scene component in Demo.tsx.
 export const LINES = [
   {id: 'hook', text: 'Your clinic runs on conversations. Managing all of them is where most operations fall short.'},
-  {id: 'meet', text: 'Meet Mimira — the all-in-one AI platform built to help clinics unlock the opportunity from every conversation, and drive more revenue.'},
-  {id: 'answer', text: 'Mimira answers every customer twenty-four seven, warmly — turning conversations into booked sales and appointments, instantly.'},
-  {id: 'channels', text: 'Conversations move seamlessly across all your social apps, with natural, human-like response times.'},
+  {id: 'meet', text: 'Meet Mimira AI — the all-in-one AI platform built to help clinics unlock the opportunity from every conversation, and drive more revenue.'},
+  {id: 'answer', text: 'Mimira answers every customer twenty-four seven, turning conversations into booked sales and appointments instantly.'},
+  {id: 'channels', text: 'Conversations move seamlessly across all social apps, with natural, human-like response times.'},
   {id: 'inbox', text: "And with Mimira's staff inbox, your team can monitor, manage, and jump into any conversation when a human touch is needed."},
-  {id: 'outbound', text: "But Mimira doesn't just respond. With intelligent outbound, Mimira reaches customers first — sending promotions they're likely to buy, and automatically following up with aftercare, appointment reminders, and more."},
-  {id: 'outro', text: 'Unlock the value of every conversation, with Mimira — the all-in-one intelligence and automation platform for the AI-driven clinic.'},
+  {id: 'outbound', text: "But Mimira doesn't just respond. With intelligent outbound capabilities, Mimira can reach customers first, sending promotions they're likely to buy, automatically following up with aftercare, appointment reminders, and more."},
+  {id: 'outro', text: 'Unlock the value of every conversation with Mimira, the all-in-one intelligence and automation platform for the AI-driven clinic.'},
 ];
 
 function loadKey() {

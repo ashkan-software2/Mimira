@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate} from 'remotion';
+import {AbsoluteFill, Img, staticFile, useCurrentFrame, useVideoConfig, interpolate} from 'remotion';
 import {C, RADIUS} from '../theme';
 import {SANS} from '../fonts';
 import {sceneFade} from '../anim';
@@ -13,7 +13,6 @@ const CHANNELS: Channel[] = [
   {name: 'Messenger', mark: 'f', color: '#0084FF', x: CX + 388, y: CY - 132},
   {name: 'Instagram', mark: 'IG', color: '#E1306C', x: CX - 452, y: CY + 118},
   {name: 'WhatsApp', mark: 'W', color: '#25D366', x: CX + 452, y: CY + 118},
-  {name: 'TikTok', mark: '♪', color: '#111111', x: CX, y: CY + 300},
 ];
 
 const CHIP_W = 196;
@@ -129,22 +128,15 @@ export const ChannelsScene: React.FC = () => {
             transform: `scale(${1 + ringPulse * 0.12})`,
           }}
         />
-        <div
+        <Img
+          src={staticFile('mimira-logo.png')}
           style={{
             width: 132,
             height: 132,
             borderRadius: 30,
-            background: C.fg,
-            color: C.bg,
-            display: 'grid',
-            placeItems: 'center',
-            fontSize: 74,
-            fontWeight: 600,
             boxShadow: `0 22px 60px rgba(10,124,124,0.22)`,
           }}
-        >
-          M
-        </div>
+        />
       </div>
 
       {/* Response-time readout */}

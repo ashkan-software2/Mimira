@@ -115,12 +115,12 @@ export const Demo: React.FC = () => {
         })}
       </Series>
 
-      {/* Music bed — looped under the whole film, with in/out fades. */}
+      {/* Music bed — "Bright Horizons Ahead", under the whole film, with in/out fades. */}
       <Audio
-        src={staticFile('music.wav')}
+        src={staticFile('bright-horizons.wav')}
         loop
         volume={(f) =>
-          0.16 *
+          0.14 *
           Math.min(
             interpolate(f, [0, 20], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}),
             interpolate(f, [TOTAL_FRAMES - 42, TOTAL_FRAMES - 6], [1, 0], {
