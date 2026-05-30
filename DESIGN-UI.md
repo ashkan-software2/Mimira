@@ -206,6 +206,12 @@ box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--link);
 - No page transition flourishes.
 - No looping animations (skeletons excepted — but use a slow 1.6 s shimmer, not 800 ms).
 
+**TopLoader — navigation progress bar** (component: `app/TopLoader.tsx`):
+- A 3 px-high bar fixed to the very top of the viewport (`position: fixed; top/left/right: 0`), above everything (`z-index: 9999`), non-interactive (`pointer-events: none`).
+- Fill color is the `--ai-accent` token (`#0a7c7c` light / `#2dd4bf` dark) with a soft glow (`box-shadow: 0 0 8px` at ~50% accent). This is the one place accent is used as a moving element.
+- Motion: container opacity fades in/out over ~200 ms; the fill `width` animates 0 → 100% over ~200 ms ease. (Sits between `motion-short` and `motion-medium`; tokenize as a follow-up.) It trickles 8% → 88% while the route loads, then snaps to 100% and fades on arrival.
+- **Not** a banned "page transition flourish": it is a functional progress affordance for slow navigations, not decorative page choreography. Nothing else on the page moves.
+
 ---
 
 ## Components — Primitives

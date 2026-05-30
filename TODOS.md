@@ -81,6 +81,7 @@ These five decisions surfaced during /plan-eng-review on 2026-05-25 but did not 
 - **Multi-org user (cofounder owns multiple clinics)** — multi-org membership UI deferred until first multi-org owner request.
 - **Calendar integrations for bookings** — paid clinics can custom.
 - **Product analytics** — placeholder folder + README only in v0.
+- **Reduce slow page load / compile times** — pages are genuinely slow to render between routes (cold root render observed at ~5s in dev). The shipped `app/TopLoader` bar (ET17) only improves *perceived* latency; it does not cut actual load time. Investigate real causes: server components doing slow DB / pgvector queries, N+1 fetches, and bundler compile latency. Likely fixes: profile hot routes (Inbox, Knowledge tree), add per-route `loading.tsx` skeletons for slow data, cache/batch vector queries, and move heavy queries off the critical render path. See DESIGN-ENG.md ET17 for the perceived-perf companion.
 
 ## Pro-tier features (deferred from v0)
 
