@@ -28,12 +28,8 @@
   width: 22px;
   height: 22px;
   border-radius: var(--radius-sm);
-  background: var(--fg);
-  color: var(--bg);
-  display: grid;
-  place-items: center;
-  font-size: 13px;
-  font-weight: 600;
+  display: block;
+  object-fit: cover;
 }
 .brandName { color: var(--fg); }
 .brandClinic { color: var(--fg-muted); font-weight: 400; }

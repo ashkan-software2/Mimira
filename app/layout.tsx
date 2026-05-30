@@ -6,6 +6,17 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Mimira",
   description: "Mimira admin — calm Line concierge for Thai skin clinics.",
+  icons: {
+    icon: [
+      {
+        url: "/favicon-48.png",
+        sizes: "48x48",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/favicon-48.png",
+    apple: "/mimira-logo.png",
+  },
 };
 
 export default async function RootLayout({

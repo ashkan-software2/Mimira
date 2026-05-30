@@ -42,7 +42,12 @@ export function Shell({
     <div className={styles.app}>
       <header className={styles.topbar} role="banner">
         <Link href="/inbox" className={styles.brand}>
-          <span className={styles.brandMark} aria-hidden="true">M</span>
+          <img
+            className={styles.brandMark}
+            src="/mimira-logo.png"
+            alt=""
+            aria-hidden="true"
+          />
           <span>
             <span className={styles.brandName}>Mimira</span>
             <span className={styles.brandSep}> · </span>

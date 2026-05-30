@@ -4,9 +4,12 @@ export function AuthSetupMissing() {
   return (
     <main className={styles.page}>
       <section className={styles.panel} aria-labelledby="auth-setup-title">
-        <div className={styles.brandMark} aria-hidden="true">
-          M
-        </div>
+        <img
+          className={styles.brandMark}
+          src="/mimira-logo.png"
+          alt=""
+          aria-hidden="true"
+        />
         <h1 id="auth-setup-title">Clerk keys required</h1>
         <p>
           Add Clerk publishable and secret keys to `.env.local`, then restart

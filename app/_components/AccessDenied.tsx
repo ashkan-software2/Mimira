@@ -7,9 +7,12 @@ export function AccessDenied() {
   return (
     <main className={styles.page}>
       <section className={styles.panel} aria-labelledby="access-denied-title">
-        <div className={styles.brandMark} aria-hidden="true">
-          M
-        </div>
+        <img
+          className={styles.brandMark}
+          src="/mimira-logo.png"
+          alt=""
+          aria-hidden="true"
+        />
         <h1 id="access-denied-title">Access not enabled</h1>
         <p>
           This account is signed in, but its email is not an active Mimira team

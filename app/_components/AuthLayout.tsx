@@ -8,9 +8,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
     <main className={styles.page}>
       <div className={styles.panel}>
         <div className={styles.brand}>
-          <div className={styles.brandMark} aria-hidden="true">
-            M
-          </div>
+          <img
+            className={styles.brandMark}
+            src="/mimira-logo.png"
+            alt=""
+            aria-hidden="true"
+          />
           <span className={styles.wordmark}>Mimira</span>
         </div>
         <p className={styles.tagline}>
