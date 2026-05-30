@@ -1,5 +1,12 @@
 import { toSql as pgvectorToSql } from "pgvector";
-import { FRESH_SETTINGS_BLOB, getDb, now, uuid, type SettingsBlob } from "./db";
+import {
+  DEFAULT_BRAND_VOICE,
+  FRESH_SETTINGS_BLOB,
+  getDb,
+  now,
+  uuid,
+  type SettingsBlob,
+} from "./db";
 
 export type Customer = {
   id: string;
@@ -782,7 +789,7 @@ export async function bootstrapFirstOwner(args: {
     `;
     await tx`
       UPDATE settings
-      SET brand_voice = '', data = ${JSON.stringify(FRESH_SETTINGS_BLOB)}, updated_at = ${ts}
+      SET brand_voice = ${DEFAULT_BRAND_VOICE}, data = ${JSON.stringify(FRESH_SETTINGS_BLOB)}, updated_at = ${ts}
       WHERE id = 1
     `;
   });

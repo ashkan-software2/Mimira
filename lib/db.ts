@@ -61,10 +61,9 @@ async function ensureSeeded(sql: Sql): Promise<void> {
     const defaultSettings = hasRealTeamMember
       ? FRESH_SETTINGS_BLOB
       : DEMO_SETTINGS_BLOB;
-    const defaultBrandVoice = hasRealTeamMember ? "" : DEFAULT_BRAND_VOICE;
     await sql`
       INSERT INTO settings (id, brand_voice, data, updated_at)
-      VALUES (1, ${defaultBrandVoice}, ${JSON.stringify(defaultSettings)}, ${ts})
+      VALUES (1, ${DEFAULT_BRAND_VOICE}, ${JSON.stringify(defaultSettings)}, ${ts})
     `;
   } else {
     const row = settingsRows[0];
@@ -83,6 +82,13 @@ async function ensureSeeded(sql: Sql): Promise<void> {
       `;
     }
     if (!hasRealTeamMember && row.brand_voice === LEGACY_DEFAULT_BRAND_VOICE) {
+      await sql`
+        UPDATE settings
+        SET brand_voice = ${DEFAULT_BRAND_VOICE}, updated_at = ${ts}
+        WHERE id = 1
+      `;
+    }
+    if (!row.brand_voice || row.brand_voice.trim() === "") {
       await sql`
         UPDATE settings
         SET brand_voice = ${DEFAULT_BRAND_VOICE}, updated_at = ${ts}
@@ -164,7 +170,7 @@ async function resetDemoWorkspaceForRealTeam(sql: Sql, ts: number): Promise<void
     await tx`DELETE FROM audit_log`;
     await tx`
       UPDATE settings
-      SET brand_voice = '', data = ${JSON.stringify(FRESH_SETTINGS_BLOB)}, updated_at = ${ts}
+      SET brand_voice = ${DEFAULT_BRAND_VOICE}, data = ${JSON.stringify(FRESH_SETTINGS_BLOB)}, updated_at = ${ts}
       WHERE id = 1
     `;
   });
@@ -442,7 +448,7 @@ Safety:
 
 When a customer wants to book, reschedule, or cancel an appointment, capture the intent using the extract_booking_intent tool, and reply naturally ("ขอจดให้นะคะ ทีมงานจะยืนยันอีกครั้ง" or equivalent).`;
 
-const DEFAULT_BRAND_VOICE = `You are Mimira, the AI receptionist for Sukhumvit Skin & Laser, a high-end Bangkok dermatology and laser clinic.
+export const DEFAULT_BRAND_VOICE = `You are Mimira, the AI receptionist for Sukhumvit Skin & Laser, a high-end Bangkok dermatology and laser clinic.
 
 # Tone & persona
 You are warm, caring, and friendly, with the hospitality of a Thai front-desk lady who genuinely loves taking care of customers. Sound like a real person, not a script.
