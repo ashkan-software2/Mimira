@@ -13,6 +13,7 @@ Deferred items captured during planning. Each entry: WHAT, WHY, PROS, CONS, CONT
 - **LINE Settings credential simplification** — **DONE 2026-05-30, commit `3a25c90`.** Settings now asks only for Channel ID, editable Channel Secret, Channel Access Token, and the webhook URL, removes the Rotate / Verify connection / OA display name controls, and adds a Help modal with LINE setup steps.
 - **Demo inbox badge + clinic profile simplification** — **DONE 2026-05-30, commit `this commit`.** Inbox nav now counts unresolved attention threads instead of hardcoded demo totals / total customers, and Settings no longer exposes clinic hours or languages-spoken fields. The AI prompt now handles language choice directly from the customer's message.
 - **Default brand voice for all users** — **DONE 2026-05-30, commit `this commit`.** New, demo, and first-owner-reset workspaces now receive the warm Mimira brand voice prompt by default; blank existing settings rows are repaired on startup without overwriting custom prompts.
+- **Demo knowledge reseed** — **DONE 2026-05-30, commit `3a159ca`.** Re-ran the existing `npm run seed:knowledge` pipeline so demo users have the previous `sample_clinic_knowledge` RAG corpus available again.
 
 ## Post-v0 evals (deferred from D14)
 
