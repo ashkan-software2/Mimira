@@ -35,8 +35,9 @@ type LineEvent =
 export async function POST(req: Request) {
   const raw = await req.text();
   const signature = req.headers.get("x-line-signature");
+  let settings = await getSettings();
 
-  if (!verifyLineSignature(raw, signature)) {
+  if (!verifyLineSignature(raw, signature, settings.line.channel_secret)) {
     return new NextResponse("bad signature", { status: 401 });
   }
 
@@ -47,7 +48,6 @@ export async function POST(req: Request) {
     return new NextResponse("bad json", { status: 400 });
   }
 
-  let settings = await getSettings();
   // LINE sends the bot user id as `destination`. Rejecting on mismatch blocked
   // all real traffic when Settings still had the seeded demo channel id.
   if (

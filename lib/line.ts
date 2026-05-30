@@ -1,14 +1,18 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { getSettings } from "./repo";
 
 const LINE_API = "https://api.line.me";
 
-function channelSecret(): string {
+function channelSecret(savedSecret?: string): string {
+  if (savedSecret) return savedSecret;
   const v = process.env.LINE_CHANNEL_SECRET;
   if (!v) throw new Error("LINE_CHANNEL_SECRET is not set");
   return v;
 }
 
-function channelAccessToken(): string {
+async function channelAccessToken(): Promise<string> {
+  const settings = await getSettings();
+  if (settings.line.channel_access_token) return settings.line.channel_access_token;
   const v = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   if (!v) throw new Error("LINE_CHANNEL_ACCESS_TOKEN is not set");
   return v;
@@ -19,9 +23,13 @@ function channelAccessToken(): string {
  * the X-Line-Signature header. LINE rejects webhooks that don't verify, so
  * this is mandatory even for the demo.
  */
-export function verifyLineSignature(rawBody: string, signature: string | null): boolean {
+export function verifyLineSignature(
+  rawBody: string,
+  signature: string | null,
+  savedSecret?: string
+): boolean {
   if (!signature) return false;
-  const expected = createHmac("sha256", channelSecret())
+  const expected = createHmac("sha256", channelSecret(savedSecret))
     .update(rawBody, "utf8")
     .digest("base64");
   const a = Buffer.from(expected);
@@ -42,7 +50,7 @@ async function lineFetch(path: string, init: RequestInit): Promise<Response> {
     ...init,
     headers: {
       ...(init.headers ?? {}),
-      Authorization: `Bearer ${channelAccessToken()}`,
+      Authorization: `Bearer ${await channelAccessToken()}`,
       "Content-Type": "application/json",
     },
   });
@@ -90,7 +98,7 @@ export async function getMessageContent(messageId: string): Promise<{
   const res = await fetch(`${LINE_API}/v2/bot/message/${messageId}/content`, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${channelAccessToken()}`,
+      Authorization: `Bearer ${await channelAccessToken()}`,
     },
   });
   if (!res.ok) {

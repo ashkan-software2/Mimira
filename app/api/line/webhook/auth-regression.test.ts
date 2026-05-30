@@ -58,7 +58,9 @@ describe("LINE webhook auth regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.LINE_CHANNEL_SECRET = secret;
-    hooks.getSettings.mockResolvedValue({ line: { channel_id: "line-bot" } });
+    hooks.getSettings.mockResolvedValue({
+      line: { channel_id: "line-bot", channel_secret: secret },
+    });
     hooks.updateSettings.mockImplementation(async (_section, patch) => ({
       line: { channel_id: patch.channel_id },
     }));
@@ -72,7 +74,7 @@ describe("LINE webhook auth regression", () => {
 
     expect(res.status).toBe(401);
     await expect(res.text()).resolves.toBe("bad signature");
-    expect(hooks.getSettings).not.toHaveBeenCalled();
+    expect(hooks.getSettings).toHaveBeenCalledOnce();
     expect(hooks.after).not.toHaveBeenCalled();
   });
 

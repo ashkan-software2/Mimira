@@ -181,6 +181,8 @@ export type SettingsBlob = {
   line: {
     channel_id: string;
     oa_name: string;
+    channel_secret: string;
+    channel_access_token: string;
     secret_last4: string;
     webhook_url: string;
     secret_rotated_at: number;
@@ -245,6 +247,8 @@ const DEMO_SETTINGS_BLOB: SettingsBlob = {
   line: {
     channel_id: "Cf12a93e8b8a",
     oa_name: "@sukhumvit-skin",
+    channel_secret: "",
+    channel_access_token: "",
     secret_last4: "3f9c",
     webhook_url: "https://api.mimira.app/api/line/webhook",
     secret_rotated_at: Date.now() - 14 * 24 * 3600 * 1000,
@@ -307,6 +311,8 @@ export const FRESH_SETTINGS_BLOB: SettingsBlob = {
   line: {
     channel_id: "",
     oa_name: "",
+    channel_secret: "",
+    channel_access_token: "",
     secret_last4: "",
     webhook_url: "",
     secret_rotated_at: 0,

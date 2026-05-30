@@ -35,7 +35,7 @@ export default async function SettingsPage() {
   ]);
   const lineWebhookUrl =
     settings.line.webhook_url ||
-    (settings.line.channel_id || settings.line.oa_name ? webhookUrl : null);
+    (settings.line.channel_id ? webhookUrl : null);
   return (
     <SettingsView
       initialBrandVoice={brandVoice}

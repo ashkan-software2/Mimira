@@ -1,6 +1,5 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { withAuthedAction } from "@/lib/auth";
@@ -144,13 +143,19 @@ export async function saveClinic(input: {
 
 export async function saveLine(input: {
   channel_id: string;
-  oa_name: string;
+  channel_secret: string;
+  channel_access_token: string;
   webhook_url?: string;
 }): Promise<SettingsBlob> {
   const actor = await requireOwnerActor();
+  const channelSecret = input.channel_secret.trim();
+  const channelAccessToken = input.channel_access_token.trim();
   const next = await updateSettings("line", {
-    channel_id: input.channel_id,
-    oa_name: input.oa_name,
+    channel_id: input.channel_id.trim(),
+    channel_secret: channelSecret,
+    channel_access_token: channelAccessToken,
+    secret_last4: channelSecret.slice(-4),
+    secret_rotated_at: now(),
     ...(input.webhook_url ? { webhook_url: input.webhook_url } : {}),
     saved_at: now(),
     saved_by: actor,
@@ -158,37 +163,10 @@ export async function saveLine(input: {
   await appendAudit({
     section: "line",
     actor,
-    summary: `Line OA updated · ${input.oa_name}`,
+    summary: `Line OA credentials updated · ${input.channel_id.trim()}`,
   });
   bump();
   return next;
-}
-
-export async function rotateLineSecret(): Promise<{ last4: string; rotated_at: number }> {
-  const actor = await requireOwnerActor();
-  const last4 = randomBytes(2).toString("hex");
-  const ts = now();
-  await updateSettings("line", { secret_last4: last4, secret_rotated_at: ts });
-  await appendAudit({
-    section: "line",
-    actor,
-    summary: `Channel secret rotated · ends ${last4}`,
-  });
-  bump();
-  return { last4, rotated_at: ts };
-}
-
-export async function testLineSignature(): Promise<{ ok: true; pinged_at: number }> {
-  const actor = await requireOwnerActor();
-  const ts = now();
-  await updateSettings("line", { last_ping_at: ts });
-  await appendAudit({
-    section: "line",
-    actor,
-    summary: "Test signature verified",
-  });
-  bump();
-  return { ok: true, pinged_at: ts };
 }
 
 // ---------- AI brain ----------

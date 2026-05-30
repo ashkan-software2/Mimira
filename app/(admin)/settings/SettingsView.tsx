@@ -20,7 +20,6 @@ import {
   inviteTeamMember,
   requestEmbeddingOverride,
   resendInvite,
-  rotateLineSecret,
   saveAftercare,
   saveAiBrain,
   saveBillingCard,
@@ -33,7 +32,6 @@ import {
   setBillingPlan,
   setKillSwitch,
   setTeamMemberRole,
-  testLineSignature,
 } from "./actions";
 import type { SettingsBlob } from "@/lib/db";
 import type {
@@ -242,16 +240,6 @@ function fmtDate(ts: number): string {
   return `${p.day} ${p.month} ${p.year}`;
 }
 
-function fmtDateTime(ts: number): string {
-  const p = bangkokParts(ts);
-  return `${pad2(p.day)} ${p.month}, ${pad2(p.hour)}:${pad2(p.minute)}`;
-}
-
-function fmtClock(ts: number): string {
-  const p = bangkokParts(ts);
-  return `${pad2(p.hour)}:${pad2(p.minute)}`;
-}
-
 // ---------- Inline icons ----------
 
 function Chevron() {
@@ -400,6 +388,7 @@ type ModalState =
   | { kind: "audit"; section?: string }
   | { kind: "invite" }
   | { kind: "member"; member: TeamMember }
+  | { kind: "lineHelp" }
   | { kind: "capacity"; rule: CapacityRule | null }
   | { kind: "addDialogue" }
   | { kind: "override" }
@@ -441,11 +430,13 @@ export function SettingsView(props: Props) {
   // Line
   const [line, setLine] = useState({
     channel_id: settings.line.channel_id,
-    oa_name: settings.line.oa_name,
+    channel_secret: settings.line.channel_secret ?? "",
+    channel_access_token: settings.line.channel_access_token ?? "",
   });
   const lineDirty =
     line.channel_id !== settings.line.channel_id ||
-    line.oa_name !== settings.line.oa_name;
+    line.channel_secret !== (settings.line.channel_secret ?? "") ||
+    line.channel_access_token !== (settings.line.channel_access_token ?? "");
 
   // AI brain
   const [ai, setAi] = useState({
@@ -579,44 +570,15 @@ export function SettingsView(props: Props) {
           webhook_url: props.webhookUrl,
         });
         setSettings(next);
-        noteAudit("line", `Line OA updated · ${line.oa_name}`);
+        noteAudit("line", `Line OA credentials updated · ${line.channel_id}`);
       });
     });
   }
   function cancelLine() {
     setLine({
       channel_id: settings.line.channel_id,
-      oa_name: settings.line.oa_name,
-    });
-  }
-  function rotateSecret() {
-    startTransition(async () => {
-      try {
-        const { last4, rotated_at } = await rotateLineSecret();
-        setSettings((s) => ({
-          ...s,
-          line: { ...s.line, secret_last4: last4, secret_rotated_at: rotated_at },
-        }));
-        noteAudit("line", `Channel secret rotated · ends ${last4}`);
-        showToast(`Secret rotated · ends ${last4}`);
-      } catch {
-        showToast("Rotate failed");
-      }
-    });
-  }
-  function pingLine() {
-    startTransition(async () => {
-      try {
-        const { pinged_at } = await testLineSignature();
-        setSettings((s) => ({
-          ...s,
-          line: { ...s.line, last_ping_at: pinged_at },
-        }));
-        noteAudit("line", "Test signature verified");
-        showToast(`Signature verified · ${fmtClock(pinged_at)} ICT`);
-      } catch {
-        showToast("Test failed");
-      }
+      channel_secret: settings.line.channel_secret ?? "",
+      channel_access_token: settings.line.channel_access_token ?? "",
     });
   }
 
@@ -983,11 +945,11 @@ export function SettingsView(props: Props) {
     Math.round((settings.billing.msg_count / settings.billing.msg_quota) * 100)
   );
 
-  // Has the Line OA had a recent ping?
-  const linePinged = settings.line.last_ping_at > 0;
-  const lineSummary = `${settings.line.oa_name} · channel ${settings.line.channel_id.slice(0, 4)}…${settings.line.channel_id.slice(-4)} · last ping ${
-    linePinged ? fmtClock(settings.line.last_ping_at) : "never"
-  } ✓`;
+  const lineSummary = settings.line.channel_id
+    ? `Channel ${settings.line.channel_id.slice(0, 4)}…${settings.line.channel_id.slice(-4)} · token ${
+        settings.line.channel_access_token ? "saved" : "missing"
+      }`
+    : "Not connected";
 
   return (
     <div className={styles.workspace}>
@@ -1124,63 +1086,60 @@ export function SettingsView(props: Props) {
             registerRef={registerRef}
           >
             <p className={styles.help}>
-              The clinic&rsquo;s Line Official Account credentials. Channel
-              secret is encrypted at rest — only the last 4 characters are shown.
-              In the demo build, these live in <code>.env.local</code>.
+              The clinic&rsquo;s Line Messaging API credentials. You need Channel
+              ID, Channel secret, Channel access token, and the webhook URL below
+              entered in LINE.
             </p>
 
-            <div className={styles.fieldRow}>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="line-id">
-                  Channel ID
-                </label>
-                <input
-                  className={`${styles.input} ${styles.inputMono}`}
-                  id="line-id"
-                  value={line.channel_id}
-                  onChange={(e) =>
-                    setLine({ ...line, channel_id: e.target.value })
-                  }
-                />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="line-oa">
-                  OA display name
-                </label>
-                <input
-                  className={styles.input}
-                  id="line-oa"
-                  value={line.oa_name}
-                  onChange={(e) =>
-                    setLine({ ...line, oa_name: e.target.value })
-                  }
-                />
-              </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="line-id">
+                Channel ID
+              </label>
+              <input
+                className={`${styles.input} ${styles.inputMono}`}
+                id="line-id"
+                value={line.channel_id}
+                onChange={(e) =>
+                  setLine({ ...line, channel_id: e.target.value })
+                }
+              />
             </div>
 
             <div className={styles.field}>
               <label className={styles.label} htmlFor="line-secret">
                 Channel secret <span className={styles.req}>· encrypted</span>
               </label>
-              <div className={styles.secretRow}>
-                <input
-                  className={`${styles.input} ${styles.inputMono}`}
-                  id="line-secret"
-                  value={`••••••••••••••${settings.line.secret_last4}`}
-                  readOnly
-                />
-                <button
-                  type="button"
-                  className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                  onClick={rotateSecret}
-                  disabled={isPending}
-                >
-                  Rotate
-                </button>
-              </div>
+              <input
+                className={`${styles.input} ${styles.inputMono}`}
+                id="line-secret"
+                type="password"
+                value={line.channel_secret}
+                onChange={(e) =>
+                  setLine({ ...line, channel_secret: e.target.value })
+                }
+                autoComplete="off"
+              />
               <span className={styles.hint}>
-                Stored in Supabase Vault. Last rotated{" "}
-                {timeAgo(settings.line.secret_rotated_at)}.
+                Used to verify webhook signatures from LINE.
+              </span>
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="line-access-token">
+                Channel access token <span className={styles.req}>· long-lived</span>
+              </label>
+              <input
+                className={`${styles.input} ${styles.inputMono}`}
+                id="line-access-token"
+                type="password"
+                value={line.channel_access_token}
+                onChange={(e) =>
+                  setLine({ ...line, channel_access_token: e.target.value })
+                }
+                autoComplete="off"
+              />
+              <span className={styles.hint}>
+                Used to send replies and push messages through the Messaging API.
               </span>
             </div>
 
@@ -1200,41 +1159,19 @@ export function SettingsView(props: Props) {
               </span>
             </div>
 
-            <div className={styles.field}>
-              <label className={styles.label}>Verify connection</label>
-              <div className={styles.testRow}>
-                <div className={styles.status}>
-                  <span className={styles.statusDot} aria-hidden="true" />
-                  <span>
-                    {linePinged ? "Last ping received" : "No ping received"}
-                  </span>
-                </div>
-                <span className={styles.when}>
-                  {linePinged
-                    ? `${fmtDateTime(settings.line.last_ping_at)} ICT`
-                    : "—"}
-                </span>
-                <button
-                  type="button"
-                  className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                  onClick={pingLine}
-                  disabled={isPending}
-                >
-                  Test signature
-                </button>
-              </div>
-              <span className={styles.hint}>
-                Sends a signed test event from Mimira. Your webhook should respond
-                within 1s.
-              </span>
-            </div>
-
             <div className={styles.cardActions}>
               <span className={styles.saveMeta}>
                 {lineDirty
                   ? "Unsaved changes"
                   : `Last saved ${timeAgo(settings.line.saved_at)} by ${settings.line.saved_by}`}
               </span>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                onClick={() => setModal({ kind: "lineHelp" })}
+              >
+                Help
+              </button>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnSecondary}`}
@@ -2173,6 +2110,43 @@ export function SettingsView(props: Props) {
             setModal({ kind: "none" });
           }}
         />
+      )}
+
+      {modal.kind === "lineHelp" && (
+        <Modal
+          title="Connect LINE"
+          subtitle="Use these steps in LINE Official Account Manager and LINE Developers Console."
+          onClose={() => setModal({ kind: "none" })}
+          wide
+        >
+          <ol className={styles.guideList}>
+            <li>
+              Go to{" "}
+              <a href="https://manager.line.biz" target="_blank" rel="noreferrer">
+                LINE Official Account Manager
+              </a>
+              .
+            </li>
+            <li>Select the account you want to connect.</li>
+            <li>Enable Chat and Webhooks.</li>
+            <li>Disable auto response.</li>
+            <li>Go to Messaging API under Settings.</li>
+            <li>Copy Channel ID and Channel Secret into Mimira.</li>
+            <li>
+              Enter this Webhook URL in LINE:{" "}
+              <code className={styles.inlineCode}>{props.webhookUrl || "[webhook URL]"}</code>
+            </li>
+            <li>Click LINE Developers Console to get the last piece.</li>
+            <li>Select your account, then select Messaging API.</li>
+            <li>
+              Click Verify under Webhook settings. If you see Success, LINE can
+              reach Mimira.
+            </li>
+            <li>Issue a new Channel access token.</li>
+            <li>Copy it into Channel access token in Mimira.</li>
+            <li>Save changes. Now you are done.</li>
+          </ol>
+        </Modal>
       )}
 
       {modal.kind === "member" && (
