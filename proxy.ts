@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api/line/webhook",
+  "/api/line(.*)",
 ]);
 
 const hasClerkKeys = Boolean(

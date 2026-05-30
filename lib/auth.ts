@@ -28,6 +28,16 @@ export function isDemoAccount(email: string): boolean {
   return email.toLowerCase().endsWith("@sukhumvit-skin.com");
 }
 
+function configuredAdminEmail(): string | null {
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  return email || null;
+}
+
+function canBootstrapOwner(email: string): boolean {
+  const adminEmail = configuredAdminEmail();
+  return !adminEmail || email.toLowerCase() === adminEmail;
+}
+
 export async function getCurrentMember(): Promise<CurrentMember | null> {
   const user = await currentUser();
   return getMemberForUser(user);
@@ -68,6 +78,9 @@ export async function getMemberForUser(
 
   // 3. No row at all: bootstrap the very first owner, then bind it.
   if (!member) {
+    if (!canBootstrapOwner(email)) {
+      return null;
+    }
     member = await bootstrapFirstOwner({
       name: displayNameForUser(user, email),
       email: email.toLowerCase(),
